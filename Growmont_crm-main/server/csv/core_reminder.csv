@@ -1,0 +1,4 @@
+id,event_name,type,priority,date,time,end_time,description,repeat_reminder,repeat_type,repeat_days,repeat_every_day,created_at,updated_at,employee_id
+2,emp reminder,CORPORATE,MEDIUM,2026-02-15,11:00:00,null,,false,NONE,[],false,2026-02-15 16:40:29.612637+00,2026-02-15 16:40:29.612637+00,8
+3,emp reminder,CORPORATE,MEDIUM,2026-02-16,10:00:00,10:30:00,naanna,false,NONE,[],false,2026-02-15 16:40:53.279095+00,2026-02-15 16:40:53.279095+00,8
+1,test admin,PERSONAL,LOW,2026-02-15,10:00:00,10:30:00,meet,false,NONE,[],false,2026-02-15 16:22:15.474099+00,2026-02-15 17:01:39.012843+00,7

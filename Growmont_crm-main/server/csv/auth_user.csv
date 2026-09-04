@@ -1,0 +1,5 @@
+id,password,last_login,is_superuser,username,first_name,last_name,email,is_staff,is_active,date_joined
+8,pbkdf2_sha256$1200000$J2mnGxNLxB6Mkhu3CFBiwT$GWMFOiJeskuu6XJW7zw/Z9Q/ayZJAuTAtEatILjlTLQ=,2026-02-15 09:53:59.2387+00,true,superuser,,,superuser@gmail.com,true,true,2026-02-15 09:52:40.284652+00
+7,pbkdf2_sha256$870000$BZMczF8B0bIhiXyOnDf9tJ$f/YqEKoc6B77UjhdFfhm8pjaZWtVXb8Jjg9Ao4Krstg=,null,false,employee@growmont.com,,,employee@growmont.com,true,true,2026-02-15 07:40:29+00
+6,pbkdf2_sha256$870000$gmO9Nt0M3M2Ir1yANixsj5$p/wVenUT9X2qUJL734PwqSiSgYY/l7mgQceInzHYkcg=,null,false,admin@growmont.com,,,admin@growmont.com,false,true,2026-02-15 07:40:28.585285+00
+9,pbkdf2_sha256$870000$VPzHbapTgBoJ6EW9bAuR1j$6TNH1813LGKYubDP8VmMrKPyADR64gN/PzObJXKzEa8=,null,false,testadmin@growmont.com,,,testadmin@growmont.com,false,true,2026-02-21 17:37:02.756944+00

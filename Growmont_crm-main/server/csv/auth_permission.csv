@@ -1,0 +1,53 @@
+id,name,content_type_id,codename
+1,Can add log entry,1,add_logentry
+2,Can change log entry,1,change_logentry
+3,Can delete log entry,1,delete_logentry
+4,Can view log entry,1,view_logentry
+5,Can add permission,3,add_permission
+6,Can change permission,3,change_permission
+7,Can delete permission,3,delete_permission
+8,Can view permission,3,view_permission
+9,Can add group,2,add_group
+10,Can change group,2,change_group
+11,Can delete group,2,delete_group
+12,Can view group,2,view_group
+13,Can add user,4,add_user
+14,Can change user,4,change_user
+15,Can delete user,4,delete_user
+16,Can view user,4,view_user
+17,Can add content type,5,add_contenttype
+18,Can change content type,5,change_contenttype
+19,Can delete content type,5,delete_contenttype
+20,Can view content type,5,view_contenttype
+21,Can add session,6,add_session
+22,Can change session,6,change_session
+23,Can delete session,6,delete_session
+24,Can view session,6,view_session
+25,Can add Blacklisted Token,7,add_blacklistedtoken
+26,Can change Blacklisted Token,7,change_blacklistedtoken
+27,Can delete Blacklisted Token,7,delete_blacklistedtoken
+28,Can view Blacklisted Token,7,view_blacklistedtoken
+29,Can add Outstanding Token,8,add_outstandingtoken
+30,Can change Outstanding Token,8,change_outstandingtoken
+31,Can delete Outstanding Token,8,delete_outstandingtoken
+32,Can view Outstanding Token,8,view_outstandingtoken
+33,Can add employee,10,add_employee
+34,Can change employee,10,change_employee
+35,Can delete employee,10,delete_employee
+36,Can view employee,10,view_employee
+37,Can add client,9,add_client
+38,Can change client,9,change_client
+39,Can delete client,9,delete_client
+40,Can view client,9,view_client
+41,Can add interaction,11,add_interaction
+42,Can change interaction,11,change_interaction
+43,Can delete interaction,11,delete_interaction
+44,Can view interaction,11,view_interaction
+45,Can add sale,12,add_sale
+46,Can change sale,12,change_sale
+47,Can delete sale,12,delete_sale
+48,Can view sale,12,view_sale
+49,Can add reminder,13,add_reminder
+50,Can change reminder,13,change_reminder
+51,Can delete reminder,13,delete_reminder
+52,Can view reminder,13,view_reminder

@@ -1,0 +1,14 @@
+id,app_label,model
+1,admin,logentry
+2,auth,group
+3,auth,permission
+4,auth,user
+5,contenttypes,contenttype
+6,sessions,session
+7,token_blacklist,blacklistedtoken
+8,token_blacklist,outstandingtoken
+9,core,client
+10,core,employee
+11,core,interaction
+12,core,sale
+13,core,reminder

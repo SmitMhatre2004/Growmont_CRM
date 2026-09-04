@@ -1,0 +1,24 @@
+asgiref==3.11.0
+celery==5.4.0
+dj-database-url==3.1.0
+Django==4.2
+django-celery-beat==2.9.0
+django-cors-headers==4.9.0
+djangorestframework==3.16.1
+djangorestframework_simplejwt==5.5.1
+et_xmlfile==2.0.0
+openpyxl==3.1.5
+pillow==12.1.0
+psycopg2-binary==2.9.11
+PyJWT==2.10.1
+python-decouple==3.8
+django-redis
+redis==5.2.1
+sqlparse==0.5.5
+tzdata==2025.3
+whitenoise==6.12.0
+gunicorn
+
+# Django==6.0
+# django-celery-beat==2.7.0
+# Django==6.0.3
