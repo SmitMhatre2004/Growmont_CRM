@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 class Reminder {
   const Reminder({
     required this.id,
@@ -16,8 +18,8 @@ class Reminder {
     this.repeatEveryDay = false,
   });
 
-  final int id;
-  final int employee;
+  final String id;
+  final String employee;
   final String? employeeName;
   final String eventName;
   final String type;
@@ -31,16 +33,26 @@ class Reminder {
   final List<String> repeatDays;
   final bool repeatEveryDay;
 
-  factory Reminder.fromJson(Map<String, dynamic> json) {
+  factory Reminder.fromJson(Map<String, dynamic> json, [String? docId]) {
+    String dateStr = '';
+    final rawDate = json['date'];
+    if (rawDate is Timestamp) {
+      dateStr = rawDate.toDate().toIso8601String().split('T').first;
+    } else if (rawDate is String) {
+      dateStr = rawDate;
+    }
+
+    final emp = (json['employee_id'] ?? json['employee'] ?? '').toString();
+
     return Reminder(
-      id: json['id'] as int,
-      employee: json['employee'] as int,
+      id: (docId ?? json['id'] ?? '').toString(),
+      employee: emp,
       employeeName: json['employee_name'] as String?,
       eventName: json['event_name'] as String? ?? '',
       type: json['type'] as String? ?? 'CORPORATE',
       priority: json['priority'] as String? ?? 'MEDIUM',
-      date: json['date'] as String,
-      time: json['time'] as String,
+      date: dateStr,
+      time: json['time'] as String? ?? '10:00:00',
       endTime: json['end_time'] as String?,
       description: json['description'] as String? ?? '',
       repeatReminder: json['repeat_reminder'] as bool? ?? false,
@@ -52,6 +64,30 @@ class Reminder {
       repeatEveryDay: json['repeat_every_day'] as bool? ?? false,
     );
   }
+
+  factory Reminder.fromFirestore(DocumentSnapshot doc) {
+    return Reminder.fromJson(doc.data() as Map<String, dynamic>? ?? {}, doc.id);
+  }
+
+  Map<String, dynamic> toFirestore() => {
+        'employee_id': employee,
+        if (employeeName != null) 'employee_name': employeeName,
+        'event_name': eventName,
+        'type': type,
+        'priority': priority,
+        'date': Timestamp.fromDate(DateTime.tryParse(date) ?? DateTime.now()),
+        'time': time.length == 5 ? '$time:00' : time,
+        if (endTime != null && endTime!.isNotEmpty)
+          'end_time': endTime!.length == 5 ? '$endTime:00' : endTime,
+        'description': description,
+        'repeat_reminder': repeatReminder,
+        'repeat_type': repeatType,
+        'repeat_days': repeatDays,
+        'repeat_every_day': repeatEveryDay,
+        'is_sent': false,
+        'created_at': FieldValue.serverTimestamp(),
+        'updated_at': FieldValue.serverTimestamp(),
+      };
 
   Map<String, dynamic> toPayload() => {
         'employee': employee,

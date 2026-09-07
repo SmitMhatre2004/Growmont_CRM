@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "925465988303",
+    "project_id": "growmontcrm",
+    "storage_bucket": "growmontcrm.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:925465988303:android:40c1e38e2ab2cdb9107bba",
+        "android_client_info": {
+          "package_name": "com.growmont.growmont_crm"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDLwvW82PSOM_02vWkZlclQjSWxjVttok4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

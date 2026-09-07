@@ -1,0 +1,95 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ─── Helper functions ───
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+             request.auth.token.role == 'ADMIN';
+    }
+
+    function isOwnerEmployee(employeeId) {
+      return isAuthenticated() &&
+             request.auth.uid == employeeId;
+    }
+
+    function isAdminOrOwner(employeeId) {
+      return isAdmin() || isOwnerEmployee(employeeId);
+    }
+
+    // ─── Employees ───
+    match /employees/{employeeId} {
+      // Any authenticated user can read employees (needed for dropdowns, detail views)
+      allow read: if isAuthenticated();
+
+      // Only admins can create/update/delete employees
+      allow create, update, delete: if isAdmin();
+    }
+
+    // ─── Clients ───
+    match /clients/{clientId} {
+      allow read: if isAuthenticated();
+      // Only admins can manage clients (client-employee assignment)
+      allow create, update, delete: if isAdmin();
+    }
+
+    // ─── Sales ───
+    match /sales/{saleId} {
+      // Admins see all; employees see only their own
+      allow read: if isAdmin() ||
+                     resource.data.sales_rep_id == request.auth.uid;
+
+      // Create: employee must set sales_rep_id to self;
+      // admin can set any sales_rep_id
+      allow create: if isAuthenticated() &&
+                       (isAdmin() || request.resource.data.sales_rep_id == request.auth.uid) &&
+                       // Money validation
+                       request.resource.data.amount_paise is int &&
+                       request.resource.data.amount_paise > 0 &&
+                       request.resource.data.amount_paise < 100000000000;
+
+      // Update: admin can update any; employee only own
+      allow update: if (isAdmin() || resource.data.sales_rep_id == request.auth.uid) &&
+                       request.resource.data.amount_paise is int &&
+                       request.resource.data.amount_paise > 0 &&
+                       request.resource.data.amount_paise < 100000000000;
+
+      // Delete: admin can delete any; employee only own
+      // (Fixes the Django bug where any user could delete any sale)
+      allow delete: if isAdmin() || resource.data.sales_rep_id == request.auth.uid;
+    }
+
+    // ─── Interactions ───
+    match /interactions/{interactionId} {
+      allow read: if isAdmin() ||
+                     resource.data.employee_id == request.auth.uid;
+
+      allow create: if isAuthenticated() &&
+                       (isAdmin() || request.resource.data.employee_id == request.auth.uid);
+
+      allow update: if isAdmin() ||
+                       resource.data.employee_id == request.auth.uid;
+
+      allow delete: if isAdmin() ||
+                       resource.data.employee_id == request.auth.uid;
+    }
+
+    // ─── Reminders ───
+    // All users can only see/manage their own reminders (even admins, matching Django behavior)
+    match /reminders/{reminderId} {
+      allow read: if isOwnerEmployee(resource.data.employee_id);
+
+      allow create: if isAuthenticated() &&
+                       request.resource.data.employee_id == request.auth.uid;
+
+      allow update: if isOwnerEmployee(resource.data.employee_id) &&
+                       request.resource.data.employee_id == request.auth.uid;
+
+      allow delete: if isOwnerEmployee(resource.data.employee_id);
+    }
+  }
+}

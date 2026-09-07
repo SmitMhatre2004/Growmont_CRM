@@ -27,7 +27,7 @@ class _AddSaleModalState extends ConsumerState<AddSaleModal> {
   late TextEditingController _remarks;
   String _product = 'MF';
   String _frequency = 'M';
-  int? _salesRep;
+  String? _salesRep;
   List<EmployeeDropdown> _employees = [];
   bool _loading = false;
   bool _isEmployee = false;
@@ -176,7 +176,7 @@ class _AddSaleModalState extends ConsumerState<AddSaleModal> {
                           decoration: const InputDecoration(labelText: 'Sales Representative *'),
                         )
                       else
-                        DropdownButtonFormField<int>(
+                        DropdownButtonFormField<String>(
                           value: _salesRep,
                           decoration: const InputDecoration(labelText: 'Sales Representative *'),
                           items: _employees

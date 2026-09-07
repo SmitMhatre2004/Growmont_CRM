@@ -4,9 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/providers.dart';
 
 class TodoWidget extends ConsumerStatefulWidget {
-  const TodoWidget({super.key, required this.userId});
+  const TodoWidget({super.key, this.userId});
 
-  final int userId;
+  final dynamic userId;
 
   @override
   ConsumerState<TodoWidget> createState() => _TodoWidgetState();

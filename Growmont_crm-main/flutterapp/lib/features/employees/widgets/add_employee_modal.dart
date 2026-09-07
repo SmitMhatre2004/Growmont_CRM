@@ -1,6 +1,7 @@
+import 'dart:io';
 import 'dart:typed_data';
 
-import 'package:dio/dio.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
@@ -75,7 +76,7 @@ class _AddEmployeeModalState extends ConsumerState<AddEmployeeModal> {
     }
 
     setState(() => _loading = true);
-    final formData = FormData.fromMap({
+    final map = <String, dynamic>{
       'name': _name.text.trim(),
       'email': _email.text.trim(),
       'mobile_no': _mobile.text.trim(),
@@ -83,15 +84,22 @@ class _AddEmployeeModalState extends ConsumerState<AddEmployeeModal> {
       'dob': AppFormatters.toApiDate(_dob),
       'role': _role,
       if (_password.text.isNotEmpty) 'password': _password.text,
-      if (_avatar != null) 'avatar': await MultipartFile.fromFile(_avatar!.path),
-    });
+    };
 
     try {
+      if (_avatar != null) {
+        final fileName = '${DateTime.now().millisecondsSinceEpoch}_${_avatar!.name}';
+        final storageRef = FirebaseStorage.instance.ref().child('avatars/$fileName');
+        final uploadTask = await storageRef.putFile(File(_avatar!.path));
+        final url = await uploadTask.ref.getDownloadURL();
+        map['avatar_url'] = url;
+      }
+
       final api = ref.read(apiServiceProvider);
       if (widget.existing != null) {
-        await api.updateEmployee(widget.existing!.id, formData);
+        await api.updateEmployee(widget.existing!.id, map);
       } else {
-        await api.createEmployee(formData);
+        await api.createEmployee(map);
       }
       if (mounted) Navigator.pop(context, true);
     } catch (e) {

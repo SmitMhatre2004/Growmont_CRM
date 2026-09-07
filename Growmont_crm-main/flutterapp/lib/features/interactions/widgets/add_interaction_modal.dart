@@ -26,7 +26,7 @@ class _AddInteractionModalState extends ConsumerState<AddInteractionModal> {
   late TextEditingController _clientContact;
   late TextEditingController _notes;
   String _priority = 'MEDIUM';
-  int? _employeeId;
+  String? _employeeId;
   List<EmployeeDropdown> _employees = [];
   bool _loading = false;
   bool _isEmployee = false;
@@ -191,7 +191,7 @@ class _AddInteractionModalState extends ConsumerState<AddInteractionModal> {
                     decoration: const InputDecoration(labelText: 'Employee'),
                   )
                 else
-                  DropdownButtonFormField<int>(
+                  DropdownButtonFormField<String>(
                     value: _employeeId,
                     decoration: const InputDecoration(labelText: 'Employee *'),
                     items: _employees

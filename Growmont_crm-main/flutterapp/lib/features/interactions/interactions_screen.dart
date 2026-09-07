@@ -1,4 +1,5 @@
-import 'package:dio/dio.dart';
+import 'dart:convert';
+import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -6,7 +7,6 @@ import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../core/providers.dart';
-import '../../core/api/endpoints.dart';
 import '../../core/theme/app_theme.dart';
 import '../../models/interaction.dart';
 import '../../models/user.dart';
@@ -50,7 +50,7 @@ class _InteractionsScreenState extends ConsumerState<InteractionsScreen> {
         (i.employeeName?.toLowerCase().contains(q) ?? false)).toList();
   }
 
-  Future<void> _delete(int id) async {
+  Future<void> _delete(dynamic id) async {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -69,10 +69,12 @@ class _InteractionsScreenState extends ConsumerState<InteractionsScreen> {
 
   Future<void> _export() async {
     try {
+      final base64Data = await ref.read(firestoreServiceProvider).exportInteractionsExcel();
+      final bytes = base64Decode(base64Data);
       final dir = await getTemporaryDirectory();
-      final path = '${dir.path}/interactions_export.xlsx';
-      await ref.read(apiClientProvider).downloadFile(Endpoints.exportInteractions, path);
-      await Share.shareXFiles([XFile(path)]);
+      final file = File('${dir.path}/interactions_export.xlsx');
+      await file.writeAsBytes(bytes);
+      await Share.shareXFiles([XFile(file.path)]);
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -89,10 +91,9 @@ class _InteractionsScreenState extends ConsumerState<InteractionsScreen> {
     );
     if (result?.files.single.path == null) return;
     try {
-      final formData = FormData.fromMap({
-        'file': await MultipartFile.fromFile(result!.files.single.path!),
-      });
-      await ref.read(apiServiceProvider).importInteractions(formData);
+      final bytes = await File(result!.files.single.path!).readAsBytes();
+      final base64 = base64Encode(bytes);
+      await ref.read(firestoreServiceProvider).importInteractions(base64);
       _load();
     } catch (_) {}
   }

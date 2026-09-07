@@ -109,14 +109,14 @@ class _InfoPortalScreenState extends ConsumerState<InfoPortalScreen> {
     }).toList();
   }
 
-  Future<void> _deleteSale(int id) async {
+  Future<void> _deleteSale(dynamic id) async {
     final ok = await _confirmDelete();
     if (!ok) return;
     await ref.read(apiServiceProvider).deleteSale(id);
     _load();
   }
 
-  Future<void> _deleteInteraction(int id) async {
+  Future<void> _deleteInteraction(dynamic id) async {
     final ok = await _confirmDelete();
     if (!ok) return;
     await ref.read(apiServiceProvider).deleteInteraction(id);

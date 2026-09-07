@@ -162,7 +162,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           color: Colors.yellow.shade50,
           child: Padding(
             padding: const EdgeInsets.all(16),
-            child: TodoWidget(userId: user?.id ?? 0),
+            child: TodoWidget(userId: user?.id),
           ),
         ),
       ],

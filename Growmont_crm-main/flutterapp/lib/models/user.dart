@@ -9,7 +9,7 @@ class AppUser {
     required this.role,
   });
 
-  final int id;
+  final String id;
   final String name;
   final String email;
   final String? avatar;
@@ -19,11 +19,11 @@ class AppUser {
 
   factory AppUser.fromJson(Map<String, dynamic> json) {
     return AppUser(
-      id: json['id'] as int,
-      name: json['name'] as String,
-      email: json['email'] as String,
-      avatar: json['avatar'] as String?,
-      role: (json['role'] as String?) == 'ADMIN'
+      id: (json['id'] ?? '').toString(),
+      name: json['name'] as String? ?? '',
+      email: json['email'] as String? ?? '',
+      avatar: json['avatar'] as String? ?? json['avatar_url'] as String?,
+      role: (json['role'] as String?)?.toUpperCase() == 'ADMIN'
           ? UserRole.admin
           : UserRole.employee,
     );

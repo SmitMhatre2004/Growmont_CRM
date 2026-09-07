@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/theme/app_theme.dart';
+import '../../models/user.dart';
 import 'auth_provider.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -47,6 +48,22 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     } else {
       context.go('/dashboard');
     }
+  }
+
+  Future<void> _devBypass([UserRole role = UserRole.admin]) async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+
+    await ref.read(authProvider.notifier).bypassLogin(role: role);
+
+    if (!mounted) return;
+
+    setState(() {
+      _loading = false;
+    });
+    context.go('/dashboard');
   }
 
   @override
@@ -153,6 +170,56 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             ),
                           ),
                           child: Text(_loading ? 'Logging in...' : 'Login'),
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      Row(
+                        children: [
+                          Expanded(child: Divider(color: Colors.grey.shade300)),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            child: Text(
+                              'DEV BYPASS',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.grey.shade500,
+                                letterSpacing: 1.2,
+                              ),
+                            ),
+                          ),
+                          Expanded(child: Divider(color: Colors.grey.shade300)),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          key: const ValueKey('dev_bypass_admin_btn'),
+                          onPressed: _loading ? null : () => _devBypass(UserRole.admin),
+                          icon: const Icon(Icons.bolt, color: Colors.amber, size: 20),
+                          label: const Text('Dev Bypass Login (Admin)'),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: AppColors.primaryGreen,
+                            side: const BorderSide(color: AppColors.primaryGreen, width: 1.5),
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(32),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      SizedBox(
+                        width: double.infinity,
+                        child: TextButton.icon(
+                          key: const ValueKey('dev_bypass_employee_btn'),
+                          onPressed: _loading ? null : () => _devBypass(UserRole.employee),
+                          icon: Icon(Icons.person_outline, size: 18, color: Colors.grey.shade700),
+                          label: Text(
+                            'Dev Bypass (Employee Role)',
+                            style: TextStyle(color: Colors.grey.shade700, fontSize: 13),
+                          ),
                         ),
                       ),
                     ],
