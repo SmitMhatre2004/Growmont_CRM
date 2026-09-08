@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/providers.dart';
-import '../../../core/theme/app_theme.dart';
-import '../../../models/employee.dart';
-import '../../../models/interaction.dart';
-import '../../../models/reminder.dart';
-import '../../../models/sale.dart';
+import '../../core/config/app_config.dart';
+import '../../core/providers.dart';
+import '../../core/theme/app_theme.dart';
+import '../../models/employee.dart';
+import '../../models/interaction.dart';
+import '../../models/reminder.dart';
+import '../../models/sale.dart';
+import '../../shared/widgets/error_state.dart';
 import '../auth/auth_provider.dart';
 import '../reminders/widgets/add_reminder_modal.dart';
 
@@ -29,6 +31,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   ProfileTab _tab = ProfileTab.reminders;
   bool _loading = true;
   bool _showProfilePanel = false;
+  String? _error;
 
   @override
   void initState() {
@@ -54,13 +57,18 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final user = ref.read(authProvider).user;
     if (user == null) return;
 
-    setState(() => _loading = true);
+    setState(() {
+      // Only take over the screen on the first load, so a pull-to-refresh
+      // leaves the current profile visible.
+      if (_employee == null) _loading = true;
+      _error = null;
+    });
     final api = ref.read(apiServiceProvider);
     try {
       final results = await Future.wait([
         api.getEmployee(user.id),
         api.getEmployeeSales(user.id),
-        api.getInteractions(),
+        api.getInteractions(employeeId: user.id),
         api.getReminders(),
       ]);
       if (mounted) {
@@ -72,9 +80,27 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           _loading = false;
         });
       }
-    } catch (_) {
-      if (mounted) setState(() => _loading = false);
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = e.toString();
+          _loading = false;
+        });
+        if (_employee != null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Refresh failed: $e'), backgroundColor: Colors.red),
+          );
+        }
+      }
     }
+  }
+
+  double get _totalSalesAmount {
+    double total = 0;
+    for (final s in _sales) {
+      total += double.tryParse(s.amount) ?? 0;
+    }
+    return total;
   }
 
   Future<void> _deleteReminder(dynamic id) async {
@@ -107,17 +133,29 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     if (_loading) return const Center(child: CircularProgressIndicator());
-    if (_employee == null) return const Center(child: Text('Profile not found'));
+    if (_employee == null) {
+      return ErrorState(
+        message: _error ?? 'We could not load your profile.',
+        title: _error == null ? 'Profile not found' : 'Something went wrong',
+        icon: Icons.person_off_outlined,
+        onRetry: _load,
+      );
+    }
 
     final isWide = MediaQuery.sizeOf(context).width >= 768;
 
     return Padding(
-      padding: EdgeInsets.all(isWide ? 16 : 12),
+      padding: EdgeInsets.fromLTRB(
+        isWide ? 24 : 16,
+        isWide ? 16 : 10,
+        isWide ? 24 : 16,
+        isWide ? 16 : 12,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (!isWide) ...[
-            const Text('Profile', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+            const Text('Profile', style: AppTypography.pageTitleMobile),
             const SizedBox(height: 10),
             Row(
               children: [
@@ -146,9 +184,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             ),
           ] else
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Expanded(
-                  child: Text('Profile', style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
+                  child: Text('Profile', style: AppTypography.pageTitle),
                 ),
                 FilledButton.icon(
                   onPressed: () => _showReminderModal(),
@@ -163,7 +202,16 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 ? Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      SizedBox(width: 280, child: _ProfileInfoPanel(employee: _employee!)),
+                      SizedBox(
+                        width: 280,
+                        child: _ProfileInfoPanel(
+                          employee: _employee!,
+                          salesCount: _sales.length,
+                          interactionsCount: _interactions.length,
+                          remindersCount: _reminders.length,
+                          totalSales: _totalSalesAmount,
+                        ),
+                      ),
                       const SizedBox(width: 16),
                       Expanded(child: _tabContent()),
                     ],
@@ -171,7 +219,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 : Column(
                     children: [
                       if (_showProfilePanel) ...[
-                        _ProfileInfoPanel(employee: _employee!),
+                        _ProfileInfoPanel(
+                          employee: _employee!,
+                          salesCount: _sales.length,
+                          interactionsCount: _interactions.length,
+                          remindersCount: _reminders.length,
+                          totalSales: _totalSalesAmount,
+                        ),
                         const SizedBox(height: 16),
                       ],
                       Expanded(child: _tabContent()),
@@ -192,31 +246,58 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             padding: const EdgeInsets.all(12),
             child: Row(
               children: [
-                _tabChip('Product Sales', ProfileTab.sales),
-                _tabChip('Interactions', ProfileTab.interactions),
-                _tabChip('Reminders', ProfileTab.reminders),
+                _tabChip('Product Sales', ProfileTab.sales, _sales.length),
+                _tabChip('Interactions', ProfileTab.interactions, _interactions.length),
+                _tabChip('Reminders', ProfileTab.reminders, _reminders.length),
               ],
             ),
           ),
           const Divider(height: 1),
           Expanded(
-            child: switch (_tab) {
-              ProfileTab.sales => _salesTab(),
-              ProfileTab.interactions => _interactionsTab(),
-              ProfileTab.reminders => _remindersTab(),
-            },
+            child: RefreshIndicator(
+              onRefresh: _load,
+              color: AppColors.primaryGreen,
+              child: switch (_tab) {
+                ProfileTab.sales => _salesTab(),
+                ProfileTab.interactions => _interactionsTab(),
+                ProfileTab.reminders => _remindersTab(),
+              },
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _tabChip(String label, ProfileTab tab) {
+  Widget _emptyState(IconData icon, String message) {
+    return LayoutBuilder(
+      builder: (context, constraints) => ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: [
+          SizedBox(
+            height: constraints.maxHeight,
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(icon, size: 36, color: AppColors.textMuted),
+                  const SizedBox(height: 8),
+                  Text(message, style: AppTypography.itemSubtitle),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _tabChip(String label, ProfileTab tab, int count) {
     final selected = _tab == tab;
     return Padding(
       padding: const EdgeInsets.only(right: 8),
       child: FilterChip(
-        label: Text(label),
+        label: Text('$label ($count)'),
         selected: selected,
         onSelected: (_) => setState(() => _tab = tab),
         selectedColor: AppColors.primaryGreen,
@@ -228,18 +309,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
   Widget _salesTab() {
     if (_sales.isEmpty) {
-      return const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.shopping_bag_outlined, size: 36, color: AppColors.textMuted),
-            SizedBox(height: 8),
-            Text('No sales records found', style: AppTypography.itemSubtitle),
-          ],
-        ),
-      );
+      return _emptyState(Icons.shopping_bag_outlined, 'No sales records found');
     }
     return ListView.separated(
+      physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.all(16),
       itemCount: _sales.length,
       separatorBuilder: (context, index) => const Divider(height: 1, color: AppColors.border),
@@ -295,18 +368,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
   Widget _interactionsTab() {
     if (_interactions.isEmpty) {
-      return const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.forum_outlined, size: 36, color: AppColors.textMuted),
-            SizedBox(height: 8),
-            Text('No interactions found', style: AppTypography.itemSubtitle),
-          ],
-        ),
-      );
+      return _emptyState(Icons.forum_outlined, 'No interactions found');
     }
     return ListView.separated(
+      physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.all(16),
       itemCount: _interactions.length,
       separatorBuilder: (context, index) => const Divider(height: 1, color: AppColors.border),
@@ -356,18 +421,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
   Widget _remindersTab() {
     if (_reminders.isEmpty) {
-      return const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.notifications_outlined, size: 36, color: AppColors.textMuted),
-            SizedBox(height: 8),
-            Text('No reminders found', style: AppTypography.itemSubtitle),
-          ],
-        ),
-      );
+      return _emptyState(Icons.notifications_outlined, 'No reminders found');
     }
     return ListView.separated(
+      physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.all(16),
       itemCount: _reminders.length,
       separatorBuilder: (context, index) => const Divider(height: 1, color: AppColors.border),
@@ -497,13 +554,24 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 }
 
 class _ProfileInfoPanel extends StatelessWidget {
-  const _ProfileInfoPanel({required this.employee});
+  const _ProfileInfoPanel({
+    required this.employee,
+    required this.salesCount,
+    required this.interactionsCount,
+    required this.remindersCount,
+    required this.totalSales,
+  });
 
   final Employee employee;
+  final int salesCount;
+  final int interactionsCount;
+  final int remindersCount;
+  final double totalSales;
 
   @override
   Widget build(BuildContext context) {
     final isAdmin = employee.role.toLowerCase() == 'admin';
+    final avatarUrl = AppConfig.mediaUrl(employee.avatar);
     return Card(
       elevation: 0,
       shape: RoundedRectangleBorder(
@@ -520,14 +588,18 @@ class _ProfileInfoPanel extends StatelessWidget {
                 CircleAvatar(
                   radius: 30,
                   backgroundColor: AppColors.primaryGreen.withValues(alpha: 0.12),
-                  child: Text(
-                    employee.name.split(' ').map((p) => p[0]).take(2).join(),
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.primaryGreen,
-                    ),
-                  ),
+                  backgroundImage:
+                      avatarUrl.isNotEmpty ? NetworkImage(avatarUrl) : null,
+                  child: avatarUrl.isEmpty
+                      ? Text(
+                          employee.initials,
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.primaryGreen,
+                          ),
+                        )
+                      : null,
                 ),
                 const SizedBox(width: 14),
                 Expanded(
@@ -560,7 +632,60 @@ class _ProfileInfoPanel extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 22),
+            const SizedBox(height: 20),
+            const Text('ACTIVITY', style: AppTypography.overline),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                  child: _statTile('Sales', '$salesCount',
+                      const Color(0xFF16A34A), const Color(0xFFF0FDF4)),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _statTile('Interactions', '$interactionsCount',
+                      const Color(0xFF9333EA), const Color(0xFFFAF5FF)),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _statTile('Reminders', '$remindersCount',
+                      const Color(0xFF2563EB), const Color(0xFFEFF6FF)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF0FDF4),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: const Color(0xFFBBF7D0)),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'TOTAL SALES',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.6,
+                      color: Color(0xFF166534),
+                    ),
+                  ),
+                  Text(
+                    AppFormatters.formatAmount(totalSales.toString()),
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF15803D),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
             const Text('MAIN INFO', style: AppTypography.overline),
             const SizedBox(height: 10),
             _infoField('Gender', employee.genderDisplay),
@@ -572,6 +697,43 @@ class _ProfileInfoPanel extends StatelessWidget {
             _infoField('Mobile', employee.mobileNo.isNotEmpty ? employee.mobileNo : 'Not provided'),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _statTile(String label, String value, Color accent, Color bg) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: accent.withValues(alpha: 0.2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              letterSpacing: -0.5,
+              color: accent,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 9.5,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.3,
+              color: accent.withValues(alpha: 0.85),
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
       ),
     );
   }

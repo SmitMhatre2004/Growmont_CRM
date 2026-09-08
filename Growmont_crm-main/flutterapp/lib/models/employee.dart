@@ -80,6 +80,18 @@ class Employee {
         return gender;
     }
   }
+
+  /// Up to two uppercase initials, tolerant of blank or multi-spaced names.
+  String get initials {
+    final letters = name
+        .split(' ')
+        .where((p) => p.isNotEmpty)
+        .map((p) => p[0])
+        .take(2)
+        .join()
+        .toUpperCase();
+    return letters.isEmpty ? '?' : letters;
+  }
 }
 
 class EmployeeDropdown {

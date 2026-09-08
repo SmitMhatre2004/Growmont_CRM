@@ -71,6 +71,18 @@ void main() {
       expect(employee.genderDisplay, 'Male');
       expect(employee.dob, '1995-05-20');
       expect(employee.clientsCount, 5);
+      expect(employee.initials, 'AU');
+    });
+
+    test('Employee initials tolerate messy names', () {
+      Employee named(String name) => Employee.fromJson({'id': 'e1', 'name': name});
+
+      expect(named('Soham Patil').initials, 'SP');
+      expect(named('Suraj').initials, 'S');
+      // Blank segments used to throw a RangeError on name.split(' ')[0].
+      expect(named('  Ravi   Kumar Shah ').initials, 'RK');
+      expect(named('').initials, '?');
+      expect(named('   ').initials, '?');
     });
 
     test('Client model parses employee_ids array', () {

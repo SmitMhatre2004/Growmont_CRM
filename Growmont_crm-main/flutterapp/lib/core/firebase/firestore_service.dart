@@ -31,6 +31,22 @@ class FirestoreService {
   FirebaseStorage get storage => _storage;
   String? get currentUid => _auth.currentUser?.uid ?? devUid;
 
+  /// Newest-first comparator over the models' ISO date strings.
+  ///
+  /// Ordering is done in memory so the queries below only ever combine an
+  /// equality filter with no orderBy, which Firestore serves from its
+  /// single-field indexes. A `where` + `orderBy` on a different field would
+  /// instead need the composite indexes in firestore.indexes.json to have
+  /// been deployed to the project.
+  static int _byDateDesc(String a, String b) {
+    final dateA = DateTime.tryParse(a);
+    final dateB = DateTime.tryParse(b);
+    if (dateA == null && dateB == null) return 0;
+    if (dateA == null) return 1;
+    if (dateB == null) return -1;
+    return dateB.compareTo(dateA);
+  }
+
   // ----------------------------------------------------
   // Employees
   // ----------------------------------------------------
@@ -60,9 +76,10 @@ class FirestoreService {
     final snapshot = await _firestore
         .collection('sales')
         .where('sales_rep_id', isEqualTo: id.toString())
-        .orderBy('date', descending: true)
         .get();
-    return snapshot.docs.map(Sale.fromFirestore).toList();
+    final sales = snapshot.docs.map(Sale.fromFirestore).toList();
+    sales.sort((a, b) => _byDateDesc(a.date, b.date));
+    return sales;
   }
 
   Future<List<EmployeeDropdown>> getEmployeesDropdown() async {
@@ -154,12 +171,14 @@ class FirestoreService {
   // ----------------------------------------------------
 
   Future<List<Sale>> getSales({String? salesRepId}) async {
-    Query query = _firestore.collection('sales').orderBy('date', descending: true);
+    Query query = _firestore.collection('sales');
     if (salesRepId != null && salesRepId.isNotEmpty) {
       query = query.where('sales_rep_id', isEqualTo: salesRepId);
     }
     final snapshot = await query.get();
-    return snapshot.docs.map(Sale.fromFirestore).toList();
+    final sales = snapshot.docs.map(Sale.fromFirestore).toList();
+    sales.sort((a, b) => _byDateDesc(a.date, b.date));
+    return sales;
   }
 
   Future<Sale> createSale(Map<String, dynamic> data) async {
@@ -228,12 +247,14 @@ class FirestoreService {
   // ----------------------------------------------------
 
   Future<List<Interaction>> getInteractions({String? employeeId}) async {
-    Query query = _firestore.collection('interactions').orderBy('date', descending: true);
+    Query query = _firestore.collection('interactions');
     if (employeeId != null && employeeId.isNotEmpty) {
       query = query.where('employee_id', isEqualTo: employeeId);
     }
     final snapshot = await query.get();
-    return snapshot.docs.map(Interaction.fromFirestore).toList();
+    final interactions = snapshot.docs.map(Interaction.fromFirestore).toList();
+    interactions.sort((a, b) => _byDateDesc(a.date, b.date));
+    return interactions;
   }
 
   Future<Interaction> createInteraction(Map<String, dynamic> data) async {
@@ -299,9 +320,13 @@ class FirestoreService {
     final snapshot = await _firestore
         .collection('reminders')
         .where('employee_id', isEqualTo: currentUid)
-        .orderBy('date', descending: true)
         .get();
-    return snapshot.docs.map(Reminder.fromFirestore).toList();
+    final reminders = snapshot.docs.map(Reminder.fromFirestore).toList();
+    reminders.sort((a, b) {
+      final byDate = _byDateDesc(a.date, b.date);
+      return byDate != 0 ? byDate : b.time.compareTo(a.time);
+    });
+    return reminders;
   }
 
   Future<Reminder> createReminder(Map<String, dynamic> data) async {

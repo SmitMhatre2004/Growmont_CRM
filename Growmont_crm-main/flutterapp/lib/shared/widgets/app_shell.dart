@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/theme/app_theme.dart';
-import '../../features/auth/auth_provider.dart';
 import 'app_sidebar.dart';
 
 class AppShell extends ConsumerStatefulWidget {
@@ -21,7 +20,6 @@ class _AppShellState extends ConsumerState<AppShell> {
 
   @override
   Widget build(BuildContext context) {
-    final user = ref.watch(authProvider).user;
     final isSidebarCollapsed = ref.watch(sidebarCollapsedProvider);
     final isWide = MediaQuery.sizeOf(context).width >= 768;
 
@@ -41,7 +39,7 @@ class _AppShellState extends ConsumerState<AppShell> {
                 AnimatedContainer(
                   duration: const Duration(milliseconds: 250),
                   curve: Curves.easeInOutCubic,
-                  width: isSidebarCollapsed ? 80 : 220,
+                  width: isSidebarCollapsed ? 80 : 195,
                   clipBehavior: Clip.hardEdge,
                   decoration: BoxDecoration(
                     color: Colors.white,
@@ -56,7 +54,7 @@ class _AppShellState extends ConsumerState<AppShell> {
                 ),
                 Expanded(
                   child: Padding(
-                    padding: const EdgeInsets.only(top: 30, left: 16, right: 16),
+                    padding: const EdgeInsets.only(top: 30, right: 16),
                     child: ClipRect(child: widget.navigationShell),
                   ),
                 ),
@@ -70,46 +68,19 @@ class _AppShellState extends ConsumerState<AppShell> {
     return Scaffold(
       key: _scaffoldKey,
       appBar: AppBar(
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 28,
-              height: 28,
-              decoration: BoxDecoration(
-                color: AppColors.primaryGreen.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: const Icon(
-                Icons.trending_up_rounded,
-                color: AppColors.primaryGreen,
-                size: 18,
-              ),
-            ),
-            const SizedBox(width: 8),
-            const Text(
-              'Growmont',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 18,
-                color: AppColors.primaryGreen,
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          IconButton(
-            icon: CircleAvatar(
-              radius: 16,
-              backgroundColor: const Color(0xFF6366F1),
-              child: Text(
-                user?.initials ?? 'U',
-                style: const TextStyle(color: Colors.white, fontSize: 12),
-              ),
-            ),
-            onPressed: () => context.go('/profile'),
+        title: Container(
+          height: 34,
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(color: AppColors.border),
           ),
-        ],
+          child: Image.asset(
+            'assets/images/growmont-logo_coloured-large-size.webp',
+            fit: BoxFit.contain,
+          ),
+        ),
       ),
       drawer: Drawer(
         child: AppSidebar(
@@ -121,3 +92,4 @@ class _AppShellState extends ConsumerState<AppShell> {
     );
   }
 }
+

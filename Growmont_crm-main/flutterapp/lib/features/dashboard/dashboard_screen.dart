@@ -13,7 +13,9 @@ import '../auth/auth_provider.dart';
 import '../interactions/widgets/add_interaction_modal.dart';
 import '../sales/widgets/add_sale_modal.dart';
 import '../reminders/widgets/add_reminder_modal.dart';
+import '../../shared/widgets/error_state.dart';
 import 'todo_widget.dart';
+import 'widgets/analytics_section.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
@@ -23,10 +25,15 @@ class DashboardScreen extends ConsumerStatefulWidget {
 }
 
 class _DashboardScreenState extends ConsumerState<DashboardScreen> {
+  static const double _controlHeight = 40.0;
+  static const double _radius = 20.0;
+  static const double _cardRadius = 12.0;
+
   List<Sale> _sales = [];
   List<Interaction> _interactions = [];
   List<Reminder> _reminders = [];
   bool _loading = true;
+  String? _error;
 
   @override
   void initState() {
@@ -35,6 +42,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   }
 
   Future<void> _loadData() async {
+    setState(() {
+      // Only blank the screen on the first load; a refresh keeps the
+      // current dashboard visible behind the RefreshIndicator.
+      if (_sales.isEmpty && _interactions.isEmpty && _reminders.isEmpty) {
+        _loading = true;
+      }
+      _error = null;
+    });
     final api = ref.read(apiServiceProvider);
     try {
       final results = await Future.wait([
@@ -44,15 +59,124 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       ]);
       if (mounted) {
         setState(() {
-          _sales = (results[0] as List<Sale>).take(5).toList();
+          _sales = results[0] as List<Sale>;
           _interactions = results[1] as List<Interaction>;
           _reminders = results[2] as List<Reminder>;
           _loading = false;
         });
       }
-    } catch (_) {
-      if (mounted) setState(() => _loading = false);
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = e.toString();
+          _loading = false;
+        });
+      }
     }
+  }
+
+  // --- Sorting Helpers ---
+  DateTime? _parseDateTime(String? dateStr, [String? timeStr]) {
+    if (dateStr == null || dateStr.trim().isEmpty) return null;
+    final d = DateTime.tryParse(dateStr.trim());
+    if (d == null) return null;
+    if (timeStr != null && timeStr.trim().isNotEmpty) {
+      final parts = timeStr.trim().split(':');
+      if (parts.isNotEmpty) {
+        final h = int.tryParse(parts[0]) ?? 0;
+        final m = parts.length > 1 ? (int.tryParse(parts[1]) ?? 0) : 0;
+        final s = parts.length > 2 ? (int.tryParse(parts[2]) ?? 0) : 0;
+        return DateTime(d.year, d.month, d.day, h, m, s);
+      }
+    }
+    return DateTime(d.year, d.month, d.day);
+  }
+
+  int _priorityWeight(String priority) {
+    switch (priority.toUpperCase()) {
+      case 'HIGH':
+        return 3;
+      case 'MEDIUM':
+        return 2;
+      case 'LOW':
+        return 1;
+      default:
+        return 0;
+    }
+  }
+
+  int _compareUpcomingDate(DateTime? dtA, DateTime? dtB, DateTime todayStart) {
+    if (dtA == null && dtB == null) return 0;
+    if (dtA == null) return 1;
+    if (dtB == null) return -1;
+
+    final isUpcomingA = !dtA.isBefore(todayStart);
+    final isUpcomingB = !dtB.isBefore(todayStart);
+
+    if (isUpcomingA && !isUpcomingB) return -1;
+    if (!isUpcomingA && isUpcomingB) return 1;
+
+    if (isUpcomingA && isUpcomingB) {
+      // Both upcoming: soonest date & time first
+      return dtA.compareTo(dtB);
+    } else {
+      // Both past: most recently passed date first
+      return dtB.compareTo(dtA);
+    }
+  }
+
+  List<Interaction> get _sortedInteractions {
+    final now = DateTime.now();
+    final todayStart = DateTime(now.year, now.month, now.day);
+    final list = List<Interaction>.from(_interactions);
+    list.sort((a, b) {
+      final dtA = _parseDateTime(a.followUpDate, a.followUpTime);
+      final dtB = _parseDateTime(b.followUpDate, b.followUpTime);
+      final cmp = _compareUpcomingDate(dtA, dtB, todayStart);
+      if (cmp != 0) return cmp;
+      final pwA = _priorityWeight(a.priority);
+      final pwB = _priorityWeight(b.priority);
+      if (pwA != pwB) return pwB.compareTo(pwA);
+      return a.clientName.toLowerCase().compareTo(b.clientName.toLowerCase());
+    });
+    return list;
+  }
+
+  List<Reminder> get _sortedReminders {
+    final now = DateTime.now();
+    final todayStart = DateTime(now.year, now.month, now.day);
+    final list = List<Reminder>.from(_reminders);
+    list.sort((a, b) {
+      final dtA = _parseDateTime(a.date, a.time);
+      final dtB = _parseDateTime(b.date, b.time);
+      final cmp = _compareUpcomingDate(dtA, dtB, todayStart);
+      if (cmp != 0) return cmp;
+      final pwA = _priorityWeight(a.priority);
+      final pwB = _priorityWeight(b.priority);
+      if (pwA != pwB) return pwB.compareTo(pwA);
+      return a.eventName.toLowerCase().compareTo(b.eventName.toLowerCase());
+    });
+    return list;
+  }
+
+  List<Sale> get _sortedSales {
+    final list = List<Sale>.from(_sales);
+    list.sort((a, b) {
+      final da = _parseDateTime(a.date);
+      final db = _parseDateTime(b.date);
+      if (da == null && db == null) return 0;
+      if (da == null) return 1;
+      if (db == null) return -1;
+      final cmp = db.compareTo(da); // Most recent sale date at the top
+      if (cmp != 0) return cmp;
+      final idA = int.tryParse(a.id);
+      final idB = int.tryParse(b.id);
+      if (idA != null && idB != null) {
+        return idB.compareTo(idA);
+      }
+      return b.id.compareTo(a.id);
+    });
+    return list;
   }
 
   // --- Modal Helpers ---
@@ -173,7 +297,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
           FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: AppColors.primaryBlue),
+            style: FilledButton.styleFrom(backgroundColor: AppColors.primaryGreen),
             onPressed: () => Navigator.pop(ctx, true),
             child: const Text('Dismiss'),
           ),
@@ -403,72 +527,55 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       return const Center(child: CircularProgressIndicator());
     }
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Welcome back, ${user?.name ?? 'User'}',
-                      style: const TextStyle(
-                        color: AppColors.textSecondary,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w400,
+    if (_error != null && _sales.isEmpty && _interactions.isEmpty && _reminders.isEmpty) {
+      return ErrorState(
+        message: _error!,
+        title: 'Could not load your dashboard',
+        icon: Icons.dashboard_outlined,
+        onRetry: _loadData,
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: _loadData,
+      color: AppColors.primaryGreen,
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: EdgeInsets.fromLTRB(
+          isWide ? 24 : 16,
+          isWide ? 16 : 10,
+          isWide ? 24 : 16,
+          16,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Dashboard',
+                        style: isWide
+                            ? AppTypography.pageTitle
+                            : AppTypography.pageTitleMobile,
                       ),
-                    ),
-                    const SizedBox(height: 2),
-                    const Text(
-                      'Dashboard',
-                      style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.textPrimary,
-                        letterSpacing: -0.4,
+                      const SizedBox(height: 2),
+                      Text(
+                        'Welcome back, ${user?.name ?? 'User'}',
+                        style: const TextStyle(
+                          color: AppColors.textSecondary,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w400,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-              if (isWide) ...[
-                _quickActionButton(
-                  icon: Icons.add,
-                  label: 'Add Sale',
-                  isPrimary: true,
-                  color: AppColors.primaryGreen,
-                  onPressed: () => _openAddSale(user),
-                ),
-                const SizedBox(width: 8),
-                _quickActionButton(
-                  icon: Icons.add,
-                  label: 'Add Follow-up',
-                  isPrimary: false,
-                  color: AppColors.primaryBlue,
-                  onPressed: () => _openAddInteraction(user),
-                ),
-                const SizedBox(width: 8),
-                _quickActionButton(
-                  icon: Icons.add,
-                  label: 'Add Reminder',
-                  isPrimary: false,
-                  color: AppColors.textPrimary,
-                  onPressed: () => _openAddReminder(user),
-                ),
-              ],
-            ],
-          ),
-          if (!isWide) ...[
-            const SizedBox(height: 12),
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
+                if (isWide) ...[
                   _quickActionButton(
                     icon: Icons.add,
                     label: 'Add Sale',
@@ -480,55 +587,98 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   _quickActionButton(
                     icon: Icons.add,
                     label: 'Add Follow-up',
-                    isPrimary: false,
-                    color: AppColors.primaryBlue,
+                    isPrimary: true,
+                    color: AppColors.primaryGreen,
                     onPressed: () => _openAddInteraction(user),
                   ),
                   const SizedBox(width: 8),
                   _quickActionButton(
                     icon: Icons.add,
                     label: 'Add Reminder',
-                    isPrimary: false,
-                    color: AppColors.textPrimary,
+                    isPrimary: true,
+                    color: AppColors.primaryGreen,
                     onPressed: () => _openAddReminder(user),
                   ),
                 ],
+              ],
+            ),
+            if (!isWide) ...[
+              const SizedBox(height: 12),
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    _quickActionButton(
+                      icon: Icons.add,
+                      label: 'Add Sale',
+                      isPrimary: true,
+                      color: AppColors.primaryGreen,
+                      onPressed: () => _openAddSale(user),
+                    ),
+                    const SizedBox(width: 8),
+                    _quickActionButton(
+                      icon: Icons.add,
+                      label: 'Add Follow-up',
+                      isPrimary: true,
+                      color: AppColors.primaryGreen,
+                      onPressed: () => _openAddInteraction(user),
+                    ),
+                    const SizedBox(width: 8),
+                    _quickActionButton(
+                      icon: Icons.add,
+                      label: 'Add Reminder',
+                      isPrimary: true,
+                      color: AppColors.primaryGreen,
+                      onPressed: () => _openAddReminder(user),
+                    ),
+                  ],
+                ),
               ),
+            ],
+            const SizedBox(height: 14),
+            DashboardAnalytics(
+              sales: _sales,
+              interactions: _interactions,
+              reminders: _reminders,
             ),
+            const SizedBox(height: 14),
+            if (isWide)
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(flex: 2, child: _leftColumn(user)),
+                  const SizedBox(width: 6),
+                  Expanded(child: _rightColumn(user)),
+                ],
+              )
+            else
+              Column(
+                children: [
+                  _leftColumn(user),
+                  const SizedBox(height: 6),
+                  _rightColumn(user),
+                ],
+              ),
           ],
-          const SizedBox(height: 14),
-          if (isWide)
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(flex: 2, child: _leftColumn(user)),
-                const SizedBox(width: 6),
-                Expanded(child: _rightColumn(user)),
-              ],
-            )
-          else
-            Column(
-              children: [
-                _leftColumn(user),
-                const SizedBox(height: 6),
-                _rightColumn(user),
-              ],
-            ),
-        ],
+        ),
       ),
     );
   }
 
   Widget _leftColumn(AppUser? user) {
+    final sortedInteractions = _sortedInteractions;
+    final sortedSales = _sortedSales;
     return Column(
       children: [
         _sectionCard(
           title: 'Upcoming Follow-ups',
           icon: Icons.calendar_today,
-          child: _interactions.isEmpty
+          subtitle: sortedInteractions.length > 4 ? '${sortedInteractions.length} entries' : null,
+          child: sortedInteractions.isEmpty
               ? const _EmptyState('No upcoming follow-ups')
-              : Column(
-                  children: _interactions.take(5).map((i) {
+              : _ScrollableSectionList(
+                  maxHeight: 232.0,
+                  children: sortedInteractions.map((i) {
                     return _InteractionTile(
                       interaction: i,
                       onTapDetails: () => _showInteractionDetails(i),
@@ -542,11 +692,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         _sectionCard(
           title: 'Recent Sales',
           icon: Icons.attach_money,
-          subtitle: 'Last 5 entries',
-          child: _sales.isEmpty
+          subtitle: sortedSales.length > 4 ? '${sortedSales.length} entries' : null,
+          child: sortedSales.isEmpty
               ? const _EmptyState('No sales yet')
-              : Column(
-                  children: _sales.map((s) => _SaleTile(
+              : _ScrollableSectionList(
+                  maxHeight: 232.0,
+                  children: sortedSales.map((s) => _SaleTile(
                     sale: s,
                     onTapDetails: () => _showSaleDetails(s),
                     onEdit: () => _openAddSale(user, existing: s),
@@ -559,50 +710,72 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   }
 
   Widget _rightColumn(AppUser? user) {
+    final sortedReminders = _sortedReminders;
+    final isAdmin = user?.isAdmin == true;
     return Column(
       children: [
         _sectionCard(
           title: 'Reminders',
           icon: Icons.notifications_outlined,
-          child: _reminders.isEmpty
+          child: sortedReminders.isEmpty
               ? const _EmptyState('No reminders')
               : Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    ..._reminders.map((r) => _ReminderTile(
-                          reminder: r,
-                          showEmployee: user?.isAdmin == true,
-                          onTapDetails: () => _showReminderDetails(r),
-                          onEdit: () => _openAddReminder(user, existing: r),
-                          onDelete: () => _deleteReminderItem(r.id),
-                        )),
-                    if (_reminders.isNotEmpty)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 4),
-                        child: InkWell(
-                          onTap: () => context.push('/profile?tab=reminders'),
-                          child: Text(
-                            '${_reminders.length} reminder(s) • View all in reminders tab →',
-                            style: TextStyle(fontSize: 11, color: AppColors.primaryBlue, fontWeight: FontWeight.w500),
+                    _ScrollableSectionList(
+                      maxHeight: isAdmin ? 292.0 : 232.0,
+                      children: sortedReminders.map((r) => _ReminderTile(
+                            reminder: r,
+                            showEmployee: isAdmin,
+                            onTapDetails: () => _showReminderDetails(r),
+                            onEdit: () => _openAddReminder(user, existing: r),
+                            onDelete: () => _deleteReminderItem(r.id),
+                          )).toList(),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.only(top: 6),
+                      child: InkWell(
+                        onTap: () => context.push('/profile?tab=reminders'),
+                        child: Text(
+                          '${sortedReminders.length} reminder(s) • View all in reminders tab →',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: AppColors.primaryGreen,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
                       ),
+                    ),
                   ],
                 ),
         ),
         const SizedBox(height: 6),
-        Card(
-          color: Colors.white,
-          margin: EdgeInsets.zero,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-            side: const BorderSide(color: AppColors.border),
-          ),
+        _cardShell(
           child: Padding(
-            padding: const EdgeInsets.all(8),
+            padding: const EdgeInsets.all(12),
             child: TodoWidget(userId: user?.id),
           ),
         ),
       ],
+    );
+  }
+
+  Widget _cardShell({required Widget child}) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border.all(color: AppColors.border),
+        borderRadius: BorderRadius.circular(_cardRadius),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: child,
     );
   }
 
@@ -612,15 +785,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     String? subtitle,
     required Widget child,
   }) {
-    return Card(
-      color: Colors.white,
-      margin: EdgeInsets.zero,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(8),
-        side: const BorderSide(color: AppColors.border),
-      ),
+    return _cardShell(
       child: Padding(
-        padding: const EdgeInsets.all(8),
+        padding: const EdgeInsets.all(12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -635,7 +802,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 ],
               ],
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: 8),
             child,
           ],
         ),
@@ -652,10 +819,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   }) {
     if (isPrimary) {
       return SizedBox(
-        height: 38,
+        height: _controlHeight,
         child: FilledButton.icon(
           onPressed: onPressed,
-          icon: Icon(icon, size: 17),
+          icon: Icon(icon, size: 18),
           label: Text(
             label,
             style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
@@ -665,18 +832,18 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             foregroundColor: Colors.white,
             elevation: 0,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(_radius),
             ),
-            padding: const EdgeInsets.symmetric(horizontal: 14),
+            padding: const EdgeInsets.symmetric(horizontal: 16),
           ),
         ),
       );
     }
     return SizedBox(
-      height: 38,
+      height: _controlHeight,
       child: OutlinedButton.icon(
         onPressed: onPressed,
-        icon: Icon(icon, size: 17, color: color),
+        icon: Icon(icon, size: 18, color: color),
         label: Text(
           label,
           style: TextStyle(
@@ -691,11 +858,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 ? AppColors.border
                 : color.withValues(alpha: 0.35),
           ),
-          backgroundColor: color == AppColors.textPrimary
-              ? Colors.white
-              : color.withValues(alpha: 0.05),
+          backgroundColor: Colors.white,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(_radius),
           ),
           padding: const EdgeInsets.symmetric(horizontal: 14),
         ),
@@ -750,19 +915,19 @@ class _InteractionTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final isNarrow = MediaQuery.sizeOf(context).width < 500;
     return Container(
-      margin: const EdgeInsets.only(bottom: 4),
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+      margin: const EdgeInsets.only(bottom: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: Colors.grey.shade200),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.border),
       ),
       child: Row(
         children: [
           Expanded(
             child: InkWell(
               onTap: onTapDetails,
-              borderRadius: BorderRadius.circular(4),
+              borderRadius: BorderRadius.circular(8),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -952,19 +1117,19 @@ class _SaleTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final isNarrow = MediaQuery.sizeOf(context).width < 500;
     return Container(
-      margin: const EdgeInsets.only(bottom: 4),
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+      margin: const EdgeInsets.only(bottom: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: Colors.grey.shade200),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.border),
       ),
       child: Row(
         children: [
           Expanded(
             child: InkWell(
               onTap: onTapDetails,
-              borderRadius: BorderRadius.circular(4),
+              borderRadius: BorderRadius.circular(8),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -1124,11 +1289,11 @@ class _ReminderTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 4),
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+      margin: const EdgeInsets.only(bottom: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
         color: priorityBackgroundColor(reminder.priority),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(8),
         border: Border.all(color: priorityTextColor(reminder.priority).withValues(alpha: 0.3)),
       ),
       child: Row(
@@ -1136,7 +1301,7 @@ class _ReminderTile extends StatelessWidget {
           Expanded(
             child: InkWell(
               onTap: onTapDetails,
-              borderRadius: BorderRadius.circular(4),
+              borderRadius: BorderRadius.circular(8),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -1228,13 +1393,86 @@ class _PriorityChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         color: priorityBackgroundColor(priority),
-        borderRadius: BorderRadius.circular(3),
-        border: Border.all(color: priorityTextColor(priority).withValues(alpha: 0.3)),
+        borderRadius: BorderRadius.circular(20),
       ),
-      child: Text(label, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: priorityTextColor(priority))),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 10.5,
+          fontWeight: FontWeight.bold,
+          color: priorityTextColor(priority),
+          letterSpacing: 0.3,
+        ),
+      ),
+    );
+  }
+}
+
+/// A list container that shows up to 4 items naturally, and if there are more
+/// than 4 items, caps height and provides smooth, styled vertical scrolling.
+class _ScrollableSectionList extends StatefulWidget {
+  const _ScrollableSectionList({
+    required this.children,
+    this.maxHeight = 232.0,
+  });
+
+  final List<Widget> children;
+  final double maxHeight;
+
+  @override
+  State<_ScrollableSectionList> createState() => _ScrollableSectionListState();
+}
+
+class _ScrollableSectionListState extends State<_ScrollableSectionList> {
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  @override
+  void didUpdateWidget(covariant _ScrollableSectionList oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.children.length <= 4 && _scrollController.hasClients && _scrollController.offset != 0) {
+      _scrollController.jumpTo(0);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.children.length <= 4) {
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: widget.children,
+      );
+    }
+
+    return ConstrainedBox(
+      constraints: BoxConstraints(maxHeight: widget.maxHeight),
+      child: Scrollbar(
+        controller: _scrollController,
+        thumbVisibility: true,
+        thickness: 4,
+        radius: const Radius.circular(4),
+        child: SingleChildScrollView(
+          controller: _scrollController,
+          physics: const ClampingScrollPhysics(),
+          child: Padding(
+            padding: const EdgeInsets.only(right: 6),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: widget.children,
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

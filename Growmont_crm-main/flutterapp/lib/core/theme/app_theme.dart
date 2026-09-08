@@ -31,13 +31,22 @@ class AppColors {
 class AppTypography {
   AppTypography._();
 
-  // Page Title (Primary Screen Headings)
+  // Page Title (Primary Screen Headings - Desktop / Wide)
   static const TextStyle pageTitle = TextStyle(
-    fontSize: 24,
+    fontSize: 32,
+    fontWeight: FontWeight.w700,
+    color: AppColors.textPrimary,
+    letterSpacing: -0.6,
+    height: 1.2,
+  );
+
+  // Page Title for mobile / compact screens
+  static const TextStyle pageTitleMobile = TextStyle(
+    fontSize: 28,
     fontWeight: FontWeight.w700,
     color: AppColors.textPrimary,
     letterSpacing: -0.5,
-    height: 1.25,
+    height: 1.2,
   );
 
   // Page Subtitle / Section description

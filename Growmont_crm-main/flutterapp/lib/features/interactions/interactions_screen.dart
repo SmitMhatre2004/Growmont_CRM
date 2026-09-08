@@ -300,8 +300,8 @@ class _InteractionsScreenState extends ConsumerState<InteractionsScreen> {
     final filtered = _filtered;
 
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const SizedBox(height: 4),
         _buildTitleRow(),
         _buildTabsRow(user),
         _buildSearchRow(),
@@ -326,15 +326,13 @@ class _InteractionsScreenState extends ConsumerState<InteractionsScreen> {
         isMobile ? 16 : 24,
         isMobile ? 8 : 12,
       ),
-      child: const Align(
+      child: Align(
         alignment: Alignment.centerLeft,
         child: Text(
           'Interactions',
-          style: TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.bold,
-            color: _Palette.textPrimary,
-          ),
+          style: isMobile
+              ? AppTypography.pageTitleMobile
+              : AppTypography.pageTitle,
         ),
       ),
     );

@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/providers.dart';
+import '../../core/theme/app_theme.dart';
 
 class TodoWidget extends ConsumerStatefulWidget {
   const TodoWidget({super.key, this.userId});
@@ -124,9 +125,9 @@ class _TodoWidgetState extends ConsumerState<TodoWidget> {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.access_time, size: 14, color: Colors.blue.shade700),
+                      Icon(Icons.access_time, size: 14, color: AppColors.primaryGreen),
                       const SizedBox(width: 2),
-                      Text('+Time', style: TextStyle(fontSize: 11, color: Colors.blue.shade700, fontWeight: FontWeight.w500)),
+                      Text('+Time', style: TextStyle(fontSize: 11, color: AppColors.primaryGreen, fontWeight: FontWeight.w600)),
                     ],
                   ),
                 ),

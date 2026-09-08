@@ -43,13 +43,8 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
   bool _loading = true;
   bool _expandZeroCountFilters = false;
 
-  // Search
-  String _search = '';
-
   // Selection (for bulk delete)
   final Set<dynamic> _selectedIds = {};
-
-  final FocusNode _searchFocusNode = FocusNode();
 
   // Sorting state
   String _sortColumn = 'date';
@@ -58,14 +53,7 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
   @override
   void initState() {
     super.initState();
-    _searchFocusNode.addListener(() => setState(() {}));
     _loadSales();
-  }
-
-  @override
-  void dispose() {
-    _searchFocusNode.dispose();
-    super.dispose();
   }
 
   Future<void> _loadSales() async {
@@ -103,21 +91,6 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
     // Product filter
     if (_selectedProduct != 'ALL') {
       list = list.where((s) => s.product == _selectedProduct);
-    }
-
-    // Search query
-    if (_search.isNotEmpty) {
-      final q = _search.toLowerCase();
-      list = list.where((s) {
-        final clientMatch = s.clientName.toLowerCase().contains(q);
-        final repMatch = (s.salesRepName?.toLowerCase().contains(q) ?? false) ||
-            s.salesRep.toLowerCase().contains(q);
-        final productMatch = s.product.toLowerCase().contains(q) ||
-            (s.productDisplay?.toLowerCase().contains(q) ?? false);
-        final companyMatch = s.company.toLowerCase().contains(q);
-        final schemeMatch = s.scheme.toLowerCase().contains(q);
-        return clientMatch || repMatch || productMatch || companyMatch || schemeMatch;
-      });
     }
 
     final sorted = list.toList();
@@ -302,28 +275,20 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
     final user = ref.watch(authProvider).user;
     final filtered = _filtered;
 
-    return Padding(
-      padding: EdgeInsets.fromLTRB(
-        isMobile ? 16 : 24,
-        isMobile ? 10 : 16,
-        isMobile ? 16 : 24,
-        isMobile ? 12 : 16,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildHeaderRow(user),
-          const SizedBox(height: 14),
-          _summaryRow(),
-          const SizedBox(height: 14),
-          _buildSearchRow(),
-          const SizedBox(height: 14),
-          Expanded(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildTitleRow(),
+        _buildActionsRow(user),
+        _summaryRow(),
+        Expanded(
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: isMobile ? 16 : 24),
             child: isWide
                 ? Row(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      // Filter by product side column (preserved as requested)
+                      // Filter by product side column
                       SizedBox(width: 250, child: _filterPanel()),
                       const SizedBox(width: 16),
                       Expanded(
@@ -348,12 +313,38 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                     ],
                   ),
           ),
-        ],
+        ),
+        const SizedBox(height: 16),
+      ],
+    );
+  }
+
+  // -- Title row: "Sales" ---------------------------------------------------
+
+  Widget _buildTitleRow() {
+    final isMobile = MediaQuery.sizeOf(context).width < 768;
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        isMobile ? 16 : 24,
+        isMobile ? 10 : 16,
+        isMobile ? 16 : 24,
+        isMobile ? 8 : 12,
+      ),
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: Text(
+          'Sales',
+          style: isMobile
+              ? AppTypography.pageTitleMobile
+              : AppTypography.pageTitle,
+        ),
       ),
     );
   }
 
-  Widget _buildHeaderRow(AppUser? user) {
+  // -- Actions Row: Export / Import / Add Sale ------------------------------
+
+  Widget _buildActionsRow(AppUser? user) {
     final isMobile = MediaQuery.sizeOf(context).width < 768;
 
     final actionButtons = Row(
@@ -389,406 +380,92 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
       ],
     );
 
-    if (isMobile) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Sales',
-            style: TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-              color: _Palette.textPrimary,
-            ),
-          ),
-          const SizedBox(height: 10),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: actionButtons,
-          ),
-        ],
-      );
-    }
-
-    return Row(
-      children: [
-        const Expanded(
-          child: Text(
-            'Sales',
-            style: TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-              color: _Palette.textPrimary,
-            ),
-          ),
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        isMobile ? 16 : 24,
+        0,
+        isMobile ? 16 : 24,
+        isMobile ? 10 : 16,
+      ),
+      child: Align(
+        alignment: Alignment.centerRight,
+        child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: actionButtons,
         ),
-        actionButtons,
-      ],
+      ),
     );
   }
 
-  // -- Search Row / Selection Action Bar -----------------------------------
+  // -- Selection Action Bar -------------------------------------------------
 
-  Widget _buildSearchRow() {
-    final hasSelection = _selectedIds.isNotEmpty;
-    final isMobile = MediaQuery.sizeOf(context).width < 768;
-
-    final selectionBar = hasSelection
-        ? Material(
-            color: const Color(0xFFEFF6FF),
-            elevation: 1.5,
-            shadowColor: const Color(0xFF93C5FD).withValues(alpha: 0.25),
-            shape: const StadiumBorder(
-              side: BorderSide(
-                color: Color(0xFF93C5FD),
-                width: 1.2,
-              ),
-            ),
-            clipBehavior: Clip.antiAlias,
-            child: Container(
-              height: _controlHeight,
-              padding: const EdgeInsets.symmetric(horizontal: 14),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 8,
-                    height: 8,
-                    decoration: const BoxDecoration(
-                      color: AppColors.primaryBlue,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Text(
-                    '${_selectedIds.length} selected',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 13,
-                      color: _Palette.textPrimary,
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  TextButton(
-                    onPressed: () => setState(() => _selectedIds.clear()),
-                    style: TextButton.styleFrom(
-                      foregroundColor: _Palette.textSecondary,
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      minimumSize: const Size(0, 32),
-                    ),
-                    child: const Text('Clear'),
-                  ),
-                  const SizedBox(width: 8),
-                  FilledButton.icon(
-                    onPressed: _bulkDelete,
-                    icon: const Icon(Icons.delete_outline, size: 16),
-                    label: const Text('Delete'),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: Colors.red.shade600,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      minimumSize: const Size(0, 32),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          )
-        : null;
-
-    final isSearchFocused = _searchFocusNode.hasFocus;
-
-    final searchBar = Material(
-      color: Colors.white,
-      elevation: isSearchFocused ? 2.0 : 1.5,
-      shadowColor: isSearchFocused
-          ? AppColors.primaryGreen.withValues(alpha: 0.18)
-          : Colors.black.withValues(alpha: 0.08),
-      shape: StadiumBorder(
+  Widget _buildSelectionBar() {
+    return Material(
+      color: const Color(0xFFEFF6FF),
+      elevation: 1.5,
+      shadowColor: const Color(0xFF93C5FD).withValues(alpha: 0.25),
+      shape: const StadiumBorder(
         side: BorderSide(
-          color: isSearchFocused ? AppColors.primaryGreen : _Palette.border,
-          width: isSearchFocused ? 1.5 : 1.0,
+          color: Color(0xFF93C5FD),
+          width: 1.2,
         ),
       ),
       clipBehavior: Clip.antiAlias,
-      child: SizedBox(
+      child: Container(
         height: _controlHeight,
-        child: TextField(
-          focusNode: _searchFocusNode,
-          textAlignVertical: TextAlignVertical.center,
-          decoration: InputDecoration(
-            isDense: true,
-            hintText: 'Search clients, products, representatives, schemes...',
-            hintStyle: const TextStyle(
-              fontSize: 13.5,
-              color: _Palette.textMuted,
-            ),
-            prefixIconConstraints: const BoxConstraints(
-              minWidth: 72,
-              maxHeight: 40,
-            ),
-            prefixIcon: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const SizedBox(width: 6),
-                PopupMenuButton<String>(
-                  tooltip: 'Filter & sort options',
-                  icon: Icon(
-                    _selectedProduct != 'ALL'
-                        ? Icons.filter_alt
-                        : Icons.filter_alt_outlined,
-                    size: 19,
-                    color: _selectedProduct != 'ALL'
-                        ? AppColors.primaryBlue
-                        : _Palette.textMuted,
-                  ),
-                  padding: EdgeInsets.zero,
-                  splashRadius: 18,
-                  offset: const Offset(0, 36),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    side: const BorderSide(color: _Palette.border),
-                  ),
-                  color: Colors.white,
-                  elevation: 6,
-                  onSelected: (val) {
-                    if (val == 'CLEAR') {
-                      setState(() {
-                        _selectedProduct = 'ALL';
-                        _sortColumn = 'date';
-                        _sortAscending = false;
-                      });
-                    } else if (val.startsWith('CAT:')) {
-                      final c = val.replaceFirst('CAT:', '');
-                      setState(() => _selectedProduct = c);
-                    } else if (val.startsWith('SORT:')) {
-                      final s = val.replaceFirst('SORT:', '');
-                      setState(() {
-                        if (s == 'newest') {
-                          _sortColumn = 'date';
-                          _sortAscending = false;
-                        } else if (s == 'oldest') {
-                          _sortColumn = 'date';
-                          _sortAscending = true;
-                        } else if (s == 'client') {
-                          _sortColumn = 'client';
-                          _sortAscending = true;
-                        } else if (s == 'amount') {
-                          _sortColumn = 'amount';
-                          _sortAscending = false;
-                        }
-                      });
-                    }
-                  },
-                  itemBuilder: (context) => [
-                    const PopupMenuItem<String>(
-                      enabled: false,
-                      height: 28,
-                      child: Text(
-                        'FILTER BY PRODUCT',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                          color: _Palette.textSecondary,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                    ),
-                    _filterMenuItem(
-                      'CAT:ALL',
-                      'All Categories',
-                      _selectedProduct == 'ALL',
-                    ),
-                    ...productCategories
-                        .where((c) =>
-                            c.$1 != 'ALL' &&
-                            _sales.any((s) => s.product == c.$1))
-                        .take(5)
-                        .map(
-                          (c) => _filterMenuItem(
-                            'CAT:${c.$1}',
-                            c.$2,
-                            _selectedProduct == c.$1,
-                          ),
-                        ),
-                    const PopupMenuDivider(height: 12),
-                    const PopupMenuItem<String>(
-                      enabled: false,
-                      height: 28,
-                      child: Text(
-                        'SORT BY',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                          color: _Palette.textSecondary,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                    ),
-                    _filterMenuItem(
-                      'SORT:newest',
-                      'Newest First',
-                      _sortColumn == 'date' && !_sortAscending,
-                    ),
-                    _filterMenuItem(
-                      'SORT:oldest',
-                      'Oldest First',
-                      _sortColumn == 'date' && _sortAscending,
-                    ),
-                    _filterMenuItem(
-                      'SORT:client',
-                      'Client Name (A-Z)',
-                      _sortColumn == 'client',
-                    ),
-                    _filterMenuItem(
-                      'SORT:amount',
-                      'Highest Amount',
-                      _sortColumn == 'amount',
-                    ),
-                    if (_selectedProduct != 'ALL' ||
-                        _sortColumn != 'date') ...[
-                      const PopupMenuDivider(height: 12),
-                      const PopupMenuItem<String>(
-                        value: 'CLEAR',
-                        height: 32,
-                        child: Row(
-                          children: [
-                            Icon(Icons.clear_all,
-                                size: 16, color: Colors.redAccent),
-                            SizedBox(width: 8),
-                            Text(
-                              'Reset Filters',
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: Colors.redAccent,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-                Container(
-                  width: 1,
-                  height: 16,
-                  color: _Palette.border,
-                  margin: const EdgeInsets.only(left: 2, right: 8),
-                ),
-                const Icon(
-                  Icons.search,
-                  color: _Palette.textMuted,
-                  size: 18,
-                ),
-                const SizedBox(width: 4),
-              ],
-            ),
-            suffixIcon: _search.isNotEmpty
-                ? IconButton(
-                    icon: const Icon(
-                      Icons.clear,
-                      color: _Palette.textMuted,
-                      size: 18,
-                    ),
-                    onPressed: () => setState(() => _search = ''),
-                  )
-                : null,
-            border: InputBorder.none,
-            enabledBorder: InputBorder.none,
-            focusedBorder: InputBorder.none,
-            errorBorder: InputBorder.none,
-            focusedErrorBorder: InputBorder.none,
-            disabledBorder: InputBorder.none,
-            filled: false,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 14),
-          ),
-          style: const TextStyle(fontSize: 13.5),
-          onChanged: (v) => setState(() => _search = v),
-        ),
-      ),
-    );
-
-    if (isMobile) {
-      return Column(
-        children: [
-          searchBar,
-          if (selectionBar != null) ...[
-            const SizedBox(height: 8),
-            Align(
-              alignment: Alignment.centerRight,
-              child: selectionBar,
-            ),
-          ],
-        ],
-      );
-    }
-
-    return Row(
-      children: [
-        Expanded(
-          flex: 1,
-          child: searchBar,
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          flex: 1,
-          child: selectionBar != null
-              ? Align(
-                  alignment: Alignment.centerRight,
-                  child: selectionBar,
-                )
-              : const SizedBox.shrink(),
-        ),
-      ],
-    );
-  }
-
-  PopupMenuItem<String> _filterMenuItem(
-    String value,
-    String label,
-    bool isSelected, {
-    Color? activeColor,
-  }) {
-    return PopupMenuItem<String>(
-      value: value,
-      height: 34,
-      child: Row(
-        children: [
-          if (activeColor != null) ...[
+        padding: const EdgeInsets.symmetric(horizontal: 14),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
             Container(
               width: 8,
               height: 8,
-              decoration: BoxDecoration(
-                color: activeColor,
+              decoration: const BoxDecoration(
+                color: AppColors.primaryBlue,
                 shape: BoxShape.circle,
               ),
             ),
-            const SizedBox(width: 8),
-          ],
-          Expanded(
-            child: Text(
-              label,
-              style: TextStyle(
+            const SizedBox(width: 10),
+            Text(
+              '${_selectedIds.length} selected',
+              style: const TextStyle(
+                fontWeight: FontWeight.w600,
                 fontSize: 13,
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                color: isSelected ? AppColors.primaryBlue : _Palette.textPrimary,
+                color: _Palette.textPrimary,
               ),
             ),
-          ),
-          if (isSelected)
-            const Icon(
-              Icons.check,
-              size: 16,
-              color: AppColors.primaryBlue,
+            const SizedBox(width: 16),
+            TextButton(
+              onPressed: () => setState(() => _selectedIds.clear()),
+              style: TextButton.styleFrom(
+                foregroundColor: _Palette.textSecondary,
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                minimumSize: const Size(0, 32),
+              ),
+              child: const Text('Clear'),
             ),
-        ],
+            const SizedBox(width: 8),
+            FilledButton.icon(
+              onPressed: _bulkDelete,
+              icon: const Icon(Icons.delete_outline, size: 16),
+              label: const Text('Delete'),
+              style: FilledButton.styleFrom(
+                backgroundColor: Colors.red.shade600,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                minimumSize: const Size(0, 32),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
+
+  // -- Summary Row ----------------------------------------------------------
 
   Widget _summaryRow() {
     final count = _filtered.length;
@@ -799,9 +476,11 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
     );
     final isFiltered = _selectedProduct != 'ALL';
     final currentCatName = _getCategoryName(_selectedProduct);
+    final isMobile = MediaQuery.sizeOf(context).width < 768;
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+    final summaryContent = Container(
+      height: _controlHeight,
+      padding: const EdgeInsets.symmetric(horizontal: 14),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(_radius),
@@ -810,84 +489,108 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            _summaryStatItem(
-              icon: Icons.receipt_long_outlined,
-              label: isFiltered ? '$currentCatName Deals' : 'Total Deals',
-              value: '$count',
+            const Icon(
+              Icons.receipt_long_outlined,
+              size: 16,
               color: AppColors.primaryBlue,
             ),
-            const SizedBox(width: 24),
-            Container(width: 1, height: 28, color: _Palette.border),
-            const SizedBox(width: 24),
-            _summaryStatItem(
-              icon: Icons.currency_rupee,
-              label: isFiltered ? 'Filtered Volume' : 'Total Sales Volume',
-              value: AppFormatters.formatAmount(total.toStringAsFixed(2)),
+            const SizedBox(width: 6),
+            Text(
+              isFiltered ? '$currentCatName: $count' : 'Total Deals: $count',
+              style: const TextStyle(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w600,
+                color: _Palette.textPrimary,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Container(width: 1, height: 18, color: _Palette.border),
+            const SizedBox(width: 16),
+            const Icon(
+              Icons.currency_rupee,
+              size: 16,
               color: AppColors.primaryGreen,
             ),
+            const SizedBox(width: 4),
+            Text(
+              AppFormatters.formatAmount(total.toStringAsFixed(2)),
+              style: const TextStyle(
+                fontSize: 12.5,
+                fontWeight: FontWeight.bold,
+                color: _Palette.textPrimary,
+              ),
+            ),
             if (isFiltered) ...[
-              const SizedBox(width: 24),
-              ActionChip(
-                avatar: const Icon(Icons.close, size: 14),
-                label: Text('Reset to All (${_sales.length})'),
-                onPressed: () => setState(() => _selectedProduct = 'ALL'),
-                backgroundColor: _Palette.headerBg,
-                side: const BorderSide(color: _Palette.border),
-                padding: const EdgeInsets.symmetric(horizontal: 4),
+              const SizedBox(width: 14),
+              InkWell(
+                onTap: () => setState(() => _selectedProduct = 'ALL'),
+                borderRadius: BorderRadius.circular(12),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: _Palette.headerBg,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: _Palette.border),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.close, size: 12, color: _Palette.textSecondary),
+                      SizedBox(width: 4),
+                      Text(
+                        'Reset',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: _Palette.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ],
           ],
         ),
       ),
     );
-  }
 
-  Widget _summaryStatItem({
-    required IconData icon,
-    required String label,
-    required String value,
-    required Color color,
-  }) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          padding: const EdgeInsets.all(7),
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Icon(icon, size: 18, color: color),
-        ),
-        const SizedBox(width: 10),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              label,
-              style: const TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w500,
-                color: _Palette.textSecondary,
-              ),
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        isMobile ? 16 : 24,
+        0,
+        isMobile ? 16 : 24,
+        isMobile ? 10 : 16,
+      ),
+      child: isMobile
+          ? Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                summaryContent,
+                if (_selectedIds.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: _buildSelectionBar(),
+                  ),
+                ],
+              ],
+            )
+          : Row(
+              children: [
+                Expanded(child: summaryContent),
+                if (_selectedIds.isNotEmpty) ...[
+                  const SizedBox(width: 16),
+                  _buildSelectionBar(),
+                ],
+              ],
             ),
-            Text(
-              value,
-              style: const TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.bold,
-                color: _Palette.textPrimary,
-              ),
-            ),
-          ],
-        ),
-      ],
     );
   }
 
-  // -- Filter Panel (Preserved by Product Side Column) ---------------------
+  // -- Filter Panel (Side Column) ------------------------------------------
 
   Widget _filterPanel({bool horizontal = false}) {
     final allCategory = productCategories.firstWhere((c) => c.$1 == 'ALL');
@@ -1079,15 +782,21 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
         color: Colors.white,
         border: Border.all(color: _Palette.border),
         borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       clipBehavior: Clip.antiAlias,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            height: 44,
+            height: 48,
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            alignment: Alignment.center,
             decoration: const BoxDecoration(
               color: AppColors.primaryBlue,
             ),
@@ -1105,7 +814,8 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                 ),
                 const Spacer(),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                   decoration: BoxDecoration(
                     color: Colors.white.withValues(alpha: 0.18),
                     borderRadius: BorderRadius.circular(10),
@@ -1282,11 +992,13 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
     required ValueChanged<bool?> onSelectAll,
   }) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      height: 48,
+      padding: const EdgeInsets.symmetric(horizontal: 16),
       decoration: const BoxDecoration(
         color: AppColors.primaryBlue,
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Padding(
             padding: const EdgeInsets.only(right: 16),
@@ -1378,8 +1090,10 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
         onTap: () => _onSort(columnKey),
         borderRadius: BorderRadius.circular(6),
         hoverColor: Colors.white.withValues(alpha: 0.12),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
+        child: Container(
+          height: 48,
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          alignment: alignment,
           child: Row(
             mainAxisAlignment: mainAxis,
             mainAxisSize: MainAxisSize.min,
@@ -1408,7 +1122,7 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                 size: 13,
                 color: isSelected
                     ? Colors.white
-                    : Colors.white.withValues(alpha: 0.4),
+                    : Colors.white.withValues(alpha: 0.6),
               ),
             ],
           ),

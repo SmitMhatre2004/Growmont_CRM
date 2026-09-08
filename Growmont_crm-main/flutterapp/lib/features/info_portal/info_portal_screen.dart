@@ -493,8 +493,8 @@ class _InfoPortalScreenState extends ConsumerState<InfoPortalScreen> {
     final user = ref.watch(authProvider).user;
 
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const SizedBox(height: 4),
         _buildTitleRow(),
         _buildTabsRow(user),
         _buildSearchRow(),
@@ -519,15 +519,13 @@ class _InfoPortalScreenState extends ConsumerState<InfoPortalScreen> {
         isMobile ? 16 : 24,
         isMobile ? 8 : 12,
       ),
-      child: const Align(
+      child: Align(
         alignment: Alignment.centerLeft,
         child: Text(
           'Info Portal',
-          style: TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.bold,
-            color: _Palette.textPrimary,
-          ),
+          style: isMobile
+              ? AppTypography.pageTitleMobile
+              : AppTypography.pageTitle,
         ),
       ),
     );
