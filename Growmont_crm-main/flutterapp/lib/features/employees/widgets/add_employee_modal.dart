@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:firebase_storage/firebase_storage.dart';
@@ -87,12 +86,19 @@ class _AddEmployeeModalState extends ConsumerState<AddEmployeeModal> {
     };
 
     try {
-      if (_avatar != null) {
-        final fileName = '${DateTime.now().millisecondsSinceEpoch}_${_avatar!.name}';
-        final storageRef = FirebaseStorage.instance.ref().child('avatars/$fileName');
-        final uploadTask = await storageRef.putFile(File(_avatar!.path));
-        final url = await uploadTask.ref.getDownloadURL();
-        map['avatar_url'] = url;
+      if (_avatarBytes != null) {
+        try {
+          final fileName = '${DateTime.now().millisecondsSinceEpoch}_${_avatar?.name ?? 'avatar.jpg'}';
+          final storageRef = FirebaseStorage.instance.ref().child('avatars/$fileName');
+          final uploadTask = await storageRef.putData(
+            _avatarBytes!,
+            SettableMetadata(contentType: 'image/jpeg'),
+          );
+          final url = await uploadTask.ref.getDownloadURL();
+          map['avatar_url'] = url;
+        } catch (_) {
+          // If storage fails, continue with employee creation
+        }
       }
 
       final api = ref.read(apiServiceProvider);
@@ -115,20 +121,41 @@ class _AddEmployeeModalState extends ConsumerState<AddEmployeeModal> {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
-      child: DraggableScrollableSheet(
-        initialChildSize: 0.9,
-        expand: false,
-        builder: (_, controller) => Material(
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
+      backgroundColor: Colors.white,
+      surfaceTintColor: Colors.transparent,
+      insetPadding: const EdgeInsets.symmetric(
+        horizontal: 24.0,
+        vertical: 24.0,
+      ),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 550),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24.0),
           child: Form(
             key: _formKey,
-            child: ListView(
-              controller: controller,
-              padding: const EdgeInsets.all(16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(widget.existing != null ? 'Edit Employee' : 'Add Employee',
-                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                Row(
+                  children: [
+                    Text(
+                      widget.existing != null ? 'Edit Employee' : 'Add Employee',
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF111827),
+                      ),
+                    ),
+                    const Spacer(),
+                    IconButton(
+                      onPressed: () => Navigator.pop(context),
+                      icon: const Icon(Icons.close, color: Color(0xFF6B7280)),
+                    ),
+                  ],
+                ),
                 const SizedBox(height: 16),
                 Center(
                   child: GestureDetector(
@@ -149,19 +176,48 @@ class _AddEmployeeModalState extends ConsumerState<AddEmployeeModal> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                TextFormField(controller: _name, decoration: const InputDecoration(labelText: 'Name *'), validator: (v) => v!.isEmpty ? 'Required' : null),
-                TextFormField(controller: _email, decoration: const InputDecoration(labelText: 'Email *'), validator: (v) => v!.isEmpty ? 'Required' : null),
-                TextFormField(controller: _mobile, decoration: const InputDecoration(labelText: 'Mobile *'), validator: (v) => v!.isEmpty ? 'Required' : null),
+                TextFormField(
+                  controller: _name,
+                  decoration: const InputDecoration(labelText: 'Name *'),
+                  validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _email,
+                  decoration: const InputDecoration(labelText: 'Email *'),
+                  keyboardType: TextInputType.emailAddress,
+                  validator: (v) {
+                    if (v == null || v.trim().isEmpty) return 'Required';
+                    if (!v.contains('@')) return 'Enter a valid email address';
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _mobile,
+                  decoration: const InputDecoration(labelText: 'Mobile *'),
+                  keyboardType: TextInputType.phone,
+                  validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
+                ),
+                const SizedBox(height: 12),
                 ListTile(
+                  contentPadding: EdgeInsets.zero,
                   title: const Text('Date of Birth *'),
                   subtitle: Text(AppFormatters.formatDate(AppFormatters.toApiDate(_dob))),
+                  trailing: const Icon(Icons.calendar_today, size: 18),
                   onTap: () async {
-                    final d = await showDatePicker(context: context, initialDate: _dob, firstDate: DateTime(1950), lastDate: DateTime.now());
+                    final d = await showDatePicker(
+                      context: context,
+                      initialDate: _dob,
+                      firstDate: DateTime(1950),
+                      lastDate: DateTime.now(),
+                    );
                     if (d != null) setState(() => _dob = d);
                   },
                 ),
+                const SizedBox(height: 8),
                 DropdownButtonFormField<String>(
-                  value: _gender,
+                  initialValue: _gender,
                   decoration: const InputDecoration(labelText: 'Gender'),
                   items: const [
                     DropdownMenuItem(value: 'M', child: Text('Male')),
@@ -170,8 +226,9 @@ class _AddEmployeeModalState extends ConsumerState<AddEmployeeModal> {
                   ],
                   onChanged: (v) => setState(() => _gender = v!),
                 ),
+                const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
-                  value: _role,
+                  initialValue: _role,
                   decoration: const InputDecoration(labelText: 'Role'),
                   items: const [
                     DropdownMenuItem(value: 'EMPLOYEE', child: Text('Employee')),
@@ -179,14 +236,34 @@ class _AddEmployeeModalState extends ConsumerState<AddEmployeeModal> {
                   ],
                   onChanged: (v) => setState(() => _role = v!),
                 ),
-                if (widget.existing == null)
+                if (widget.existing == null) ...[
+                  const SizedBox(height: 12),
                   TextFormField(
                     controller: _password,
                     obscureText: true,
-                    decoration: const InputDecoration(labelText: 'Password *'),
+                    decoration: const InputDecoration(
+                      labelText: 'Password *',
+                      helperText: 'At least 6 characters',
+                    ),
+                    validator: (v) {
+                      if (v == null || v.trim().isEmpty) return 'Password is required';
+                      if (v.length < 6) return 'Password must be at least 6 characters';
+                      return null;
+                    },
                   ),
+                ],
                 const SizedBox(height: 24),
-                FilledButton(onPressed: _loading ? null : _submit, child: Text(_loading ? 'Saving...' : 'Save')),
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: FilledButton(
+                    onPressed: _loading ? null : _submit,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.primaryGreen,
+                    ),
+                    child: Text(_loading ? 'Saving...' : 'Save Employee'),
+                  ),
+                ),
               ],
             ),
           ),

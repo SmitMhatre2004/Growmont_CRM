@@ -4,8 +4,170 @@ import 'package:intl/intl.dart';
 class AppColors {
   static const primaryBlue = Color(0xFF00337C);
   static const primaryGreen = Color(0xFF2D8A4E);
-  static const background = Color(0xFFF4F9FD);
-  static const sidebarText = Color(0xFF7D8592);
+  static const background = Color(0xFFF1F5F9);
+  static const sidebarBg = Color(0xFF0F4A31);
+  static const sidebarText = Color(0xFFFFFFFF);
+
+  // Core typographic and surface tokens
+  static const textPrimary = Color(
+    0xFF0F172A,
+  ); // Slate 900: high contrast, primary titles, names & values
+  static const textSecondary = Color(
+    0xFF475569,
+  ); // Slate 600: secondary info, subtitles, regular body
+  static const textMuted = Color(
+    0xFF94A3B8,
+  ); // Slate 400: captions, timestamps, placeholder text
+  static const border = Color(
+    0xFFE2E8F0,
+  ); // Slate 200: subtle borders for clean cards & dividers
+  static const surfaceHeader = Color(
+    0xFFF8FAFC,
+  ); // Slate 50: clean subtle table & panel headers
+}
+
+/// Centralized typographic scale establishing clear visual hierarchy
+/// based on text importance across headings, metadata, numbers and actions.
+class AppTypography {
+  AppTypography._();
+
+  // Page Title (Primary Screen Headings)
+  static const TextStyle pageTitle = TextStyle(
+    fontSize: 24,
+    fontWeight: FontWeight.w700,
+    color: AppColors.textPrimary,
+    letterSpacing: -0.5,
+    height: 1.25,
+  );
+
+  // Page Subtitle / Section description
+  static const TextStyle pageSubtitle = TextStyle(
+    fontSize: 14,
+    fontWeight: FontWeight.w400,
+    color: AppColors.textSecondary,
+    height: 1.4,
+  );
+
+  // Section Heading (e.g. Clients, Sales, Reminders)
+  static const TextStyle sectionTitle = TextStyle(
+    fontSize: 18,
+    fontWeight: FontWeight.w700,
+    color: AppColors.textPrimary,
+    letterSpacing: -0.3,
+  );
+
+  // Section Subtitle
+  static const TextStyle sectionSubtitle = TextStyle(
+    fontSize: 13,
+    fontWeight: FontWeight.w400,
+    color: AppColors.textSecondary,
+  );
+
+  // Card / Modal Title
+  static const TextStyle cardTitle = TextStyle(
+    fontSize: 16,
+    fontWeight: FontWeight.w600,
+    color: AppColors.textPrimary,
+    letterSpacing: -0.2,
+  );
+
+  // Item Title (Names in lists, main row subject, client names)
+  static const TextStyle itemTitle = TextStyle(
+    fontSize: 15,
+    fontWeight: FontWeight.w600,
+    color: AppColors.textPrimary,
+  );
+
+  // Item Subtitle (Contact info, timestamps, secondary attributes)
+  static const TextStyle itemSubtitle = TextStyle(
+    fontSize: 13,
+    fontWeight: FontWeight.w400,
+    color: AppColors.textSecondary,
+    height: 1.35,
+  );
+
+  // Table Column Header (Clean, legible uppercase)
+  static const TextStyle tableHeader = TextStyle(
+    fontSize: 12,
+    fontWeight: FontWeight.w700,
+    color: Color(0xFF475569),
+    letterSpacing: 0.6,
+  );
+
+  // Primary Body Text
+  static const TextStyle bodyPrimary = TextStyle(
+    fontSize: 14,
+    fontWeight: FontWeight.w500,
+    color: Color(0xFF1E293B),
+    height: 1.4,
+  );
+
+  // Secondary Body Text / Descriptions
+  static const TextStyle bodySecondary = TextStyle(
+    fontSize: 13,
+    fontWeight: FontWeight.w400,
+    color: AppColors.textSecondary,
+    height: 1.4,
+  );
+
+  // Caption / Metadata / Timestamps
+  static const TextStyle caption = TextStyle(
+    fontSize: 12,
+    fontWeight: FontWeight.w400,
+    color: AppColors.textMuted,
+  );
+
+  // Caption Emphasized
+  static const TextStyle captionSemibold = TextStyle(
+    fontSize: 12,
+    fontWeight: FontWeight.w600,
+    color: AppColors.textSecondary,
+  );
+
+  // Overline / Mini Category Header / KPI labels
+  static const TextStyle overline = TextStyle(
+    fontSize: 11,
+    fontWeight: FontWeight.w700,
+    color: Color(0xFF64748B),
+    letterSpacing: 0.7,
+  );
+
+  // Badges & Pills
+  static const TextStyle badge = TextStyle(
+    fontSize: 11,
+    fontWeight: FontWeight.w600,
+    letterSpacing: 0.2,
+  );
+
+  // Large KPI Metric Numbers
+  static const TextStyle metricLarge = TextStyle(
+    fontSize: 24,
+    fontWeight: FontWeight.w700,
+    color: AppColors.textPrimary,
+    letterSpacing: -0.5,
+  );
+
+  // Medium KPI Metric Numbers
+  static const TextStyle metricMedium = TextStyle(
+    fontSize: 18,
+    fontWeight: FontWeight.w700,
+    color: AppColors.textPrimary,
+  );
+
+  // KPI Metric Labels
+  static const TextStyle metricLabel = TextStyle(
+    fontSize: 11,
+    fontWeight: FontWeight.w600,
+    color: Color(0xFF64748B),
+    letterSpacing: 0.5,
+  );
+
+  // Financial / Currency Amount (Prominent High-Contrast)
+  static const TextStyle amount = TextStyle(
+    fontSize: 15,
+    fontWeight: FontWeight.w700,
+    color: AppColors.primaryGreen,
+  );
 }
 
 class AppTheme {
@@ -19,9 +181,20 @@ class AppTheme {
         surface: Colors.white,
       ),
       scaffoldBackgroundColor: AppColors.background,
+      textTheme: const TextTheme(
+        headlineMedium: AppTypography.pageTitle,
+        titleLarge: AppTypography.sectionTitle,
+        titleMedium: AppTypography.itemTitle,
+        titleSmall: AppTypography.cardTitle,
+        bodyLarge: AppTypography.bodyPrimary,
+        bodyMedium: AppTypography.bodySecondary,
+        bodySmall: AppTypography.caption,
+        labelLarge: AppTypography.captionSemibold,
+        labelSmall: AppTypography.overline,
+      ),
       appBarTheme: const AppBarTheme(
         backgroundColor: Colors.white,
-        foregroundColor: Colors.black87,
+        foregroundColor: AppColors.textPrimary,
         elevation: 0,
         scrolledUnderElevation: 1,
       ),
@@ -40,7 +213,10 @@ class AppTheme {
           borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: AppColors.primaryGreen, width: 2),
         ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 14,
+        ),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
@@ -56,8 +232,8 @@ class AppTheme {
         color: Colors.white,
         elevation: 0,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: BorderSide(color: Colors.grey.shade200),
+          borderRadius: BorderRadius.circular(12),
+          side: const BorderSide(color: AppColors.border),
         ),
       ),
     );
@@ -104,11 +280,11 @@ class AppFormatters {
 Color priorityBackgroundColor(String priority) {
   switch (priority.toUpperCase()) {
     case 'HIGH':
-      return const Color(0xFFFEE2E2);
+      return const Color(0xFFFEF2F2);
     case 'MEDIUM':
-      return const Color(0xFFFEF9C3);
+      return const Color(0xFFFFF7ED);
     case 'LOW':
-      return const Color(0xFFDCFCE7);
+      return const Color(0xFFFEFCE8);
     default:
       return Colors.grey.shade100;
   }
@@ -117,11 +293,11 @@ Color priorityBackgroundColor(String priority) {
 Color priorityTextColor(String priority) {
   switch (priority.toUpperCase()) {
     case 'HIGH':
-      return const Color(0xFFB91C1C);
+      return const Color.fromARGB(255, 220, 50, 50);
     case 'MEDIUM':
-      return const Color(0xFFA16207);
+      return const Color.fromARGB(255, 255, 167, 66);
     case 'LOW':
-      return const Color(0xFF15803D);
+      return const Color.fromRGBO(255, 237, 39, 1);
     default:
       return Colors.grey.shade700;
   }

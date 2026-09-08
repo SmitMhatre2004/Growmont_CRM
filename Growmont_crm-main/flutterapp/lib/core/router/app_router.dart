@@ -41,44 +41,87 @@ final routerProvider = Provider<GoRouter>((ref) {
     routes: [
       GoRoute(
         path: '/',
-        builder: (context, state) => const LoginScreen(),
+        pageBuilder: (context, state) => const NoTransitionPage(
+          child: LoginScreen(),
+        ),
       ),
-      ShellRoute(
-        builder: (context, state, child) => AppShell(child: child),
-        routes: [
-          GoRoute(
-            path: '/dashboard',
-            builder: (context, state) => const DashboardScreen(),
+      StatefulShellRoute.indexedStack(
+        builder: (context, state, navigationShell) =>
+            AppShell(navigationShell: navigationShell),
+        branches: [
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/dashboard',
+                pageBuilder: (context, state) => const NoTransitionPage(
+                  child: DashboardScreen(),
+                ),
+              ),
+            ],
           ),
-          GoRoute(
-            path: '/sales',
-            builder: (context, state) => const SalesScreen(),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/sales',
+                pageBuilder: (context, state) => const NoTransitionPage(
+                  child: SalesScreen(),
+                ),
+              ),
+            ],
           ),
-          GoRoute(
-            path: '/interactions',
-            builder: (context, state) => const InteractionsScreen(),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/interactions',
+                pageBuilder: (context, state) => const NoTransitionPage(
+                  child: InteractionsScreen(),
+                ),
+              ),
+            ],
           ),
-          GoRoute(
-            path: '/employees',
-            builder: (context, state) => const EmployeesListScreen(),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/employees',
+                pageBuilder: (context, state) => const NoTransitionPage(
+                  child: EmployeesListScreen(),
+                ),
+                routes: [
+                  GoRoute(
+                    path: ':id',
+                    pageBuilder: (context, state) {
+                      final id = state.pathParameters['id']!;
+                      return NoTransitionPage(
+                        child: EmployeeDetailScreen(employeeId: id),
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ],
           ),
-          GoRoute(
-            path: '/employees/:id',
-            builder: (context, state) {
-              final id = int.parse(state.pathParameters['id']!);
-              return EmployeeDetailScreen(employeeId: id);
-            },
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/info-portal',
+                pageBuilder: (context, state) => const NoTransitionPage(
+                  child: InfoPortalScreen(),
+                ),
+              ),
+            ],
           ),
-          GoRoute(
-            path: '/info-portal',
-            builder: (context, state) => const InfoPortalScreen(),
-          ),
-          GoRoute(
-            path: '/profile',
-            builder: (context, state) {
-              final tab = state.uri.queryParameters['tab'];
-              return ProfileScreen(initialTab: tab);
-            },
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/profile',
+                pageBuilder: (context, state) {
+                  final tab = state.uri.queryParameters['tab'];
+                  return NoTransitionPage(
+                    child: ProfileScreen(initialTab: tab),
+                  );
+                },
+              ),
+            ],
           ),
         ],
       ),
@@ -105,7 +148,7 @@ final routerProvider = Provider<GoRouter>((ref) {
 
 class _AuthRefreshListenable extends ChangeNotifier {
   _AuthRefreshListenable(this.ref) {
-    ref.listen(authProvider, (_, __) => notifyListeners());
+    ref.listen(authProvider, (_, next) => notifyListeners());
   }
 
   final Ref ref;

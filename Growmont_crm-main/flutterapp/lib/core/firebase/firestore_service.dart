@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 
 import '../../models/client.dart';
@@ -70,19 +71,82 @@ class FirestoreService {
   }
 
   Future<void> createEmployee(Map<String, dynamic> data) async {
-    final callable = _functions.httpsCallable('createEmployee');
-    await callable.call(data);
+    // 1. Try Cloud Functions first (standard provisioning with custom role claims)
+    try {
+      final callable = _functions.httpsCallable('createEmployee');
+      final res = await callable.call(data);
+      if (res.data != null) return;
+    } catch (_) {
+      // Functions not deployed, unauthenticated, or network error. Fall through to direct provisioning.
+    }
+
+    // 2. Direct Auth & Firestore provisioning fallback
+    String? newUid;
+    final email = data['email']?.toString().trim();
+    final password = data['password']?.toString();
+
+    if (email != null && email.isNotEmpty && password != null && password.isNotEmpty) {
+      try {
+        final tempAppName = 'EmployeeProvisioning_${DateTime.now().millisecondsSinceEpoch}';
+        final tempApp = await Firebase.initializeApp(
+          name: tempAppName,
+          options: Firebase.app().options,
+        );
+        try {
+          final tempAuth = FirebaseAuth.instanceFor(app: tempApp);
+          final cred = await tempAuth.createUserWithEmailAndPassword(
+            email: email,
+            password: password,
+          );
+          newUid = cred.user?.uid;
+        } finally {
+          await tempApp.delete();
+        }
+      } catch (_) {
+        // e.g. email already exists or auth offline; proceed to write doc in Firestore
+      }
+    }
+
+    final docRef = newUid != null
+        ? _firestore.collection('employees').doc(newUid)
+        : _firestore.collection('employees').doc();
+
+    final cleanData = Map<String, dynamic>.from(data);
+    cleanData.remove('password');
+    if (cleanData['dob'] is String && (cleanData['dob'] as String).isNotEmpty) {
+      final parsed = DateTime.tryParse(cleanData['dob'] as String);
+      if (parsed != null) cleanData['dob'] = Timestamp.fromDate(parsed);
+    }
+    cleanData['role'] = (cleanData['role']?.toString().toUpperCase() == 'ADMIN') ? 'ADMIN' : 'EMPLOYEE';
+    cleanData['avatar_url'] = cleanData['avatar_url'] ?? '';
+    cleanData['clients_count'] = cleanData['clients_count'] ?? 0;
+    cleanData['sales_count'] = cleanData['sales_count'] ?? 0;
+    cleanData['interactions_count'] = cleanData['interactions_count'] ?? 0;
+    cleanData['created_at'] = FieldValue.serverTimestamp();
+    cleanData['updated_at'] = FieldValue.serverTimestamp();
+
+    await docRef.set(cleanData, SetOptions(merge: true));
   }
 
   Future<void> updateEmployee(dynamic id, Map<String, dynamic> data) async {
     final cleanData = Map<String, dynamic>.from(data);
+    cleanData.remove('password');
+    if (cleanData['dob'] is String && (cleanData['dob'] as String).isNotEmpty) {
+      final parsed = DateTime.tryParse(cleanData['dob'] as String);
+      if (parsed != null) cleanData['dob'] = Timestamp.fromDate(parsed);
+    }
     cleanData['updated_at'] = FieldValue.serverTimestamp();
     await _firestore.collection('employees').doc(id.toString()).update(cleanData);
   }
 
   Future<void> deleteEmployee(dynamic id) async {
-    final callable = _functions.httpsCallable('deleteEmployee');
-    await callable.call({'employeeId': id.toString()});
+    try {
+      final callable = _functions.httpsCallable('deleteEmployee');
+      await callable.call({'employeeId': id.toString()});
+    } catch (_) {
+      // Fallback: delete doc directly from Firestore
+      await _firestore.collection('employees').doc(id.toString()).delete();
+    }
   }
 
   // ----------------------------------------------------

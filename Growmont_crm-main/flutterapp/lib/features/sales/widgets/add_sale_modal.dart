@@ -8,10 +8,11 @@ import '../../../models/sale.dart';
 import '../../../models/user.dart';
 
 class AddSaleModal extends ConsumerStatefulWidget {
-  const AddSaleModal({super.key, this.existing, this.currentUser});
+  const AddSaleModal({super.key, this.existing, this.currentUser, this.defaultProduct});
 
   final Sale? existing;
   final AppUser? currentUser;
+  final String? defaultProduct;
 
   @override
   ConsumerState<AddSaleModal> createState() => _AddSaleModalState();
@@ -42,9 +43,9 @@ class _AddSaleModalState extends ConsumerState<AddSaleModal> {
     _scheme = TextEditingController(text: e?.scheme ?? '');
     _amount = TextEditingController(text: e?.amount ?? '');
     _remarks = TextEditingController(text: e?.remarks ?? '');
-    _product = e?.product ?? 'MF';
+    _product = e?.product ?? (widget.defaultProduct != null && widget.defaultProduct != 'ALL' ? widget.defaultProduct! : 'MF');
     _frequency = e?.frequency ?? 'M';
-    _salesRep = e?.salesRep ?? widget.currentUser?.id;
+    _salesRep = e?.salesRep ?? (_isEmployee ? widget.currentUser?.id : null);
     _isEmployee = widget.currentUser?.role == UserRole.employee;
     _loadEmployees();
   }
@@ -53,7 +54,19 @@ class _AddSaleModalState extends ConsumerState<AddSaleModal> {
     if (_isEmployee) return;
     try {
       final list = await ref.read(apiServiceProvider).getEmployeesDropdown();
-      if (mounted) setState(() => _employees = list);
+      if (mounted) {
+        setState(() {
+          _employees = list;
+          if (_salesRep == null || !_employees.any((emp) => emp.id == _salesRep)) {
+            if (_employees.isNotEmpty) {
+              final userInList = _employees.any((emp) => emp.id == widget.currentUser?.id);
+              _salesRep = userInList ? widget.currentUser?.id : _employees.first.id;
+            } else {
+              _salesRep = null;
+            }
+          }
+        });
+      }
     } catch (_) {}
   }
 
@@ -110,150 +123,170 @@ class _AddSaleModalState extends ConsumerState<AddSaleModal> {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
-      child: DraggableScrollableSheet(
-        initialChildSize: 0.9,
-        minChildSize: 0.5,
-        maxChildSize: 0.95,
-        expand: false,
-        builder: (_, scrollController) => Material(
-          child: Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: Row(
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
+      backgroundColor: Colors.white,
+      surfaceTintColor: Colors.transparent,
+      insetPadding: const EdgeInsets.symmetric(
+        horizontal: 24.0,
+        vertical: 24.0,
+      ),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 550),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24.0),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
                   children: [
                     Text(
                       widget.existing != null ? 'Edit Sale' : 'Add New Sale',
-                      style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF111827),
+                      ),
                     ),
                     const Spacer(),
-                    IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.close)),
+                    IconButton(
+                      onPressed: () => Navigator.pop(context),
+                      icon: const Icon(Icons.close, color: Color(0xFF6B7280)),
+                    ),
                   ],
                 ),
-              ),
-              const Divider(height: 1),
-              Expanded(
-                child: Form(
-                  key: _formKey,
-                  child: ListView(
-                    controller: scrollController,
-                    padding: const EdgeInsets.all(16),
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: ListTile(
-                              title: const Text('Date *'),
-                              subtitle: Text(AppFormatters.formatDate(AppFormatters.toApiDate(_date))),
-                              trailing: const Icon(Icons.calendar_today),
-                              onTap: () async {
-                                final picked = await showDatePicker(
-                                  context: context,
-                                  initialDate: _date,
-                                  firstDate: DateTime(2000),
-                                  lastDate: DateTime(2100),
-                                );
-                                if (picked != null) setState(() => _date = picked);
-                              },
-                            ),
+                const SizedBox(height: 20),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: InkWell(
+                        onTap: () async {
+                          final picked = await showDatePicker(
+                            context: context,
+                            initialDate: _date,
+                            firstDate: DateTime(2000),
+                            lastDate: DateTime(2100),
+                          );
+                          if (picked != null) setState(() => _date = picked);
+                        },
+                        borderRadius: BorderRadius.circular(8),
+                        child: InputDecorator(
+                          decoration: const InputDecoration(
+                            labelText: 'Date *',
+                            suffixIcon: Icon(Icons.calendar_today, size: 18),
                           ),
-                          Expanded(
-                            child: TextFormField(
-                              controller: _clientName,
-                              decoration: const InputDecoration(labelText: 'Client Name *'),
-                              validator: (v) => v == null || v.isEmpty ? 'Required' : null,
-                            ),
+                          child: Text(
+                            AppFormatters.formatDate(AppFormatters.toApiDate(_date)),
+                            style: const TextStyle(fontSize: 14),
                           ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      if (_isEmployee)
-                        TextFormField(
-                          initialValue: widget.currentUser?.name,
-                          readOnly: true,
-                          decoration: const InputDecoration(labelText: 'Sales Representative *'),
-                        )
-                      else
-                        DropdownButtonFormField<String>(
-                          value: _salesRep,
-                          decoration: const InputDecoration(labelText: 'Sales Representative *'),
-                          items: _employees
-                              .map((e) => DropdownMenuItem(value: e.id, child: Text('${e.name} (${e.role})')))
-                              .toList(),
-                          onChanged: (v) => setState(() => _salesRep = v),
                         ),
-                      const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: DropdownButtonFormField<String>(
-                              value: _product,
-                              decoration: const InputDecoration(labelText: 'Product *'),
-                              items: productCategories
-                                  .where((c) => c.$1 != 'ALL')
-                                  .map((c) => DropdownMenuItem(value: c.$1, child: Text(c.$2)))
-                                  .toList(),
-                              onChanged: (v) => setState(() => _product = v!),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: TextFormField(
-                              controller: _company,
-                              decoration: const InputDecoration(labelText: 'Company *'),
-                              validator: (v) => v == null || v.isEmpty ? 'Required' : null,
-                            ),
-                          ),
-                        ],
                       ),
-                      const SizedBox(height: 12),
-                      TextFormField(
-                        controller: _scheme,
-                        decoration: const InputDecoration(labelText: 'Scheme *'),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: TextFormField(
+                        controller: _clientName,
+                        decoration: const InputDecoration(labelText: 'Client Name *'),
                         validator: (v) => v == null || v.isEmpty ? 'Required' : null,
                       ),
-                      const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: TextFormField(
-                              controller: _amount,
-                              keyboardType: TextInputType.number,
-                              decoration: const InputDecoration(labelText: 'Amount *'),
-                              validator: (v) => v == null || v.isEmpty ? 'Required' : null,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: DropdownButtonFormField<String>(
-                              value: _frequency,
-                              decoration: const InputDecoration(labelText: 'Frequency *'),
-                              items: frequencyChoices
-                                  .map((c) => DropdownMenuItem(value: c.$1, child: Text(c.$2)))
-                                  .toList(),
-                              onChanged: (v) => setState(() => _frequency = v!),
-                            ),
-                          ),
-                        ],
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                if (_isEmployee)
+                  TextFormField(
+                    initialValue: widget.currentUser?.name,
+                    readOnly: true,
+                    decoration: const InputDecoration(labelText: 'Sales Representative *'),
+                  )
+                else
+                  DropdownButtonFormField<String>(
+                    key: ValueKey('sales_rep_${_salesRep}_${_employees.length}'),
+                    initialValue: _employees.any((e) => e.id == _salesRep) ? _salesRep : null,
+                    decoration: const InputDecoration(labelText: 'Sales Representative *'),
+                    items: _employees
+                        .map((e) => DropdownMenuItem(value: e.id, child: Text('${e.name} (${e.role})')))
+                        .toList(),
+                    onChanged: (v) => setState(() => _salesRep = v),
+                    validator: (v) => v == null || v.isEmpty ? 'Required' : null,
+                  ),
+                const SizedBox(height: 16),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: DropdownButtonFormField<String>(
+                        initialValue: _product,
+                        decoration: const InputDecoration(labelText: 'Product *'),
+                        items: productCategories
+                            .where((c) => c.$1 != 'ALL')
+                            .map((c) => DropdownMenuItem(value: c.$1, child: Text(c.$2)))
+                            .toList(),
+                        onChanged: (v) => setState(() => _product = v!),
                       ),
-                      const SizedBox(height: 12),
-                      TextFormField(
-                        controller: _remarks,
-                        maxLines: 3,
-                        decoration: const InputDecoration(labelText: 'Remarks'),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: TextFormField(
+                        controller: _company,
+                        decoration: const InputDecoration(labelText: 'Company *'),
+                        validator: (v) => v == null || v.isEmpty ? 'Required' : null,
                       ),
-                      const SizedBox(height: 24),
-                      FilledButton(
-                        onPressed: _loading ? null : _submit,
-                        child: Text(_loading ? 'Saving...' : 'Save Sale'),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _scheme,
+                  decoration: const InputDecoration(labelText: 'Scheme *'),
+                  validator: (v) => v == null || v.isEmpty ? 'Required' : null,
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: TextFormField(
+                        controller: _amount,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(labelText: 'Amount *'),
+                        validator: (v) => v == null || v.isEmpty ? 'Required' : null,
                       ),
-                    ],
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: DropdownButtonFormField<String>(
+                        initialValue: _frequency,
+                        decoration: const InputDecoration(labelText: 'Frequency *'),
+                        items: frequencyChoices
+                            .map((c) => DropdownMenuItem(value: c.$1, child: Text(c.$2)))
+                            .toList(),
+                        onChanged: (v) => setState(() => _frequency = v!),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _remarks,
+                  maxLines: 3,
+                  decoration: const InputDecoration(labelText: 'Remarks'),
+                ),
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: FilledButton(
+                    onPressed: _loading ? null : _submit,
+                    child: Text(_loading ? 'Saving...' : 'Save Sale'),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

@@ -46,8 +46,8 @@ class _AddInteractionModalState extends ConsumerState<AddInteractionModal> {
     _clientContact = TextEditingController(text: e?.clientContact ?? '');
     _notes = TextEditingController(text: e?.discussionNotes ?? '');
     _priority = e?.priority ?? 'MEDIUM';
-    _employeeId = e?.employee ?? widget.currentUser?.id;
     _isEmployee = widget.currentUser?.role == UserRole.employee;
+    _employeeId = e?.employee ?? (_isEmployee ? widget.currentUser?.id : null);
     _loadEmployees();
   }
 
@@ -55,7 +55,19 @@ class _AddInteractionModalState extends ConsumerState<AddInteractionModal> {
     if (_isEmployee) return;
     try {
       final list = await ref.read(apiServiceProvider).getEmployeesDropdown();
-      if (mounted) setState(() => _employees = list);
+      if (mounted) {
+        setState(() {
+          _employees = list;
+          if (_employeeId == null || !_employees.any((emp) => emp.id == _employeeId)) {
+            if (_employees.isNotEmpty) {
+              final userInList = _employees.any((emp) => emp.id == widget.currentUser?.id);
+              _employeeId = userInList ? widget.currentUser?.id : _employees.first.id;
+            } else {
+              _employeeId = null;
+            }
+          }
+        });
+      }
     } catch (_) {}
   }
 
@@ -113,43 +125,68 @@ class _AddInteractionModalState extends ConsumerState<AddInteractionModal> {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
-      child: DraggableScrollableSheet(
-        initialChildSize: 0.9,
-        expand: false,
-        builder: (_, controller) => Material(
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
+      backgroundColor: Colors.white,
+      surfaceTintColor: Colors.transparent,
+      insetPadding: const EdgeInsets.symmetric(
+        horizontal: 24.0,
+        vertical: 24.0,
+      ),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 550),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24.0),
           child: Form(
             key: _formKey,
-            child: ListView(
-              controller: controller,
-              padding: const EdgeInsets.all(16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
                   children: [
-                    Text(widget.existing != null ? 'Edit Interaction' : 'Add Interaction',
-                        style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                    Text(
+                      widget.existing != null ? 'Edit Interaction' : 'Add Interaction',
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF111827),
+                      ),
+                    ),
                     const Spacer(),
-                    IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.close)),
+                    IconButton(
+                      onPressed: () => Navigator.pop(context),
+                      icon: const Icon(Icons.close, color: Color(0xFF6B7280)),
+                    ),
                   ],
                 ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: _clientName,
-                  decoration: const InputDecoration(labelText: 'Client Name *'),
-                  validator: (v) => v == null || v.isEmpty ? 'Required' : null,
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: _clientContact,
-                  decoration: const InputDecoration(labelText: 'Client Contact *'),
-                  validator: (v) => v == null || v.isEmpty ? 'Required' : null,
+                const SizedBox(height: 20),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: TextFormField(
+                        controller: _clientName,
+                        decoration: const InputDecoration(labelText: 'Client Name *'),
+                        validator: (v) => v == null || v.isEmpty ? 'Required' : null,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: TextFormField(
+                        controller: _clientContact,
+                        decoration: const InputDecoration(labelText: 'Client Contact *'),
+                        validator: (v) => v == null || v.isEmpty ? 'Required' : null,
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 12),
                 ListTile(
+                  contentPadding: EdgeInsets.zero,
                   title: const Text('Interaction Date *'),
                   subtitle: Text(AppFormatters.formatDate(AppFormatters.toApiDate(_date))),
-                  trailing: const Icon(Icons.calendar_today),
+                  trailing: const Icon(Icons.calendar_today, size: 18),
                   onTap: () async {
                     final d = await showDatePicker(
                       context: context,
@@ -161,9 +198,10 @@ class _AddInteractionModalState extends ConsumerState<AddInteractionModal> {
                   },
                 ),
                 ListTile(
+                  contentPadding: EdgeInsets.zero,
                   title: const Text('Follow-up Date *'),
                   subtitle: Text(AppFormatters.formatDate(AppFormatters.toApiDate(_followUpDate))),
-                  trailing: const Icon(Icons.event),
+                  trailing: const Icon(Icons.event, size: 18),
                   onTap: () async {
                     final d = await showDatePicker(
                       context: context,
@@ -175,9 +213,10 @@ class _AddInteractionModalState extends ConsumerState<AddInteractionModal> {
                   },
                 ),
                 ListTile(
+                  contentPadding: EdgeInsets.zero,
                   title: const Text('Follow-up Time *'),
                   subtitle: Text(_followUpTime.format(context)),
-                  trailing: const Icon(Icons.access_time),
+                  trailing: const Icon(Icons.access_time, size: 18),
                   onTap: () async {
                     final t = await showTimePicker(context: context, initialTime: _followUpTime);
                     if (t != null) setState(() => _followUpTime = t);
@@ -192,31 +231,38 @@ class _AddInteractionModalState extends ConsumerState<AddInteractionModal> {
                   )
                 else
                   DropdownButtonFormField<String>(
-                    value: _employeeId,
+                    key: ValueKey('employee_${_employeeId}_${_employees.length}'),
+                    initialValue: _employees.any((e) => e.id == _employeeId) ? _employeeId : null,
                     decoration: const InputDecoration(labelText: 'Employee *'),
                     items: _employees
                         .map((e) => DropdownMenuItem(value: e.id, child: Text(e.name)))
                         .toList(),
                     onChanged: (v) => setState(() => _employeeId = v),
+                    validator: (v) => v == null || v.isEmpty ? 'Required' : null,
                   ),
+                const SizedBox(height: 16),
                 DropdownButtonFormField<String>(
-                  value: _priority,
+                  initialValue: _priority,
                   decoration: const InputDecoration(labelText: 'Priority'),
                   items: priorityChoices
                       .map((c) => DropdownMenuItem(value: c.$1, child: Text(c.$2)))
                       .toList(),
                   onChanged: (v) => setState(() => _priority = v!),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 16),
                 TextFormField(
                   controller: _notes,
                   maxLines: 3,
                   decoration: const InputDecoration(labelText: 'Discussion Notes'),
                 ),
                 const SizedBox(height: 24),
-                FilledButton(
-                  onPressed: _loading ? null : _submit,
-                  child: Text(_loading ? 'Saving...' : 'Save'),
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: FilledButton(
+                    onPressed: _loading ? null : _submit,
+                    child: Text(_loading ? 'Saving...' : 'Save Interaction'),
+                  ),
                 ),
               ],
             ),

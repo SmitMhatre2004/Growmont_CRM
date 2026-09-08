@@ -39,6 +39,17 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     _load();
   }
 
+  @override
+  void didUpdateWidget(covariant ProfileScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.initialTab != oldWidget.initialTab && widget.initialTab != null) {
+      if (widget.initialTab == 'reminders') _tab = ProfileTab.reminders;
+      if (widget.initialTab == 'interactions') _tab = ProfileTab.interactions;
+      if (widget.initialTab == 'productSales') _tab = ProfileTab.sales;
+      setState(() {});
+    }
+  }
+
   Future<void> _load() async {
     final user = ref.read(authProvider).user;
     if (user == null) return;
@@ -85,10 +96,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
   Future<void> _showReminderModal({Reminder? existing}) async {
     final user = ref.read(authProvider).user;
-    final saved = await showModalBottomSheet<bool>(
+    final saved = await showDialog<bool>(
       context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
+      barrierDismissible: true,
       builder: (_) => AddReminderModal(existing: existing, currentUser: user),
     );
     if (saved == true) _load();
@@ -102,29 +112,51 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final isWide = MediaQuery.sizeOf(context).width >= 768;
 
     return Padding(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(isWide ? 16 : 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              const Expanded(
-                child: Text('Profile', style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
-              ),
-              if (!isWide)
-                OutlinedButton.icon(
-                  onPressed: () => setState(() => _showProfilePanel = !_showProfilePanel),
-                  icon: const Icon(Icons.person_outline),
-                  label: Text(_showProfilePanel ? 'Hide Info' : 'My Info'),
+          if (!isWide) ...[
+            const Text('Profile', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () => setState(() => _showProfilePanel = !_showProfilePanel),
+                    icon: const Icon(Icons.person_outline, size: 18),
+                    label: Text(_showProfilePanel ? 'Hide Info' : 'My Info'),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                    ),
+                  ),
                 ),
-              const SizedBox(width: 8),
-              FilledButton.icon(
-                onPressed: () => _showReminderModal(),
-                icon: const Icon(Icons.add),
-                label: const Text('Add Reminder'),
-              ),
-            ],
-          ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: FilledButton.icon(
+                    onPressed: () => _showReminderModal(),
+                    icon: const Icon(Icons.add, size: 18),
+                    label: const Text('Add Reminder'),
+                    style: FilledButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ] else
+            Row(
+              children: [
+                const Expanded(
+                  child: Text('Profile', style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
+                ),
+                FilledButton.icon(
+                  onPressed: () => _showReminderModal(),
+                  icon: const Icon(Icons.add),
+                  label: const Text('Add Reminder'),
+                ),
+              ],
+            ),
           const SizedBox(height: 16),
           Expanded(
             child: isWide
@@ -195,39 +227,127 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   }
 
   Widget _salesTab() {
-    if (_sales.isEmpty) return const Center(child: Text('No sales yet'));
+    if (_sales.isEmpty) {
+      return const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.shopping_bag_outlined, size: 36, color: AppColors.textMuted),
+            SizedBox(height: 8),
+            Text('No sales records found', style: AppTypography.itemSubtitle),
+          ],
+        ),
+      );
+    }
     return ListView.separated(
       padding: const EdgeInsets.all(16),
       itemCount: _sales.length,
-      separatorBuilder: (_, __) => const Divider(),
+      separatorBuilder: (context, index) => const Divider(height: 1, color: AppColors.border),
       itemBuilder: (_, i) {
         final s = _sales[i];
+        final prod = (s.productDisplay != null && s.productDisplay!.isNotEmpty)
+            ? s.productDisplay!
+            : s.product;
         return ListTile(
-          title: Text(s.clientName, style: const TextStyle(fontWeight: FontWeight.w600)),
-          subtitle: Text('${s.productDisplay ?? s.product} • ${AppFormatters.formatDate(s.date)}'),
-          trailing: Text(AppFormatters.formatAmount(s.amount),
-              style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primaryGreen)),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+          title: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                margin: const EdgeInsets.only(right: 8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEFF6FF),
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: const Color(0xFFDBEAFE)),
+                ),
+                child: Text(
+                  prod,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF1E40AF),
+                  ),
+                ),
+              ),
+              Expanded(
+                child: Text(s.clientName, style: AppTypography.itemTitle, overflow: TextOverflow.ellipsis),
+              ),
+            ],
+          ),
+          subtitle: Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Row(
+              children: [
+                const Icon(Icons.calendar_today_outlined, size: 12, color: AppColors.textMuted),
+                const SizedBox(width: 4),
+                Text(AppFormatters.formatDate(s.date), style: AppTypography.caption),
+              ],
+            ),
+          ),
+          trailing: Text(
+            AppFormatters.formatAmount(s.amount),
+            style: AppTypography.amount,
+          ),
         );
       },
     );
   }
 
   Widget _interactionsTab() {
-    if (_interactions.isEmpty) return const Center(child: Text('No interactions yet'));
+    if (_interactions.isEmpty) {
+      return const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.forum_outlined, size: 36, color: AppColors.textMuted),
+            SizedBox(height: 8),
+            Text('No interactions found', style: AppTypography.itemSubtitle),
+          ],
+        ),
+      );
+    }
     return ListView.separated(
       padding: const EdgeInsets.all(16),
       itemCount: _interactions.length,
-      separatorBuilder: (_, __) => const Divider(),
+      separatorBuilder: (context, index) => const Divider(height: 1, color: AppColors.border),
       itemBuilder: (_, i) {
         final item = _interactions[i];
+        final priorityLabel = (item.priorityDisplay != null && item.priorityDisplay!.isNotEmpty)
+            ? item.priorityDisplay!
+            : item.priority;
         return ListTile(
-          title: Text(item.clientName, style: const TextStyle(fontWeight: FontWeight.w600)),
-          subtitle: Text(
-            '${item.clientContact} • Follow-up: ${AppFormatters.formatDate(item.followUpDate)}',
+          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+          title: Text(item.clientName, style: AppTypography.itemTitle),
+          subtitle: Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Row(
+              children: [
+                if (item.clientContact.isNotEmpty) ...[
+                  const Icon(Icons.phone_outlined, size: 12, color: AppColors.textMuted),
+                  const SizedBox(width: 3),
+                  Text(item.clientContact, style: AppTypography.itemSubtitle),
+                  const SizedBox(width: 10),
+                ],
+                const Icon(Icons.event_outlined, size: 12, color: AppColors.textMuted),
+                const SizedBox(width: 3),
+                Text('Follow-up: ${AppFormatters.formatDate(item.followUpDate)}', style: AppTypography.caption),
+              ],
+            ),
           ),
-          trailing: Chip(
-            label: Text(item.priorityDisplay ?? item.priority, style: const TextStyle(fontSize: 11)),
-            backgroundColor: priorityBackgroundColor(item.priority),
+          trailing: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(
+              color: priorityBackgroundColor(item.priority),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Text(
+              priorityLabel,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: priorityTextColor(item.priority),
+              ),
+            ),
           ),
         );
       },
@@ -235,44 +355,141 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   }
 
   Widget _remindersTab() {
-    if (_reminders.isEmpty) return const Center(child: Text('No reminders yet'));
+    if (_reminders.isEmpty) {
+      return const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.notifications_outlined, size: 36, color: AppColors.textMuted),
+            SizedBox(height: 8),
+            Text('No reminders found', style: AppTypography.itemSubtitle),
+          ],
+        ),
+      );
+    }
     return ListView.separated(
       padding: const EdgeInsets.all(16),
       itemCount: _reminders.length,
-      separatorBuilder: (_, __) => const Divider(),
+      separatorBuilder: (context, index) => const Divider(height: 1, color: AppColors.border),
       itemBuilder: (_, i) {
         final r = _reminders[i];
+        final isCorp = r.type == 'CORPORATE';
         return ListTile(
+          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
           leading: CircleAvatar(
-            backgroundColor: r.type == 'CORPORATE' ? Colors.blue.shade100 : Colors.purple.shade100,
+            radius: 18,
+            backgroundColor: isCorp ? const Color(0xFFEFF6FF) : const Color(0xFFFAF5FF),
             child: Icon(
-              r.type == 'CORPORATE' ? Icons.business : Icons.person,
-              color: r.type == 'CORPORATE' ? Colors.blue : Colors.purple,
-              size: 20,
+              isCorp ? Icons.business : Icons.person,
+              color: isCorp ? const Color(0xFF2563EB) : const Color(0xFF9333EA),
+              size: 18,
             ),
           ),
-          title: Text(r.eventName, style: const TextStyle(fontWeight: FontWeight.w600)),
-          subtitle: Text(
-            '${AppFormatters.formatDate(r.date)} at ${AppFormatters.formatTime(r.time)}'
-            '${r.description.isNotEmpty ? '\n${r.description}' : ''}',
+          title: Text(r.eventName, style: AppTypography.itemTitle),
+          subtitle: Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.schedule_outlined, size: 12, color: AppColors.textMuted),
+                    const SizedBox(width: 4),
+                    Text(
+                      '${AppFormatters.formatDate(r.date)} at ${AppFormatters.formatTime(r.time)}',
+                      style: AppTypography.caption,
+                    ),
+                  ],
+                ),
+                if (r.description.isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Text(r.description, style: AppTypography.caption, maxLines: 1, overflow: TextOverflow.ellipsis),
+                ],
+              ],
+            ),
           ),
-          trailing: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Chip(
-                label: Text(r.priority.replaceAll(' Priority', ''), style: const TextStyle(fontSize: 10)),
-                backgroundColor: priorityBackgroundColor(r.priority),
-              ),
-              IconButton(
-                icon: const Icon(Icons.edit, color: Colors.blue),
-                onPressed: () => _showReminderModal(existing: r),
-              ),
-              IconButton(
-                icon: const Icon(Icons.delete, color: Colors.red),
-                onPressed: () => _deleteReminder(r.id),
-              ),
-            ],
-          ),
+          trailing: MediaQuery.sizeOf(context).width < 500
+              ? Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
+                      decoration: BoxDecoration(
+                        color: priorityBackgroundColor(r.priority),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        r.priority.replaceAll(' Priority', ''),
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          color: priorityTextColor(r.priority),
+                        ),
+                      ),
+                    ),
+                    PopupMenuButton<String>(
+                      icon: const Icon(Icons.more_vert, size: 18, color: AppColors.textSecondary),
+                      padding: EdgeInsets.zero,
+                      onSelected: (val) {
+                        if (val == 'edit') _showReminderModal(existing: r);
+                        if (val == 'delete') _deleteReminder(r.id);
+                      },
+                      itemBuilder: (ctx) => [
+                        const PopupMenuItem(
+                          value: 'edit',
+                          child: Row(
+                            children: [
+                              Icon(Icons.edit_outlined, size: 16, color: Color(0xFF2563EB)),
+                              SizedBox(width: 8),
+                              Text('Edit'),
+                            ],
+                          ),
+                        ),
+                        const PopupMenuItem(
+                          value: 'delete',
+                          child: Row(
+                            children: [
+                              Icon(Icons.delete_outline, size: 16, color: Color(0xFFDC2626)),
+                              SizedBox(width: 8),
+                              Text('Delete', style: TextStyle(color: Color(0xFFDC2626))),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                )
+              : Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: priorityBackgroundColor(r.priority),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        r.priority.replaceAll(' Priority', ''),
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          color: priorityTextColor(r.priority),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    IconButton(
+                      icon: const Icon(Icons.edit_outlined, size: 18, color: Color(0xFF2563EB)),
+                      tooltip: 'Edit Reminder',
+                      onPressed: () => _showReminderModal(existing: r),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.delete_outline, size: 18, color: Color(0xFFDC2626)),
+                      tooltip: 'Delete Reminder',
+                      onPressed: () => _deleteReminder(r.id),
+                    ),
+                  ],
+                ),
         );
       },
     );
@@ -286,7 +503,13 @@ class _ProfileInfoPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isAdmin = employee.role.toLowerCase() == 'admin';
     return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: const BorderSide(color: AppColors.border),
+      ),
       child: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
@@ -295,29 +518,58 @@ class _ProfileInfoPanel extends StatelessWidget {
             Row(
               children: [
                 CircleAvatar(
-                  radius: 32,
+                  radius: 30,
+                  backgroundColor: AppColors.primaryGreen.withValues(alpha: 0.12),
                   child: Text(
                     employee.name.split(' ').map((p) => p[0]).take(2).join(),
-                    style: const TextStyle(fontSize: 20),
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.primaryGreen,
+                    ),
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 14),
                 Expanded(
-                  child: Text(employee.name,
-                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(employee.name, style: AppTypography.itemTitle),
+                      const SizedBox(height: 4),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                        decoration: BoxDecoration(
+                          color: isAdmin ? const Color(0xFFEFF6FF) : const Color(0xFFECFDF5),
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(
+                            color: isAdmin ? const Color(0xFFBFDBFE) : const Color(0xFFA7F3D0),
+                          ),
+                        ),
+                        child: Text(
+                          employee.role.toUpperCase(),
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.3,
+                            color: isAdmin ? const Color(0xFF1D4ED8) : const Color(0xFF047857),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
-            const SizedBox(height: 24),
-            const Text('Main info', style: TextStyle(fontWeight: FontWeight.w600)),
-            const SizedBox(height: 12),
+            const SizedBox(height: 22),
+            const Text('MAIN INFO', style: AppTypography.overline),
+            const SizedBox(height: 10),
             _infoField('Gender', employee.genderDisplay),
             _infoField('Birthday', AppFormatters.formatDate(employee.dob)),
-            const SizedBox(height: 20),
-            const Text('Contact Info', style: TextStyle(fontWeight: FontWeight.w600)),
-            const SizedBox(height: 12),
+            const SizedBox(height: 18),
+            const Text('CONTACT INFO', style: AppTypography.overline),
+            const SizedBox(height: 10),
             _infoField('Email', employee.email),
-            _infoField('Mobile', employee.mobileNo),
+            _infoField('Mobile', employee.mobileNo.isNotEmpty ? employee.mobileNo : 'Not provided'),
           ],
         ),
       ),
@@ -326,19 +578,27 @@ class _ProfileInfoPanel extends StatelessWidget {
 
   Widget _infoField(String label, String value) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.only(bottom: 10),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
+          Text(label, style: AppTypography.captionSemibold),
           const SizedBox(height: 4),
-          TextFormField(
-            initialValue: value,
-            readOnly: true,
-            decoration: InputDecoration(
-              filled: true,
-              fillColor: Colors.grey.shade50,
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF8FAFC),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: Text(
+              value,
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                color: AppColors.textPrimary,
+              ),
             ),
           ),
         ],

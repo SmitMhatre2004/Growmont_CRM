@@ -1,14 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/theme/app_theme.dart';
 import '../../features/auth/auth_provider.dart';
 import 'app_sidebar.dart';
 
 class AppShell extends ConsumerStatefulWidget {
-  const AppShell({super.key, required this.child});
+  const AppShell({super.key, required this.navigationShell});
 
-  final Widget child;
+  final StatefulNavigationShell navigationShell;
 
   @override
   ConsumerState<AppShell> createState() => _AppShellState();
@@ -20,22 +22,47 @@ class _AppShellState extends ConsumerState<AppShell> {
   @override
   Widget build(BuildContext context) {
     final user = ref.watch(authProvider).user;
+    final isSidebarCollapsed = ref.watch(sidebarCollapsedProvider);
     final isWide = MediaQuery.sizeOf(context).width >= 768;
 
     if (isWide) {
-      return Scaffold(
-        body: Row(
-          children: [
-            AppSidebar(isCompact: false, onNavigate: () {}),
-            Expanded(
-              child: Column(
-                children: [
-                  _DesktopNavbar(userName: user?.name ?? 'User', initials: user?.initials ?? 'U'),
-                  Expanded(child: widget.child),
-                ],
-              ),
+      return CallbackShortcuts(
+        bindings: {
+          const SingleActivator(LogicalKeyboardKey.keyB, control: true): () {
+            ref.read(sidebarCollapsedProvider.notifier).update((v) => !v);
+          },
+        },
+        child: Focus(
+          autofocus: true,
+          child: Scaffold(
+            backgroundColor: AppColors.background,
+            body: Row(
+              children: [
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 250),
+                  curve: Curves.easeInOutCubic,
+                  width: isSidebarCollapsed ? 80 : 220,
+                  clipBehavior: Clip.hardEdge,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    border: Border(
+                      right: BorderSide(color: Colors.grey.shade200, width: 1),
+                    ),
+                  ),
+                  child: AppSidebar(
+                    isCompact: isSidebarCollapsed,
+                    onNavigate: () {},
+                  ),
+                ),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 30, left: 16, right: 16),
+                    child: ClipRect(child: widget.navigationShell),
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       );
     }
@@ -43,9 +70,33 @@ class _AppShellState extends ConsumerState<AppShell> {
     return Scaffold(
       key: _scaffoldKey,
       appBar: AppBar(
-        title: Image.asset('assets/logo.svg', height: 32, errorBuilder: (_, __, ___) {
-          return const Text('Growmont', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF2D8A4E)));
-        }),
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 28,
+              height: 28,
+              decoration: BoxDecoration(
+                color: AppColors.primaryGreen.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: const Icon(
+                Icons.trending_up_rounded,
+                color: AppColors.primaryGreen,
+                size: 18,
+              ),
+            ),
+            const SizedBox(width: 8),
+            const Text(
+              'Growmont',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+                color: AppColors.primaryGreen,
+              ),
+            ),
+          ],
+        ),
         actions: [
           IconButton(
             icon: CircleAvatar(
@@ -56,59 +107,17 @@ class _AppShellState extends ConsumerState<AppShell> {
                 style: const TextStyle(color: Colors.white, fontSize: 12),
               ),
             ),
-            onPressed: () => context.push('/profile'),
+            onPressed: () => context.go('/profile'),
           ),
         ],
       ),
       drawer: Drawer(
         child: AppSidebar(
-          isCompact: true,
+          isCompact: false,
           onNavigate: () => _scaffoldKey.currentState?.closeDrawer(),
         ),
       ),
-      body: widget.child,
-    );
-  }
-}
-
-class _DesktopNavbar extends StatelessWidget {
-  const _DesktopNavbar({required this.userName, required this.initials});
-
-  final String userName;
-  final String initials;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 64,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.end,
-        children: [
-          InkWell(
-            onTap: () => context.push('/profile'),
-            borderRadius: BorderRadius.circular(24),
-            child: Padding(
-              padding: const EdgeInsets.all(8),
-              child: Row(
-                children: [
-                  CircleAvatar(
-                    backgroundColor: const Color(0xFF6366F1),
-                    child: Text(initials, style: const TextStyle(color: Colors.white)),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(userName, style: const TextStyle(fontWeight: FontWeight.w500)),
-                  const Icon(Icons.keyboard_arrow_down),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
+      body: widget.navigationShell,
     );
   }
 }

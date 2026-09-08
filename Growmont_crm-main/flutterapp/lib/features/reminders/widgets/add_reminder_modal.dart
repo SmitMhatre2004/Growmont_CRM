@@ -101,24 +101,39 @@ class _AddReminderModalState extends ConsumerState<AddReminderModal> {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
-      child: DraggableScrollableSheet(
-        initialChildSize: 0.9,
-        expand: false,
-        builder: (_, controller) => Material(
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
+      backgroundColor: Colors.white,
+      surfaceTintColor: Colors.transparent,
+      insetPadding: const EdgeInsets.symmetric(
+        horizontal: 24.0,
+        vertical: 24.0,
+      ),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 550),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24.0),
           child: Form(
             key: _formKey,
-            child: ListView(
-              controller: controller,
-              padding: const EdgeInsets.all(16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
                   children: [
-                    Text(widget.existing != null ? 'Edit Reminder' : 'Add Reminder',
-                        style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                    Text(
+                      widget.existing != null ? 'Edit Reminder' : 'Add Reminder',
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF111827),
+                      ),
+                    ),
                     const Spacer(),
-                    IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.close)),
+                    IconButton(
+                      onPressed: () => Navigator.pop(context),
+                      icon: const Icon(Icons.close, color: Color(0xFF6B7280)),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 16),
@@ -127,17 +142,18 @@ class _AddReminderModalState extends ConsumerState<AddReminderModal> {
                   decoration: const InputDecoration(labelText: 'Event Name *'),
                   validator: (v) => v == null || v.isEmpty ? 'Required' : null,
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 16),
                 DropdownButtonFormField<String>(
-                  value: _type,
+                  initialValue: _type,
                   decoration: const InputDecoration(labelText: 'Type'),
                   items: reminderTypeChoices
                       .map((c) => DropdownMenuItem(value: c.$1, child: Text(c.$2)))
                       .toList(),
                   onChanged: (v) => setState(() => _type = v!),
                 ),
+                const SizedBox(height: 16),
                 DropdownButtonFormField<String>(
-                  value: _priority,
+                  initialValue: _priority,
                   decoration: const InputDecoration(labelText: 'Priority'),
                   items: const [
                     DropdownMenuItem(value: 'HIGH', child: Text('High Priority')),
@@ -146,10 +162,12 @@ class _AddReminderModalState extends ConsumerState<AddReminderModal> {
                   ],
                   onChanged: (v) => setState(() => _priority = v!),
                 ),
+                const SizedBox(height: 12),
                 ListTile(
+                  contentPadding: EdgeInsets.zero,
                   title: const Text('Date *'),
                   subtitle: Text(AppFormatters.formatDate(AppFormatters.toApiDate(_date))),
-                  trailing: const Icon(Icons.calendar_today),
+                  trailing: const Icon(Icons.calendar_today, size: 18),
                   onTap: () async {
                     final d = await showDatePicker(
                       context: context,
@@ -161,18 +179,20 @@ class _AddReminderModalState extends ConsumerState<AddReminderModal> {
                   },
                 ),
                 ListTile(
+                  contentPadding: EdgeInsets.zero,
                   title: const Text('Time *'),
                   subtitle: Text(_time.format(context)),
-                  trailing: const Icon(Icons.access_time),
+                  trailing: const Icon(Icons.access_time, size: 18),
                   onTap: () async {
                     final t = await showTimePicker(context: context, initialTime: _time);
                     if (t != null) setState(() => _time = t);
                   },
                 ),
                 ListTile(
+                  contentPadding: EdgeInsets.zero,
                   title: const Text('End Time (optional)'),
                   subtitle: Text(_endTime?.format(context) ?? 'Not set'),
-                  trailing: const Icon(Icons.schedule),
+                  trailing: const Icon(Icons.schedule, size: 18),
                   onTap: () async {
                     final t = await showTimePicker(
                       context: context,
@@ -181,19 +201,31 @@ class _AddReminderModalState extends ConsumerState<AddReminderModal> {
                     if (t != null) setState(() => _endTime = t);
                   },
                 ),
+                const SizedBox(height: 12),
                 TextFormField(
                   controller: _description,
                   maxLines: 3,
                   decoration: const InputDecoration(labelText: 'Description'),
                 ),
+                const SizedBox(height: 12),
                 SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
                   title: const Text('Repeat Reminder'),
                   value: _repeatReminder,
-                  onChanged: (v) => setState(() => _repeatReminder = v),
+                  onChanged: (v) {
+                    setState(() {
+                      _repeatReminder = v;
+                      if (v && _repeatType == 'NONE') {
+                        _repeatType = 'DAILY';
+                      }
+                    });
+                  },
                 ),
                 if (_repeatReminder) ...[
+                  const SizedBox(height: 12),
                   DropdownButtonFormField<String>(
-                    value: _repeatType,
+                    key: ValueKey('repeat_type_$_repeatType'),
+                    initialValue: _repeatType == 'NONE' ? 'DAILY' : _repeatType,
                     decoration: const InputDecoration(labelText: 'Repeat Type'),
                     items: repeatTypeChoices
                         .where((c) => c.$1 != 'NONE')
@@ -201,7 +233,8 @@ class _AddReminderModalState extends ConsumerState<AddReminderModal> {
                         .toList(),
                     onChanged: (v) => setState(() => _repeatType = v!),
                   ),
-                  if (_repeatType == 'WEEKLY')
+                  if (_repeatType == 'WEEKLY') ...[
+                    const SizedBox(height: 12),
                     Wrap(
                       spacing: 8,
                       children: weekDays.map((day) {
@@ -221,16 +254,22 @@ class _AddReminderModalState extends ConsumerState<AddReminderModal> {
                         );
                       }).toList(),
                     ),
+                  ],
                   SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
                     title: const Text('Repeat Every Day'),
                     value: _repeatEveryDay,
                     onChanged: (v) => setState(() => _repeatEveryDay = v),
                   ),
                 ],
                 const SizedBox(height: 24),
-                FilledButton(
-                  onPressed: _loading ? null : _submit,
-                  child: Text(_loading ? 'Saving...' : 'Save Reminder'),
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: FilledButton(
+                    onPressed: _loading ? null : _submit,
+                    child: Text(_loading ? 'Saving...' : 'Save Reminder'),
+                  ),
                 ),
               ],
             ),
