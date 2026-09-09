@@ -24,10 +24,7 @@ class ApiService {
 
   Future<void> logout(String refreshToken, String accessToken) async {
     try {
-      await _client.post(
-        Endpoints.logout,
-        data: {'refresh': refreshToken},
-      );
+      await _client.post(Endpoints.logout, data: {'refresh': refreshToken});
     } catch (_) {}
   }
 
@@ -70,8 +67,11 @@ class ApiService {
   }
 
   Future<Employee> updateEmployee(int id, FormData formData) async {
-    final response =
-        await _client.upload(Endpoints.employeeUpdate(id), formData, method: 'PUT');
+    final response = await _client.upload(
+      Endpoints.employeeUpdate(id),
+      formData,
+      method: 'PUT',
+    );
     return Employee.fromJson(response.data as Map<String, dynamic>);
   }
 
@@ -108,12 +108,21 @@ class ApiService {
   }
 
   Future<Interaction> createInteraction(Map<String, dynamic> data) async {
-    final response = await _client.post(Endpoints.createInteraction, data: data);
+    final response = await _client.post(
+      Endpoints.createInteraction,
+      data: data,
+    );
     return Interaction.fromJson(response.data as Map<String, dynamic>);
   }
 
-  Future<Interaction> updateInteraction(int id, Map<String, dynamic> data) async {
-    final response = await _client.put(Endpoints.updateInteraction(id), data: data);
+  Future<Interaction> updateInteraction(
+    int id,
+    Map<String, dynamic> data,
+  ) async {
+    final response = await _client.put(
+      Endpoints.updateInteraction(id),
+      data: data,
+    );
     return Interaction.fromJson(response.data as Map<String, dynamic>);
   }
 
@@ -134,7 +143,10 @@ class ApiService {
   }
 
   Future<Reminder> updateReminder(int id, Map<String, dynamic> data) async {
-    final response = await _client.put(Endpoints.updateReminder(id), data: data);
+    final response = await _client.put(
+      Endpoints.updateReminder(id),
+      data: data,
+    );
     return Reminder.fromJson(response.data as Map<String, dynamic>);
   }
 
@@ -148,10 +160,7 @@ class ApiService {
   }) async {
     await _client.post(
       Endpoints.changePassword,
-      data: {
-        'old_password': oldPassword,
-        'new_password': newPassword,
-      },
+      data: {'old_password': oldPassword, 'new_password': newPassword},
     );
   }
 

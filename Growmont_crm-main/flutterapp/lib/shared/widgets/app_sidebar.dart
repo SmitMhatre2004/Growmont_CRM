@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/theme/app_theme.dart';
 import '../../features/auth/auth_provider.dart';
 
 /// Global provider for sidebar collapsed state on desktop/wide screens.
@@ -38,26 +39,36 @@ class AppSidebar extends ConsumerWidget {
 
         // t interpolates continuously: 0.0 when collapsed (width <= 80px) to 1.0 when expanded (width >= 195px).
         // This drives the physical, dynamic movement of icons across the sidebar during width transitions.
-        final double t =
-            ((constraints.maxWidth - 80) / (195 - 80)).clamp(0.0, 1.0);
+        final double t = ((constraints.maxWidth - 80) / (195 - 80)).clamp(
+          0.0,
+          1.0,
+        );
 
         // Exact horizontal centering calculations when collapsed:
         // Use a fixed collapsed target width (80.0px in standard layout, or 79.0px if 1px border is applied by AppShell)
         // so icons glide directly and monotonically to their centered position during collapse/expand,
         // without swinging to the right and then left.
-        final bool isAppShellInset = (constraints.maxWidth <= 79.0) ||
+        final bool isAppShellInset =
+            (constraints.maxWidth <= 79.0) ||
             ((constraints.maxWidth - 194.0).abs() < 1.0);
         final double collapsedTargetWidth = isAppShellInset ? 79.0 : 80.0;
 
-        // Nav item: card horizontal margin is 12 (ListView 4 + item 8), border is 1. Icon size is 21.
-        // Center X = 13 + navIconLeftCollapsed + 10.5 = collapsedTargetWidth / 2 => (collapsedTargetWidth - 47.0) / 2.
-        final double navIconLeftCollapsed = (collapsedTargetWidth - 47.0) / 2;
-        // Avatar: card horizontal margin is 10, border is 1. Avatar diameter is 30 (radius 15).
-        // Center X = 11 + avatarLeftCollapsed + 15.0 = collapsedTargetWidth / 2 => (collapsedTargetWidth - 52.0) / 2.
-        final double avatarLeftCollapsed = (collapsedTargetWidth - 52.0) / 2;
-        // Logout: card horizontal margin is 10, border is 1. Icon size is 18.
-        // Center X = 11 + logoutLeftCollapsed + 9.0 = collapsedTargetWidth / 2 => (collapsedTargetWidth - 40.0) / 2.
-        final double logoutLeftCollapsed = (collapsedTargetWidth - 40.0) / 2;
+        // Each glyph is centred by measuring in from the sidebar edge: the
+        // card's own inset (its horizontal padding + 1px border) plus half the
+        // glyph. These are derived from the spacing tokens rather than written
+        // as literals, so changing a token cannot silently decentre the rail.
+        //
+        // Nav item sits inside the ListView's padding as well as its own.
+        const double navInset = AppSpacing.xs + AppSpacing.sm + 1; // 4 + 8 + 1
+        const double cardInset = AppSpacing.md + 1; // 12 + 1
+
+        final double navIconLeftCollapsed =
+            collapsedTargetWidth / 2 - navInset - AppSizing.iconLg / 2;
+        // Avatar diameter is 30 (radius 15).
+        final double avatarLeftCollapsed =
+            collapsedTargetWidth / 2 - cardInset - 15.0;
+        final double logoutLeftCollapsed =
+            collapsedTargetWidth / 2 - cardInset - AppSizing.iconMd / 2;
 
         final String initials = user?.initials ?? 'U';
         final String userName = user?.name ?? 'User';
@@ -95,8 +106,8 @@ class AppSidebar extends ConsumerWidget {
 
         // Growmont Theme Colors - Side Nav Color: #0f4a31
         final Color bgColor = isDarkMode
-            ? const Color(0xFF092E1E)
-            : const Color(0xFF0F4A31);
+            ? AppColors.sidebarBgDeep
+            : AppColors.sidebarBg;
         final Color textColor = Colors.white;
         final Color subTextColor = Colors.white70;
         final Color activeColor = Colors.white;
@@ -118,13 +129,7 @@ class AppSidebar extends ConsumerWidget {
                 width: 1.0,
               ),
             ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.04),
-                blurRadius: 3,
-                offset: const Offset(0, 1),
-              ),
-            ],
+            boxShadow: AppShadows.xs,
           ),
           child: Tooltip(
             message: isCollapsed ? 'Expand sidebar' : 'Collapse sidebar',
@@ -135,8 +140,8 @@ class AppSidebar extends ConsumerWidget {
                 onTap: () => _toggle(ref),
                 child: Padding(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 10,
+                    horizontal: AppSpacing.md,
+                    vertical: AppSpacing.md,
                   ),
                   child: AspectRatio(
                     aspectRatio: 1600 / 622,
@@ -155,12 +160,12 @@ class AppSidebar extends ConsumerWidget {
         final bool isProfileActive = location.startsWith('/profile');
 
         final Widget profileCard = Padding(
-          padding: const EdgeInsets.only(bottom: 12),
+          padding: const EdgeInsets.only(bottom: AppSpacing.md),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Divider(height: 1, color: dividerColor),
-              const SizedBox(height: 8),
+              const SizedBox(height: AppSpacing.sm),
               if (onToggleTheme != null)
                 Tooltip(
                   message: isDarkMode ? 'Light mode' : 'Dark mode',
@@ -171,14 +176,14 @@ class AppSidebar extends ConsumerWidget {
                           ? Icons.light_mode_outlined
                           : Icons.dark_mode_outlined,
                       color: subTextColor,
-                      size: 20,
+                      size: AppSizing.iconLg,
                     ),
                     onPressed: onToggleTheme,
                   ),
                 ),
               // Profile Info Card
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 10),
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 200),
                   curve: Curves.easeOutCubic,
@@ -186,7 +191,7 @@ class AppSidebar extends ConsumerWidget {
                     color: isProfileActive
                         ? activeBgColor
                         : (t > 0.5 ? profileCardBg : Colors.transparent),
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(AppRadius.lg),
                     border: Border.all(
                       color: isProfileActive
                           ? activeBorderColor
@@ -196,9 +201,9 @@ class AppSidebar extends ConsumerWidget {
                   ),
                   child: Material(
                     color: Colors.transparent,
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(AppRadius.lg),
                     child: InkWell(
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(AppRadius.lg),
                       onTap: () {
                         context.go('/profile');
                         onNavigate?.call();
@@ -215,13 +220,13 @@ class AppSidebar extends ConsumerWidget {
                                 children: [
                                   CircleAvatar(
                                     radius: 15,
-                                    backgroundColor: const Color(0xFF6366F1),
+                                    backgroundColor: AppAccents.indigoBase,
                                     child: Text(
                                       initials,
                                       style: const TextStyle(
                                         color: Colors.white,
                                         fontSize: 11,
-                                        fontWeight: FontWeight.bold,
+                                        fontWeight: FontWeight.w700,
                                       ),
                                     ),
                                   ),
@@ -232,7 +237,7 @@ class AppSidebar extends ConsumerWidget {
                                       width: 8,
                                       height: 8,
                                       decoration: BoxDecoration(
-                                        color: const Color(0xFF4ADE80),
+                                        color: AppAccents.greenBright,
                                         shape: BoxShape.circle,
                                         border: Border.all(
                                           color: bgColor,
@@ -288,7 +293,7 @@ class AppSidebar extends ConsumerWidget {
                                   opacity: t,
                                   child: const Icon(
                                     Icons.chevron_right,
-                                    size: 16,
+                                    size: AppSizing.iconSm,
                                     color: Colors.white54,
                                   ),
                                 ),
@@ -300,15 +305,15 @@ class AppSidebar extends ConsumerWidget {
                   ),
                 ),
               ),
-              const SizedBox(height: 6),
+              const SizedBox(height: AppSpacing.sm),
               // Separated Logout Button below Profile Info
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 10),
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
                 child: Material(
                   color: Colors.transparent,
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(AppRadius.md),
                   child: InkWell(
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(AppRadius.md),
                     onTap: () async {
                       await ref.read(authProvider.notifier).logout();
                       if (context.mounted) context.go('/');
@@ -317,10 +322,10 @@ class AppSidebar extends ConsumerWidget {
                     child: Container(
                       height: 38,
                       decoration: BoxDecoration(
-                        color: Colors.red.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(8),
+                        color: AppColors.danger.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(AppRadius.md),
                         border: Border.all(
-                          color: Colors.red.withValues(alpha: 0.25),
+                          color: AppColors.danger.withValues(alpha: 0.25),
                         ),
                       ),
                       child: Stack(
@@ -331,8 +336,8 @@ class AppSidebar extends ConsumerWidget {
                             left: lerpDouble(logoutLeftCollapsed, 12.0, t)!,
                             child: const Icon(
                               Icons.logout_rounded,
-                              size: 18,
-                              color: Colors.redAccent,
+                              size: AppSizing.iconMd,
+                              color: AppColors.danger,
                             ),
                           ),
                           // Logout text label fading in
@@ -347,9 +352,9 @@ class AppSidebar extends ConsumerWidget {
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: TextStyle(
-                                    fontSize: 12.5,
+                                    fontSize: 12,
                                     fontWeight: FontWeight.w600,
-                                    color: Colors.redAccent,
+                                    color: AppColors.danger,
                                   ),
                                 ),
                               ),
@@ -371,12 +376,12 @@ class AppSidebar extends ConsumerWidget {
               child: Column(
                 children: [
                   topSection,
-                  const SizedBox(height: 8),
+                  const SizedBox(height: AppSpacing.sm),
                   Expanded(
                     child: ListView(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 4,
-                        vertical: 6,
+                        horizontal: AppSpacing.xs,
+                        vertical: AppSpacing.sm,
                       ),
                       children: items.map((item) {
                         final isActive =
@@ -430,18 +435,21 @@ class AppSidebar extends ConsumerWidget {
     final double nudge = isActive ? (8.0 * t) : 0.0;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 8),
+      padding: const EdgeInsets.symmetric(
+        vertical: AppSpacing.xxs,
+        horizontal: AppSpacing.sm,
+      ),
       child: Tooltip(
         message: t < 0.5 ? item.label : '',
         waitDuration: const Duration(milliseconds: 150),
         preferBelow: false,
-        margin: const EdgeInsets.only(left: 50),
+        margin: const EdgeInsets.only(left: AppSpacing.huge),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
           curve: Curves.easeOutCubic,
           decoration: BoxDecoration(
             color: isActive ? activeBg : Colors.transparent,
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(AppRadius.lg),
             border: Border.all(
               color: isActive ? activeBorderColor : Colors.transparent,
               width: 1,
@@ -449,9 +457,9 @@ class AppSidebar extends ConsumerWidget {
           ),
           child: Material(
             color: Colors.transparent,
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(AppRadius.lg),
             child: InkWell(
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(AppRadius.lg),
               onTap: onTap,
               child: SizedBox(
                 height: 44,
@@ -467,27 +475,31 @@ class AppSidebar extends ConsumerWidget {
                         width: 3.5,
                         height: isActive ? 18 : 0,
                         decoration: BoxDecoration(
-                          color: const Color(0xFF4ADE80), // brandGreen
-                          borderRadius: BorderRadius.circular(2),
+                          color: AppAccents.greenBright, // brandGreen
+                          borderRadius: BorderRadius.circular(AppRadius.xs),
                         ),
                       ),
                     ),
                     // Nav Icon that actually, physically moves from center (collapsed) to left (expanded),
                     // and smoothly nudges to the right when active
                     AnimatedPositioned(
-                      duration: t < 1.0 ? Duration.zero : const Duration(milliseconds: 200),
+                      duration: t < 1.0
+                          ? Duration.zero
+                          : const Duration(milliseconds: 200),
                       curve: Curves.easeOutCubic,
                       left: iconLeft + nudge,
                       child: Icon(
                         item.icon,
                         color: isActive ? activeColor : inactiveColor,
-                        size: 21,
+                        size: AppSizing.iconLg,
                       ),
                     ),
                     // Text label fading in as sidebar expands, and smoothly nudging to the right when active
                     if (t > 0.05)
                       AnimatedPositioned(
-                        duration: t < 1.0 ? Duration.zero : const Duration(milliseconds: 200),
+                        duration: t < 1.0
+                            ? Duration.zero
+                            : const Duration(milliseconds: 200),
                         curve: Curves.easeOutCubic,
                         left: 46.0 + nudge,
                         right: 10,
@@ -501,8 +513,9 @@ class AppSidebar extends ConsumerWidget {
                               fontFamily: Theme.of(
                                 context,
                               ).textTheme.bodyMedium?.fontFamily,
-                              fontWeight:
-                                  isActive ? FontWeight.w600 : FontWeight.w500,
+                              fontWeight: isActive
+                                  ? FontWeight.w600
+                                  : FontWeight.w500,
                               color: isActive ? activeColor : textColor,
                             ),
                             child: Text(

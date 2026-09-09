@@ -8,11 +8,7 @@ import '../../core/providers.dart';
 import '../../core/storage/token_storage.dart';
 
 class AuthState {
-  const AuthState({
-    this.user,
-    this.accessToken,
-    this.isLoading = true,
-  });
+  const AuthState({this.user, this.accessToken, this.isLoading = true});
 
   final AppUser? user;
   final String? accessToken;
@@ -43,7 +39,9 @@ class AuthNotifier extends Notifier<AuthState> {
     _storage = ref.read(tokenStorageProvider);
 
     _authSubscription?.cancel();
-    _authSubscription = FirebaseAuth.instance.authStateChanges().listen(_onAuthStateChanged);
+    _authSubscription = FirebaseAuth.instance.authStateChanges().listen(
+      _onAuthStateChanged,
+    );
 
     ref.onDispose(() {
       _authSubscription?.cancel();
@@ -62,7 +60,11 @@ class AuthNotifier extends Notifier<AuthState> {
       final cachedToken = await _storage.getAccessToken();
       if (cachedToken == 'dev-bypass-token' && cachedUser != null) {
         _isBypassed = true;
-        state = AuthState(user: cachedUser, accessToken: cachedToken, isLoading: false);
+        state = AuthState(
+          user: cachedUser,
+          accessToken: cachedToken,
+          isLoading: false,
+        );
         return;
       }
       await _storage.clear();
@@ -82,7 +84,11 @@ class AuthNotifier extends Notifier<AuthState> {
 
       final docData = doc.data() ?? {};
       final roleStr = roleClaim ?? docData['role'] as String? ?? 'EMPLOYEE';
-      final name = docData['name'] as String? ?? firebaseUser.displayName ?? firebaseUser.email?.split('@').first ?? 'User';
+      final name =
+          docData['name'] as String? ??
+          firebaseUser.displayName ??
+          firebaseUser.email?.split('@').first ??
+          'User';
       final avatar = docData['avatar_url'] as String? ?? firebaseUser.photoURL;
 
       final appUser = AppUser(
@@ -126,7 +132,9 @@ class AuthNotifier extends Notifier<AuthState> {
     final appUser = AppUser(
       id: role == UserRole.admin ? 'dev-admin' : 'dev-employee',
       name: role == UserRole.admin ? 'Dev Admin' : 'Dev Employee',
-      email: role == UserRole.admin ? 'admin@growmont.com' : 'employee@growmont.com',
+      email: role == UserRole.admin
+          ? 'admin@growmont.com'
+          : 'employee@growmont.com',
       avatar: null,
       role: role,
     );
@@ -217,4 +225,6 @@ class AuthNotifier extends Notifier<AuthState> {
   }
 }
 
-final authProvider = NotifierProvider<AuthNotifier, AuthState>(AuthNotifier.new);
+final authProvider = NotifierProvider<AuthNotifier, AuthState>(
+  AuthNotifier.new,
+);

@@ -36,17 +36,22 @@ class _TodoWidgetState extends ConsumerState<TodoWidget> {
 
   void _insertTimestamp() {
     final now = DateTime.now();
-    final dateStr = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')} ${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
+    final dateStr =
+        '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')} ${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
     final stamp = '\n[$dateStr] ';
     final sel = _controller.selection;
     if (sel.isValid && sel.start >= 0) {
       final current = _controller.text;
       final newText = current.replaceRange(sel.start, sel.end, stamp);
       _controller.text = newText;
-      _controller.selection = TextSelection.collapsed(offset: sel.start + stamp.length);
+      _controller.selection = TextSelection.collapsed(
+        offset: sel.start + stamp.length,
+      );
     } else {
       _controller.text = '${_controller.text}$stamp';
-      _controller.selection = TextSelection.collapsed(offset: _controller.text.length);
+      _controller.selection = TextSelection.collapsed(
+        offset: _controller.text.length,
+      );
     }
     _saveNotes(_controller.text);
   }
@@ -69,9 +74,12 @@ class _TodoWidgetState extends ConsumerState<TodoWidget> {
         title: const Text('Clear Sticky Notes?'),
         content: const Text('Are you sure you want to clear all sticky notes?'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
           FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            style: FilledButton.styleFrom(backgroundColor: AppColors.danger),
             onPressed: () {
               Navigator.pop(ctx);
               _controller.clear();
@@ -104,40 +112,54 @@ class _TodoWidgetState extends ConsumerState<TodoWidget> {
       children: [
         Row(
           children: [
-            Icon(Icons.note_alt_outlined, color: Colors.grey.shade800, size: 18),
-            const SizedBox(width: 6),
+            const Icon(
+              Icons.sticky_note_2_outlined,
+              color: Color(0xFFCA8A04),
+              size: AppSizing.iconMd,
+            ),
+            const SizedBox(width: AppSpacing.sm),
             const Text(
               'Sticky Notes',
-              style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
-                color: Colors.black87,
-              ),
+              style: AppTypography.sectionTitle,
             ),
             const Spacer(),
             Tooltip(
               message: 'Add Timestamp',
               child: InkWell(
                 onTap: _insertTimestamp,
-                borderRadius: BorderRadius.circular(4),
+                borderRadius: BorderRadius.circular(AppRadius.xs),
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                  child: Row(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.xs,
+                    vertical: AppSpacing.xxs,
+                  ),
+                  child: const Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.access_time, size: 14, color: AppColors.primaryGreen),
-                      const SizedBox(width: 2),
-                      Text('+Time', style: TextStyle(fontSize: 11, color: AppColors.primaryGreen, fontWeight: FontWeight.w600)),
+                      Icon(
+                        Icons.access_time,
+                        size: AppSizing.iconXs,
+                        color: Color(0xFFCA8A04),
+                      ),
+                      SizedBox(width: AppSpacing.xxs),
+                      Text(
+                        '+Time',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Color(0xFFCA8A04),
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                     ],
                   ),
                 ),
               ),
             ),
-            const SizedBox(width: 4),
+            const SizedBox(width: AppSpacing.xs),
             Tooltip(
               message: 'Copy Notes',
               child: IconButton(
-                icon: const Icon(Icons.copy_outlined, size: 15),
+                icon: const Icon(Icons.copy_outlined, size: AppSizing.iconXs),
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(minWidth: 26, minHeight: 26),
                 onPressed: _copyToClipboard,
@@ -146,7 +168,11 @@ class _TodoWidgetState extends ConsumerState<TodoWidget> {
             Tooltip(
               message: 'Clear Notes',
               child: IconButton(
-                icon: Icon(Icons.delete_outline, size: 15, color: Colors.red.shade400),
+                icon: const Icon(
+                  Icons.delete_outline,
+                  size: AppSizing.iconXs,
+                  color: AppColors.danger,
+                ),
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(minWidth: 26, minHeight: 26),
                 onPressed: _clearNotes,
@@ -154,27 +180,35 @@ class _TodoWidgetState extends ConsumerState<TodoWidget> {
             ),
           ],
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: AppSpacing.sm),
         TextField(
           controller: _controller,
           maxLines: 6,
-          style: const TextStyle(fontSize: 13),
+          style: const TextStyle(
+            fontSize: 13,
+            color: Color(0xFF292524),
+            height: 1.45,
+          ),
           decoration: InputDecoration(
             hintText: 'Write your notes here...',
+            hintStyle: TextStyle(
+              fontSize: 13,
+              color: const Color(0xFF854D0E).withValues(alpha: 0.6),
+            ),
             filled: true,
-            fillColor: Colors.white,
-            contentPadding: const EdgeInsets.all(10),
+            fillColor: const Color(0xFFFEF9C3),
+            contentPadding: const EdgeInsets.all(AppSpacing.md),
             border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(6),
-              borderSide: BorderSide(color: Colors.grey.shade300),
+              borderRadius: BorderRadius.circular(AppRadius.sm),
+              borderSide: const BorderSide(color: Color(0xFFFDE047)),
             ),
             enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(6),
-              borderSide: BorderSide(color: Colors.grey.shade300),
+              borderRadius: BorderRadius.circular(AppRadius.sm),
+              borderSide: const BorderSide(color: Color(0xFFFDE047)),
             ),
             focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(6),
-              borderSide: BorderSide(color: Colors.grey.shade500, width: 1.5),
+              borderRadius: BorderRadius.circular(AppRadius.sm),
+              borderSide: const BorderSide(color: Color(0xFFEAB308), width: 1.5),
             ),
           ),
           onChanged: _saveNotes,

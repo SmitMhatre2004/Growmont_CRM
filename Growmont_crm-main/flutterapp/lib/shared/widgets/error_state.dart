@@ -22,14 +22,14 @@ class ErrorState extends StatelessWidget {
   Widget build(BuildContext context) {
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(AppSpacing.xxl),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 42, color: AppColors.textMuted),
-            const SizedBox(height: 10),
+            Icon(icon, size: AppSizing.iconDisplay, color: AppColors.textMuted),
+            const SizedBox(height: AppSpacing.md),
             Text(title, style: AppTypography.itemTitle),
-            const SizedBox(height: 4),
+            const SizedBox(height: AppSpacing.xs),
             Text(
               message,
               textAlign: TextAlign.center,
@@ -38,10 +38,10 @@ class ErrorState extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
             ),
             if (onRetry != null) ...[
-              const SizedBox(height: 14),
+              const SizedBox(height: AppSpacing.lg),
               OutlinedButton.icon(
                 onPressed: onRetry,
-                icon: const Icon(Icons.refresh, size: 16),
+                icon: const Icon(Icons.refresh, size: AppSizing.iconSm),
                 label: const Text('Retry'),
               ),
             ],

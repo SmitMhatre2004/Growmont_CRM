@@ -45,11 +45,13 @@ List<({String label, double rupees})> monthlyRevenue(
     }
   }
 
-  return [for (final b in buckets) (label: b.label, rupees: totals[b.key] ?? 0)];
+  return [
+    for (final b in buckets) (label: b.label, rupees: totals[b.key] ?? 0),
+  ];
 }
 
 /// Blue to match the dashboard's chart palette.
-const _defaultBarColor = Color(0xFF2563EB);
+const _defaultBarColor = AppColors.info;
 
 /// Bar chart of booked revenue per month, shared by the dashboard and the
 /// employee detail screen.
@@ -83,10 +85,10 @@ class MonthlyRevenueChart extends StatelessWidget {
             children: [
               const Icon(
                 Icons.bar_chart_rounded,
-                size: 28,
+                size: AppSizing.iconXl,
                 color: AppColors.textMuted,
               ),
-              const SizedBox(height: 6),
+              const SizedBox(height: AppSpacing.sm),
               Text(
                 emptyMessage,
                 style: AppTypography.caption,
@@ -109,10 +111,8 @@ class MonthlyRevenueChart extends StatelessWidget {
           gridData: FlGridData(
             show: true,
             drawVerticalLine: false,
-            getDrawingHorizontalLine: (_) => const FlLine(
-              color: AppColors.border,
-              strokeWidth: 1,
-            ),
+            getDrawingHorizontalLine: (_) =>
+                const FlLine(color: AppColors.border, strokeWidth: 1),
           ),
           titlesData: FlTitlesData(
             topTitles: const AxisTitles(
@@ -130,7 +130,7 @@ class MonthlyRevenueChart extends StatelessWidget {
                   return Text(
                     compactRupees(value),
                     style: const TextStyle(
-                      fontSize: 9.5,
+                      fontSize: 11,
                       color: AppColors.textMuted,
                       fontWeight: FontWeight.w600,
                     ),
@@ -148,11 +148,11 @@ class MonthlyRevenueChart extends StatelessWidget {
                     return const SizedBox.shrink();
                   }
                   return Padding(
-                    padding: const EdgeInsets.only(top: 6),
+                    padding: const EdgeInsets.only(top: AppSpacing.sm),
                     child: Text(
                       series[i].label,
                       style: const TextStyle(
-                        fontSize: 10,
+                        fontSize: 11,
                         color: AppColors.textSecondary,
                         fontWeight: FontWeight.w600,
                       ),
@@ -160,6 +160,38 @@ class MonthlyRevenueChart extends StatelessWidget {
                   );
                 },
               ),
+            ),
+          ),
+          barTouchData: BarTouchData(
+            touchTooltipData: BarTouchTooltipData(
+              getTooltipColor: (_) => const Color(0xFF0F172A),
+              tooltipRoundedRadius: AppRadius.md,
+              tooltipPadding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.sm,
+                vertical: AppSpacing.xs,
+              ),
+              getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                final item = series[group.x.toInt()];
+                return BarTooltipItem(
+                  '${item.label}\n',
+                  const TextStyle(
+                    color: Color(0xFF94A3B8),
+                    fontWeight: FontWeight.w500,
+                    fontSize: 11,
+                    height: 1.3,
+                  ),
+                  children: [
+                    TextSpan(
+                      text: AppFormatters.formatAmount(rod.toY.toString()),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
+                );
+              },
             ),
           ),
           barGroups: [

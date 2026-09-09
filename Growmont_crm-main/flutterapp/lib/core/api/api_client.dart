@@ -10,8 +10,8 @@ class ApiClient {
   ApiClient({
     required TokenStorage tokenStorage,
     required LogoutCallback onUnauthorized,
-  })  : _tokenStorage = tokenStorage,
-        _onUnauthorized = onUnauthorized {
+  }) : _tokenStorage = tokenStorage,
+       _onUnauthorized = onUnauthorized {
     _dio = Dio(
       BaseOptions(
         baseUrl: AppConfig.baseUrl,
@@ -63,10 +63,9 @@ class ApiClient {
     if (refreshToken == null) return false;
 
     try {
-      final response = await Dio(BaseOptions(baseUrl: AppConfig.baseUrl)).post(
-        Endpoints.refresh,
-        data: {'refresh': refreshToken},
-      );
+      final response = await Dio(
+        BaseOptions(baseUrl: AppConfig.baseUrl),
+      ).post(Endpoints.refresh, data: {'refresh': refreshToken});
       final access = response.data['access'] as String;
       final user = await _tokenStorage.getUser();
       if (user == null) return false;
@@ -117,10 +116,7 @@ class ApiClient {
     );
   }
 
-  Future<Response<T>> delete<T>(
-    String path, {
-    bool requireAuth = true,
-  }) {
+  Future<Response<T>> delete<T>(String path, {bool requireAuth = true}) {
     return _dio.delete<T>(
       path,
       options: Options(extra: {'requireAuth': requireAuth}),
@@ -149,10 +145,6 @@ class ApiClient {
     String savePath, {
     Map<String, dynamic>? queryParameters,
   }) {
-    return _dio.download(
-      path,
-      savePath,
-      queryParameters: queryParameters,
-    );
+    return _dio.download(path, savePath, queryParameters: queryParameters);
   }
 }

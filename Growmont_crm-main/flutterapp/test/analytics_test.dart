@@ -133,7 +133,11 @@ void main() {
         ),
       );
 
-      final dropdownFinder = find.byType(DropdownButton<String>);
+      final dropdownFinder = find.byWidgetPredicate(
+        (w) =>
+            w is DropdownButton<String> &&
+            (w.value == 'Mutual Funds' || w.value == 'Life Insurance'),
+      );
       expect(dropdownFinder, findsOneWidget);
 
       final DropdownButton<String> initialDropdown = tester.widget(dropdownFinder);
@@ -185,7 +189,13 @@ void main() {
       await tester.tap(legendItemFinder);
       await tester.pumpAndSettle();
 
-      final DropdownButton<String> dropdown = tester.widget(find.byType(DropdownButton<String>));
+      final DropdownButton<String> dropdown = tester.widget(
+        find.byWidgetPredicate(
+          (w) =>
+              w is DropdownButton<String> &&
+              (w.value == 'Mutual Funds' || w.value == 'Life Insurance'),
+        ),
+      );
       expect(dropdown.value, 'Life Insurance');
     });
   });

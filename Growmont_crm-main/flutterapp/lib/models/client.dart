@@ -18,7 +18,8 @@ class Client {
       id: (docId ?? json['id'] ?? '').toString(),
       name: json['name'] as String? ?? '',
       contactNumber: json['contact_number'] as String? ?? '',
-      employeeIds: (json['employee_ids'] as List<dynamic>?)
+      employeeIds:
+          (json['employee_ids'] as List<dynamic>?)
               ?.map((e) => e.toString())
               .toList() ??
           [],
@@ -30,8 +31,8 @@ class Client {
   }
 
   Map<String, dynamic> toFirestore() => {
-        'name': name,
-        'contact_number': contactNumber,
-        'employee_ids': employeeIds,
-      };
+    'name': name,
+    'contact_number': contactNumber,
+    'employee_ids': employeeIds,
+  };
 }

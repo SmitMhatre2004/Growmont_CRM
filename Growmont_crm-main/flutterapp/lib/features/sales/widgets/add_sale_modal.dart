@@ -8,7 +8,12 @@ import '../../../models/sale.dart';
 import '../../../models/user.dart';
 
 class AddSaleModal extends ConsumerStatefulWidget {
-  const AddSaleModal({super.key, this.existing, this.currentUser, this.defaultProduct});
+  const AddSaleModal({
+    super.key,
+    this.existing,
+    this.currentUser,
+    this.defaultProduct,
+  });
 
   final Sale? existing;
   final AppUser? currentUser;
@@ -43,7 +48,11 @@ class _AddSaleModalState extends ConsumerState<AddSaleModal> {
     _scheme = TextEditingController(text: e?.scheme ?? '');
     _amount = TextEditingController(text: e?.amount ?? '');
     _remarks = TextEditingController(text: e?.remarks ?? '');
-    _product = e?.product ?? (widget.defaultProduct != null && widget.defaultProduct != 'ALL' ? widget.defaultProduct! : 'MF');
+    _product =
+        e?.product ??
+        (widget.defaultProduct != null && widget.defaultProduct != 'ALL'
+            ? widget.defaultProduct!
+            : 'MF');
     _frequency = e?.frequency ?? 'M';
     _salesRep = e?.salesRep ?? (_isEmployee ? widget.currentUser?.id : null);
     _isEmployee = widget.currentUser?.role == UserRole.employee;
@@ -57,10 +66,15 @@ class _AddSaleModalState extends ConsumerState<AddSaleModal> {
       if (mounted) {
         setState(() {
           _employees = list;
-          if (_salesRep == null || !_employees.any((emp) => emp.id == _salesRep)) {
+          if (_salesRep == null ||
+              !_employees.any((emp) => emp.id == _salesRep)) {
             if (_employees.isNotEmpty) {
-              final userInList = _employees.any((emp) => emp.id == widget.currentUser?.id);
-              _salesRep = userInList ? widget.currentUser?.id : _employees.first.id;
+              final userInList = _employees.any(
+                (emp) => emp.id == widget.currentUser?.id,
+              );
+              _salesRep = userInList
+                  ? widget.currentUser?.id
+                  : _employees.first.id;
             } else {
               _salesRep = null;
             }
@@ -113,7 +127,10 @@ class _AddSaleModalState extends ConsumerState<AddSaleModal> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to save: $e'), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text('Failed to save: $e'),
+            backgroundColor: AppColors.danger,
+          ),
         );
       }
     } finally {
@@ -124,17 +141,14 @@ class _AddSaleModalState extends ConsumerState<AddSaleModal> {
   @override
   Widget build(BuildContext context) {
     return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
-      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(borderRadius: AppRadius.brXl),
+      backgroundColor: AppColors.surface,
       surfaceTintColor: Colors.transparent,
-      insetPadding: const EdgeInsets.symmetric(
-        horizontal: 24.0,
-        vertical: 24.0,
-      ),
+      insetPadding: const EdgeInsets.all(AppSpacing.xxl),
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 550),
+        constraints: const BoxConstraints(maxWidth: AppSizing.modalMaxWidth),
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24.0),
+          padding: AppLayout.modalPadding,
           child: Form(
             key: _formKey,
             child: Column(
@@ -145,20 +159,19 @@ class _AddSaleModalState extends ConsumerState<AddSaleModal> {
                   children: [
                     Text(
                       widget.existing != null ? 'Edit Sale' : 'Add New Sale',
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF111827),
-                      ),
+                      style: AppTypography.sectionTitle,
                     ),
                     const Spacer(),
                     IconButton(
                       onPressed: () => Navigator.pop(context),
-                      icon: const Icon(Icons.close, color: Color(0xFF6B7280)),
+                      icon: const Icon(
+                        Icons.close,
+                        color: AppColors.textSecondary,
+                      ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: AppSpacing.xl),
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -173,79 +186,111 @@ class _AddSaleModalState extends ConsumerState<AddSaleModal> {
                           );
                           if (picked != null) setState(() => _date = picked);
                         },
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(AppRadius.md),
                         child: InputDecorator(
                           decoration: const InputDecoration(
                             labelText: 'Date *',
-                            suffixIcon: Icon(Icons.calendar_today, size: 18),
+                            suffixIcon: Icon(
+                              Icons.calendar_today,
+                              size: AppSizing.iconMd,
+                            ),
                           ),
                           child: Text(
-                            AppFormatters.formatDate(AppFormatters.toApiDate(_date)),
-                            style: const TextStyle(fontSize: 14),
+                            AppFormatters.formatDate(
+                              AppFormatters.toApiDate(_date),
+                            ),
+                            style: AppTypography.input,
                           ),
                         ),
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: AppSpacing.md),
                     Expanded(
                       child: TextFormField(
                         controller: _clientName,
-                        decoration: const InputDecoration(labelText: 'Client Name *'),
-                        validator: (v) => v == null || v.isEmpty ? 'Required' : null,
+                        decoration: const InputDecoration(
+                          labelText: 'Client Name *',
+                        ),
+                        validator: (v) =>
+                            v == null || v.isEmpty ? 'Required' : null,
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: AppSpacing.lg),
                 if (_isEmployee)
                   TextFormField(
                     initialValue: widget.currentUser?.name,
                     readOnly: true,
-                    decoration: const InputDecoration(labelText: 'Sales Representative *'),
+                    decoration: const InputDecoration(
+                      labelText: 'Sales Representative *',
+                    ),
                   )
                 else
                   DropdownButtonFormField<String>(
-                    key: ValueKey('sales_rep_${_salesRep}_${_employees.length}'),
-                    initialValue: _employees.any((e) => e.id == _salesRep) ? _salesRep : null,
-                    decoration: const InputDecoration(labelText: 'Sales Representative *'),
+                    key: ValueKey(
+                      'sales_rep_${_salesRep}_${_employees.length}',
+                    ),
+                    initialValue: _employees.any((e) => e.id == _salesRep)
+                        ? _salesRep
+                        : null,
+                    decoration: const InputDecoration(
+                      labelText: 'Sales Representative *',
+                    ),
                     items: _employees
-                        .map((e) => DropdownMenuItem(value: e.id, child: Text('${e.name} (${e.role})')))
+                        .map(
+                          (e) => DropdownMenuItem(
+                            value: e.id,
+                            child: Text('${e.name} (${e.role})'),
+                          ),
+                        )
                         .toList(),
                     onChanged: (v) => setState(() => _salesRep = v),
-                    validator: (v) => v == null || v.isEmpty ? 'Required' : null,
+                    validator: (v) =>
+                        v == null || v.isEmpty ? 'Required' : null,
                   ),
-                const SizedBox(height: 16),
+                const SizedBox(height: AppSpacing.lg),
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Expanded(
                       child: DropdownButtonFormField<String>(
                         initialValue: _product,
-                        decoration: const InputDecoration(labelText: 'Product *'),
+                        decoration: const InputDecoration(
+                          labelText: 'Product *',
+                        ),
                         items: productCategories
                             .where((c) => c.$1 != 'ALL')
-                            .map((c) => DropdownMenuItem(value: c.$1, child: Text(c.$2)))
+                            .map(
+                              (c) => DropdownMenuItem(
+                                value: c.$1,
+                                child: Text(c.$2),
+                              ),
+                            )
                             .toList(),
                         onChanged: (v) => setState(() => _product = v!),
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: AppSpacing.md),
                     Expanded(
                       child: TextFormField(
                         controller: _company,
-                        decoration: const InputDecoration(labelText: 'Company *'),
-                        validator: (v) => v == null || v.isEmpty ? 'Required' : null,
+                        decoration: const InputDecoration(
+                          labelText: 'Company *',
+                        ),
+                        validator: (v) =>
+                            v == null || v.isEmpty ? 'Required' : null,
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: AppSpacing.lg),
                 TextFormField(
                   controller: _scheme,
                   decoration: const InputDecoration(labelText: 'Scheme *'),
                   validator: (v) => v == null || v.isEmpty ? 'Required' : null,
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: AppSpacing.lg),
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -253,33 +298,43 @@ class _AddSaleModalState extends ConsumerState<AddSaleModal> {
                       child: TextFormField(
                         controller: _amount,
                         keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(labelText: 'Amount *'),
-                        validator: (v) => v == null || v.isEmpty ? 'Required' : null,
+                        decoration: const InputDecoration(
+                          labelText: 'Amount *',
+                        ),
+                        validator: (v) =>
+                            v == null || v.isEmpty ? 'Required' : null,
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: AppSpacing.md),
                     Expanded(
                       child: DropdownButtonFormField<String>(
                         initialValue: _frequency,
-                        decoration: const InputDecoration(labelText: 'Frequency *'),
+                        decoration: const InputDecoration(
+                          labelText: 'Frequency *',
+                        ),
                         items: frequencyChoices
-                            .map((c) => DropdownMenuItem(value: c.$1, child: Text(c.$2)))
+                            .map(
+                              (c) => DropdownMenuItem(
+                                value: c.$1,
+                                child: Text(c.$2),
+                              ),
+                            )
                             .toList(),
                         onChanged: (v) => setState(() => _frequency = v!),
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: AppSpacing.lg),
                 TextFormField(
                   controller: _remarks,
                   maxLines: 3,
                   decoration: const InputDecoration(labelText: 'Remarks'),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: AppSpacing.xxl),
                 SizedBox(
                   width: double.infinity,
-                  height: 48,
+                  height: AppSizing.controlLg,
                   child: FilledButton(
                     onPressed: _loading ? null : _submit,
                     child: Text(_loading ? 'Saving...' : 'Save Sale'),

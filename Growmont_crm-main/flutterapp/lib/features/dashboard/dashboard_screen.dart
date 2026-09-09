@@ -25,9 +25,10 @@ class DashboardScreen extends ConsumerStatefulWidget {
 }
 
 class _DashboardScreenState extends ConsumerState<DashboardScreen> {
-  static const double _controlHeight = 40.0;
-  static const double _radius = 20.0;
-  static const double _cardRadius = 12.0;
+  // Control metrics come from the shared design tokens so every screen's
+  // toolbar sits on the same baseline with the same corner treatment.
+  static const double _controlHeight = AppSizing.controlMd; // 40
+  static const double _cardRadius = AppRadius.lg; // 10 - cards & panels
 
   List<Sale> _sales = [];
   List<Interaction> _interactions = [];
@@ -180,11 +181,15 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   }
 
   // --- Modal Helpers ---
-  Future<void> _openAddInteraction(AppUser? user, {Interaction? existing}) async {
+  Future<void> _openAddInteraction(
+    AppUser? user, {
+    Interaction? existing,
+  }) async {
     final ok = await showDialog<bool>(
       context: context,
       barrierDismissible: true,
-      builder: (_) => AddInteractionModal(existing: existing, currentUser: user),
+      builder: (_) =>
+          AddInteractionModal(existing: existing, currentUser: user),
     );
     if (ok == true) _loadData();
   }
@@ -213,11 +218,16 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Delete Follow-up'),
-        content: const Text('Are you sure you want to delete this follow-up interaction?'),
+        content: const Text(
+          'Are you sure you want to delete this follow-up interaction?',
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
           FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            style: FilledButton.styleFrom(backgroundColor: AppColors.danger),
             onPressed: () => Navigator.pop(ctx, true),
             child: const Text('Delete'),
           ),
@@ -234,14 +244,17 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         }
         _loadData();
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Follow-up deleted')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('Follow-up deleted')));
         }
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to delete: $e'), backgroundColor: Colors.red),
+            SnackBar(
+              content: Text('Failed to delete: $e'),
+              backgroundColor: AppColors.danger,
+            ),
           );
         }
       }
@@ -253,11 +266,16 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Delete Sale'),
-        content: const Text('Are you sure you want to delete this sale record?'),
+        content: const Text(
+          'Are you sure you want to delete this sale record?',
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
           FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            style: FilledButton.styleFrom(backgroundColor: AppColors.danger),
             onPressed: () => Navigator.pop(ctx, true),
             child: const Text('Delete'),
           ),
@@ -274,14 +292,17 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         }
         _loadData();
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Sale record deleted')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('Sale record deleted')));
         }
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to delete: $e'), backgroundColor: Colors.red),
+            SnackBar(
+              content: Text('Failed to delete: $e'),
+              backgroundColor: AppColors.danger,
+            ),
           );
         }
       }
@@ -295,9 +316,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         title: const Text('Complete / Dismiss Reminder'),
         content: const Text('Are you sure you want to dismiss this reminder?'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
           FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: AppColors.primaryGreen),
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.primaryBlue,
+            ),
             onPressed: () => Navigator.pop(ctx, true),
             child: const Text('Dismiss'),
           ),
@@ -314,14 +340,17 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         }
         _loadData();
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Reminder completed')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('Reminder completed')));
         }
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to dismiss: $e'), backgroundColor: Colors.red),
+            SnackBar(
+              content: Text('Failed to dismiss: $e'),
+              backgroundColor: AppColors.danger,
+            ),
           );
         }
       }
@@ -335,9 +364,15 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       builder: (ctx) => AlertDialog(
         title: Row(
           children: [
-            const Icon(Icons.calendar_today, color: AppColors.primaryBlue, size: 20),
-            const SizedBox(width: 8),
-            Expanded(child: Text(i.clientName, style: AppTypography.sectionTitle)),
+            const Icon(
+              Icons.calendar_today,
+              color: AppColors.primaryBlue,
+              size: AppSizing.iconLg,
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: Text(i.clientName, style: AppTypography.sectionTitle),
+            ),
           ],
         ),
         content: SingleChildScrollView(
@@ -346,21 +381,27 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               _detailRow('Contact:', i.clientContact),
-              _detailRow('Follow-up Date:', '${AppFormatters.formatDate(i.followUpDate)} at ${AppFormatters.formatTime(i.followUpTime)}'),
+              _detailRow(
+                'Follow-up Date:',
+                '${AppFormatters.formatDate(i.followUpDate)} at ${AppFormatters.formatTime(i.followUpTime)}',
+              ),
               _detailRow('Interaction Date:', AppFormatters.formatDate(i.date)),
               _detailRow('Priority:', i.priorityDisplay ?? i.priority),
               if (i.employeeName != null && i.employeeName!.isNotEmpty)
                 _detailRow('Assigned Staff:', i.employeeName!),
               if (i.discussionNotes.isNotEmpty) ...[
-                const SizedBox(height: 8),
-                const Text('Discussion Notes:', style: AppTypography.captionSemibold),
-                const SizedBox(height: 4),
+                const SizedBox(height: AppSpacing.sm),
+                const Text(
+                  'Discussion Notes:',
+                  style: AppTypography.captionSemibold,
+                ),
+                const SizedBox(height: AppSpacing.xs),
                 Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.all(8),
+                  padding: const EdgeInsets.all(AppSpacing.sm),
                   decoration: BoxDecoration(
-                    color: Colors.grey.shade100,
-                    borderRadius: BorderRadius.circular(4),
+                    color: AppColors.surfaceHeader,
+                    borderRadius: BorderRadius.circular(AppRadius.xs),
                   ),
                   child: Text(i.discussionNotes, style: AppTypography.caption),
                 ),
@@ -371,7 +412,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         actions: [
           IconButton(
             tooltip: 'Copy Contact',
-            icon: const Icon(Icons.copy, size: 18),
+            icon: const Icon(Icons.copy, size: AppSizing.iconMd),
             onPressed: () {
               Clipboard.setData(ClipboardData(text: i.clientContact));
               ScaffoldMessenger.of(context).showSnackBar(
@@ -379,7 +420,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               );
             },
           ),
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Close'),
+          ),
         ],
       ),
     );
@@ -391,9 +435,15 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       builder: (ctx) => AlertDialog(
         title: Row(
           children: [
-            const Icon(Icons.attach_money, color: AppColors.primaryGreen, size: 22),
-            const SizedBox(width: 8),
-            Expanded(child: Text(s.clientName, style: AppTypography.sectionTitle)),
+            const Icon(
+              Icons.currency_rupee,
+              color: AppColors.primaryGreen,
+              size: AppSizing.iconLg,
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: Text(s.clientName, style: AppTypography.sectionTitle),
+            ),
           ],
         ),
         content: SingleChildScrollView(
@@ -401,7 +451,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              _detailRow('Amount:', AppFormatters.formatAmount(s.amount), valueColor: AppColors.primaryGreen, isBold: true),
+              _detailRow(
+                'Amount:',
+                AppFormatters.formatAmount(s.amount),
+                valueColor: AppColors.primaryGreen,
+                isBold: true,
+              ),
               _detailRow('Product:', s.productDisplay ?? s.product),
               _detailRow('Company:', s.company),
               _detailRow('Scheme:', s.scheme),
@@ -410,15 +465,15 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               if (s.salesRepName != null && s.salesRepName!.isNotEmpty)
                 _detailRow('Sales Rep:', s.salesRepName!),
               if (s.remarks.isNotEmpty) ...[
-                const SizedBox(height: 8),
+                const SizedBox(height: AppSpacing.sm),
                 const Text('Remarks:', style: AppTypography.captionSemibold),
-                const SizedBox(height: 4),
+                const SizedBox(height: AppSpacing.xs),
                 Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.all(8),
+                  padding: const EdgeInsets.all(AppSpacing.sm),
                   decoration: BoxDecoration(
-                    color: Colors.grey.shade100,
-                    borderRadius: BorderRadius.circular(4),
+                    color: AppColors.surfaceHeader,
+                    borderRadius: BorderRadius.circular(AppRadius.xs),
                   ),
                   child: Text(s.remarks, style: AppTypography.caption),
                 ),
@@ -429,16 +484,22 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         actions: [
           IconButton(
             tooltip: 'Copy Summary',
-            icon: const Icon(Icons.copy, size: 18),
+            icon: const Icon(Icons.copy, size: AppSizing.iconMd),
             onPressed: () {
-              final summary = '${s.clientName} - ${AppFormatters.formatAmount(s.amount)} (${s.productDisplay ?? s.product})';
+              final summary =
+                  '${s.clientName} - ${AppFormatters.formatAmount(s.amount)} (${s.productDisplay ?? s.product})';
               Clipboard.setData(ClipboardData(text: summary));
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Sale summary copied to clipboard!')),
+                const SnackBar(
+                  content: Text('Sale summary copied to clipboard!'),
+                ),
               );
             },
           ),
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Close'),
+          ),
         ],
       ),
     );
@@ -450,9 +511,15 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       builder: (ctx) => AlertDialog(
         title: Row(
           children: [
-            Icon(r.type == 'CORPORATE' ? Icons.business : Icons.person, color: AppColors.primaryBlue, size: 20),
-            const SizedBox(width: 8),
-            Expanded(child: Text(r.eventName, style: AppTypography.sectionTitle)),
+            Icon(
+              r.type == 'CORPORATE' ? Icons.business : Icons.person,
+              color: AppColors.primaryBlue,
+              size: AppSizing.iconLg,
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: Text(r.eventName, style: AppTypography.sectionTitle),
+            ),
           ],
         ),
         content: SingleChildScrollView(
@@ -460,7 +527,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              _detailRow('Date & Time:', '${AppFormatters.formatDate(r.date)} at ${AppFormatters.formatTime(r.time)}'),
+              _detailRow(
+                'Date & Time:',
+                '${AppFormatters.formatDate(r.date)} at ${AppFormatters.formatTime(r.time)}',
+              ),
               if (r.endTime != null && r.endTime!.isNotEmpty)
                 _detailRow('End Time:', AppFormatters.formatTime(r.endTime!)),
               _detailRow('Type:', r.type),
@@ -468,17 +538,23 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               if (r.employeeName != null && r.employeeName!.isNotEmpty)
                 _detailRow('Employee:', r.employeeName!),
               if (r.repeatReminder)
-                _detailRow('Repeat:', '${r.repeatType} (${r.repeatDays.join(", ")})'),
+                _detailRow(
+                  'Repeat:',
+                  '${r.repeatType} (${r.repeatDays.join(", ")})',
+                ),
               if (r.description.isNotEmpty) ...[
-                const SizedBox(height: 8),
-                const Text('Description:', style: AppTypography.captionSemibold),
-                const SizedBox(height: 4),
+                const SizedBox(height: AppSpacing.sm),
+                const Text(
+                  'Description:',
+                  style: AppTypography.captionSemibold,
+                ),
+                const SizedBox(height: AppSpacing.xs),
                 Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.all(8),
+                  padding: const EdgeInsets.all(AppSpacing.sm),
                   decoration: BoxDecoration(
-                    color: Colors.grey.shade100,
-                    borderRadius: BorderRadius.circular(4),
+                    color: AppColors.surfaceHeader,
+                    borderRadius: BorderRadius.circular(AppRadius.xs),
                   ),
                   child: Text(r.description, style: AppTypography.caption),
                 ),
@@ -487,15 +563,23 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Close'),
+          ),
         ],
       ),
     );
   }
 
-  Widget _detailRow(String label, String value, {Color? valueColor, bool isBold = false}) {
+  Widget _detailRow(
+    String label,
+    String value, {
+    Color? valueColor,
+    bool isBold = false,
+  }) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 3),
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -527,7 +611,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       return const Center(child: CircularProgressIndicator());
     }
 
-    if (_error != null && _sales.isEmpty && _interactions.isEmpty && _reminders.isEmpty) {
+    if (_error != null &&
+        _sales.isEmpty &&
+        _interactions.isEmpty &&
+        _reminders.isEmpty) {
       return ErrorState(
         message: _error!,
         title: 'Could not load your dashboard',
@@ -563,7 +650,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                             ? AppTypography.pageTitle
                             : AppTypography.pageTitleMobile,
                       ),
-                      const SizedBox(height: 2),
+                      const SizedBox(height: AppSpacing.xxs),
                       Text(
                         'Welcome back, ${user?.name ?? 'User'}',
                         style: const TextStyle(
@@ -580,30 +667,30 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     icon: Icons.add,
                     label: 'Add Sale',
                     isPrimary: true,
-                    color: AppColors.primaryGreen,
+                    color: AppColors.primaryBlue,
                     onPressed: () => _openAddSale(user),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: AppSpacing.sm),
                   _quickActionButton(
                     icon: Icons.add,
                     label: 'Add Follow-up',
                     isPrimary: true,
-                    color: AppColors.primaryGreen,
+                    color: AppColors.primaryBlue,
                     onPressed: () => _openAddInteraction(user),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: AppSpacing.sm),
                   _quickActionButton(
                     icon: Icons.add,
                     label: 'Add Reminder',
                     isPrimary: true,
-                    color: AppColors.primaryGreen,
+                    color: AppColors.primaryBlue,
                     onPressed: () => _openAddReminder(user),
                   ),
                 ],
               ],
             ),
             if (!isWide) ...[
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpacing.md),
               SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 child: Row(
@@ -612,42 +699,42 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       icon: Icons.add,
                       label: 'Add Sale',
                       isPrimary: true,
-                      color: AppColors.primaryGreen,
+                      color: AppColors.primaryBlue,
                       onPressed: () => _openAddSale(user),
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: AppSpacing.sm),
                     _quickActionButton(
                       icon: Icons.add,
                       label: 'Add Follow-up',
                       isPrimary: true,
-                      color: AppColors.primaryGreen,
+                      color: AppColors.primaryBlue,
                       onPressed: () => _openAddInteraction(user),
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: AppSpacing.sm),
                     _quickActionButton(
                       icon: Icons.add,
                       label: 'Add Reminder',
                       isPrimary: true,
-                      color: AppColors.primaryGreen,
+                      color: AppColors.primaryBlue,
                       onPressed: () => _openAddReminder(user),
                     ),
                   ],
                 ),
               ),
             ],
-            const SizedBox(height: 14),
+            const SizedBox(height: AppSpacing.lg),
             DashboardAnalytics(
               sales: _sales,
               interactions: _interactions,
               reminders: _reminders,
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: AppSpacing.lg),
             if (isWide)
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Expanded(flex: 2, child: _leftColumn(user)),
-                  const SizedBox(width: 6),
+                  const SizedBox(width: AppSpacing.sm),
                   Expanded(child: _rightColumn(user)),
                 ],
               )
@@ -655,7 +742,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               Column(
                 children: [
                   _leftColumn(user),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: AppSpacing.sm),
                   _rightColumn(user),
                 ],
               ),
@@ -673,7 +760,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         _sectionCard(
           title: 'Upcoming Follow-ups',
           icon: Icons.calendar_today,
-          subtitle: sortedInteractions.length > 4 ? '${sortedInteractions.length} entries' : null,
+          subtitle: sortedInteractions.length > 4
+              ? '${sortedInteractions.length} entries'
+              : null,
           child: sortedInteractions.isEmpty
               ? const _EmptyState('No upcoming follow-ups')
               : _ScrollableSectionList(
@@ -688,21 +777,27 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   }).toList(),
                 ),
         ),
-        const SizedBox(height: 6),
+        const SizedBox(height: AppSpacing.sm),
         _sectionCard(
           title: 'Recent Sales',
-          icon: Icons.attach_money,
-          subtitle: sortedSales.length > 4 ? '${sortedSales.length} entries' : null,
+          icon: Icons.currency_rupee,
+          subtitle: sortedSales.length > 4
+              ? '${sortedSales.length} entries'
+              : null,
           child: sortedSales.isEmpty
               ? const _EmptyState('No sales yet')
               : _ScrollableSectionList(
                   maxHeight: 232.0,
-                  children: sortedSales.map((s) => _SaleTile(
-                    sale: s,
-                    onTapDetails: () => _showSaleDetails(s),
-                    onEdit: () => _openAddSale(user, existing: s),
-                    onDelete: () => _deleteSaleItem(s.id),
-                  )).toList(),
+                  children: sortedSales
+                      .map(
+                        (s) => _SaleTile(
+                          sale: s,
+                          onTapDetails: () => _showSaleDetails(s),
+                          onEdit: () => _openAddSale(user, existing: s),
+                          onDelete: () => _deleteSaleItem(s.id),
+                        ),
+                      )
+                      .toList(),
                 ),
         ),
       ],
@@ -724,16 +819,20 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   children: [
                     _ScrollableSectionList(
                       maxHeight: isAdmin ? 292.0 : 232.0,
-                      children: sortedReminders.map((r) => _ReminderTile(
-                            reminder: r,
-                            showEmployee: isAdmin,
-                            onTapDetails: () => _showReminderDetails(r),
-                            onEdit: () => _openAddReminder(user, existing: r),
-                            onDelete: () => _deleteReminderItem(r.id),
-                          )).toList(),
+                      children: sortedReminders
+                          .map(
+                            (r) => _ReminderTile(
+                              reminder: r,
+                              showEmployee: isAdmin,
+                              onTapDetails: () => _showReminderDetails(r),
+                              onEdit: () => _openAddReminder(user, existing: r),
+                              onDelete: () => _deleteReminderItem(r.id),
+                            ),
+                          )
+                          .toList(),
                     ),
                     Padding(
-                      padding: const EdgeInsets.only(top: 6),
+                      padding: const EdgeInsets.only(top: AppSpacing.sm),
                       child: InkWell(
                         onTap: () => context.push('/profile?tab=reminders'),
                         child: Text(
@@ -749,10 +848,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   ],
                 ),
         ),
-        const SizedBox(height: 6),
+        const SizedBox(height: AppSpacing.sm),
         _cardShell(
+          color: const Color.fromARGB(255, 254, 237, 84),
+          borderColor: const Color(0xFFEAB308),
+          borderWidth: 1.5,
           child: Padding(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(AppSpacing.md),
             child: TodoWidget(userId: user?.id),
           ),
         ),
@@ -760,19 +862,21 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     );
   }
 
-  Widget _cardShell({required Widget child}) {
+  Widget _cardShell({
+    required Widget child,
+    Color? color,
+    Color? borderColor,
+    double borderWidth = 1.0,
+  }) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(color: AppColors.border),
+        color: color ?? Colors.white,
+        border: Border.all(
+          color: borderColor ?? AppColors.border,
+          width: borderWidth,
+        ),
         borderRadius: BorderRadius.circular(_cardRadius),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        boxShadow: AppShadows.sm,
       ),
       clipBehavior: Clip.antiAlias,
       child: child,
@@ -787,22 +891,26 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   }) {
     return _cardShell(
       child: Padding(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(AppSpacing.md),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
-                Icon(icon, color: AppColors.primaryBlue, size: 16),
-                const SizedBox(width: 6),
-                Text(title, style: AppTypography.itemTitle),
+                Icon(
+                  icon,
+                  color: AppColors.primaryBlue,
+                  size: AppSizing.iconMd,
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Text(title, style: AppTypography.sectionTitle),
                 if (subtitle != null) ...[
                   const Spacer(),
                   Text(subtitle, style: AppTypography.caption),
                 ],
               ],
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpacing.sm),
             child,
           ],
         ),
@@ -822,7 +930,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         height: _controlHeight,
         child: FilledButton.icon(
           onPressed: onPressed,
-          icon: Icon(icon, size: 18),
+          icon: Icon(icon, size: AppSizing.iconMd),
           label: Text(
             label,
             style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
@@ -831,10 +939,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             backgroundColor: color,
             foregroundColor: Colors.white,
             elevation: 0,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(_radius),
-            ),
-            padding: const EdgeInsets.symmetric(horizontal: 16),
           ),
         ),
       );
@@ -843,7 +947,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       height: _controlHeight,
       child: OutlinedButton.icon(
         onPressed: onPressed,
-        icon: Icon(icon, size: 18, color: color),
+        icon: Icon(icon, size: AppSizing.iconMd, color: color),
         label: Text(
           label,
           style: TextStyle(
@@ -858,11 +962,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 ? AppColors.border
                 : color.withValues(alpha: 0.35),
           ),
-          backgroundColor: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(_radius),
-          ),
-          padding: const EdgeInsets.symmetric(horizontal: 14),
+          backgroundColor: AppColors.surface,
         ),
       ),
     );
@@ -876,8 +976,13 @@ class _EmptyState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Center(child: Text(message, style: TextStyle(color: Colors.grey.shade500, fontSize: 12))),
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+      child: Center(
+        child: Text(
+          message,
+          style: TextStyle(color: AppColors.textMuted, fontSize: 12),
+        ),
+      ),
     );
   }
 }
@@ -899,15 +1004,24 @@ class _InteractionTile extends StatelessWidget {
     if (interaction.clientContact.isEmpty) return;
     Clipboard.setData(ClipboardData(text: interaction.clientContact));
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Contact "${interaction.clientContact}" copied!'), duration: const Duration(seconds: 2)),
+      SnackBar(
+        content: Text('Contact "${interaction.clientContact}" copied!'),
+        duration: const Duration(seconds: 2),
+      ),
     );
   }
 
   void _copyWhatsAppDraft(BuildContext context) {
-    final msg = 'Hi ${interaction.clientName}, following up regarding our recent interaction.';
+    final msg =
+        'Hi ${interaction.clientName}, following up regarding our recent interaction.';
     Clipboard.setData(ClipboardData(text: msg));
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('WhatsApp message draft for ${interaction.clientName} copied!'), duration: const Duration(seconds: 2)),
+      SnackBar(
+        content: Text(
+          'WhatsApp message draft for ${interaction.clientName} copied!',
+        ),
+        duration: const Duration(seconds: 2),
+      ),
     );
   }
 
@@ -915,11 +1029,14 @@ class _InteractionTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final isNarrow = MediaQuery.sizeOf(context).width < 500;
     return Container(
-      margin: const EdgeInsets.only(bottom: 6),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.sm,
+      ),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppRadius.md),
         border: Border.all(color: AppColors.border),
       ),
       child: Row(
@@ -927,12 +1044,21 @@ class _InteractionTile extends StatelessWidget {
           Expanded(
             child: InkWell(
               onTap: onTapDetails,
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(AppRadius.md),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(interaction.clientName, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: AppColors.textPrimary)),
-                  Text(interaction.clientContact, style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+                  Text(
+                    interaction.clientName,
+                    style: AppTypography.tableCellStrong,
+                  ),
+                  Text(
+                    interaction.clientContact,
+                    style: const TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 12,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -940,19 +1066,34 @@ class _InteractionTile extends StatelessWidget {
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Text(AppFormatters.formatDate(interaction.followUpDate),
-                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 11, color: AppColors.textPrimary)),
-              Text(AppFormatters.formatTime(interaction.followUpTime),
-                  style: const TextStyle(color: AppColors.textMuted, fontSize: 11)),
+              Text(
+                AppFormatters.formatDate(interaction.followUpDate),
+                style: const TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 11,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              Text(
+                AppFormatters.formatTime(interaction.followUpTime),
+                style: AppTypography.caption,
+              ),
             ],
           ),
-          const SizedBox(width: 4),
-          _PriorityChip(priority: interaction.priority, label: interaction.priorityDisplay ?? interaction.priority),
-          const SizedBox(width: 4),
+          const SizedBox(width: AppSpacing.xs),
+          _PriorityChip(
+            priority: interaction.priority,
+            label: interaction.priorityDisplay ?? interaction.priority,
+          ),
+          const SizedBox(width: AppSpacing.xs),
           // --- Quick Actions Bar on Tile ---
           if (isNarrow)
             PopupMenuButton<String>(
-              icon: const Icon(Icons.more_vert, size: 16, color: Colors.grey),
+              icon: const Icon(
+                Icons.more_vert,
+                size: AppSizing.iconSm,
+                color: AppColors.textMuted,
+              ),
               padding: EdgeInsets.zero,
               constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
               onSelected: (val) {
@@ -968,8 +1109,12 @@ class _InteractionTile extends StatelessWidget {
                   height: 32,
                   child: Row(
                     children: [
-                      Icon(Icons.phone_outlined, size: 14, color: AppColors.primaryBlue),
-                      SizedBox(width: 6),
+                      Icon(
+                        Icons.phone_outlined,
+                        size: AppSizing.iconXs,
+                        color: AppColors.primaryBlue,
+                      ),
+                      SizedBox(width: AppSpacing.sm),
                       Text('Copy Contact', style: TextStyle(fontSize: 12)),
                     ],
                   ),
@@ -979,8 +1124,12 @@ class _InteractionTile extends StatelessWidget {
                   height: 32,
                   child: Row(
                     children: [
-                      Icon(Icons.chat_bubble_outline, size: 14, color: AppColors.primaryGreen),
-                      SizedBox(width: 6),
+                      Icon(
+                        Icons.chat_bubble_outline,
+                        size: AppSizing.iconXs,
+                        color: AppColors.primaryGreen,
+                      ),
+                      SizedBox(width: AppSpacing.sm),
                       Text('WhatsApp Draft', style: TextStyle(fontSize: 12)),
                     ],
                   ),
@@ -990,8 +1139,12 @@ class _InteractionTile extends StatelessWidget {
                   height: 32,
                   child: Row(
                     children: [
-                      Icon(Icons.info_outline, size: 14, color: Colors.grey),
-                      SizedBox(width: 6),
+                      Icon(
+                        Icons.info_outline,
+                        size: AppSizing.iconXs,
+                        color: AppColors.textMuted,
+                      ),
+                      SizedBox(width: AppSpacing.sm),
                       Text('View Details', style: TextStyle(fontSize: 12)),
                     ],
                   ),
@@ -1001,8 +1154,12 @@ class _InteractionTile extends StatelessWidget {
                   height: 32,
                   child: Row(
                     children: [
-                      Icon(Icons.edit, size: 14, color: Colors.blue),
-                      SizedBox(width: 6),
+                      Icon(
+                        Icons.edit,
+                        size: AppSizing.iconXs,
+                        color: AppColors.info,
+                      ),
+                      SizedBox(width: AppSpacing.sm),
                       Text('Edit', style: TextStyle(fontSize: 12)),
                     ],
                   ),
@@ -1012,8 +1169,12 @@ class _InteractionTile extends StatelessWidget {
                   height: 32,
                   child: Row(
                     children: [
-                      Icon(Icons.delete, size: 14, color: Colors.red),
-                      SizedBox(width: 6),
+                      Icon(
+                        Icons.delete,
+                        size: AppSizing.iconXs,
+                        color: AppColors.danger,
+                      ),
+                      SizedBox(width: AppSpacing.sm),
                       Text('Delete', style: TextStyle(fontSize: 12)),
                     ],
                   ),
@@ -1027,34 +1188,62 @@ class _InteractionTile extends StatelessWidget {
                 Tooltip(
                   message: 'Call / Copy Contact',
                   child: IconButton(
-                    icon: const Icon(Icons.phone_outlined, size: 14, color: AppColors.primaryBlue),
+                    icon: const Icon(
+                      Icons.phone_outlined,
+                      size: AppSizing.iconXs,
+                      color: AppColors.primaryBlue,
+                    ),
                     padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
+                    constraints: const BoxConstraints(
+                      minWidth: 24,
+                      minHeight: 24,
+                    ),
                     onPressed: () => _copyContact(context),
                   ),
                 ),
                 Tooltip(
                   message: 'WhatsApp Draft',
                   child: IconButton(
-                    icon: const Icon(Icons.chat_bubble_outline, size: 14, color: AppColors.primaryGreen),
+                    icon: const Icon(
+                      Icons.chat_bubble_outline,
+                      size: AppSizing.iconXs,
+                      color: AppColors.primaryGreen,
+                    ),
                     padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
+                    constraints: const BoxConstraints(
+                      minWidth: 24,
+                      minHeight: 24,
+                    ),
                     onPressed: () => _copyWhatsAppDraft(context),
                   ),
                 ),
                 Tooltip(
                   message: 'View Details',
                   child: IconButton(
-                    icon: const Icon(Icons.info_outline, size: 14, color: Colors.grey),
+                    icon: const Icon(
+                      Icons.info_outline,
+                      size: AppSizing.iconXs,
+                      color: AppColors.textMuted,
+                    ),
                     padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
+                    constraints: const BoxConstraints(
+                      minWidth: 24,
+                      minHeight: 24,
+                    ),
                     onPressed: onTapDetails,
                   ),
                 ),
                 PopupMenuButton<String>(
-                  icon: const Icon(Icons.more_vert, size: 15, color: Colors.grey),
+                  icon: const Icon(
+                    Icons.more_vert,
+                    size: AppSizing.iconXs,
+                    color: AppColors.textMuted,
+                  ),
                   padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
+                  constraints: const BoxConstraints(
+                    minWidth: 24,
+                    minHeight: 24,
+                  ),
                   onSelected: (val) {
                     if (val == 'edit') onEdit();
                     if (val == 'delete') onDelete();
@@ -1065,8 +1254,12 @@ class _InteractionTile extends StatelessWidget {
                       height: 32,
                       child: Row(
                         children: [
-                          Icon(Icons.edit, size: 14, color: Colors.blue),
-                          SizedBox(width: 6),
+                          Icon(
+                            Icons.edit,
+                            size: AppSizing.iconXs,
+                            color: AppColors.info,
+                          ),
+                          SizedBox(width: AppSpacing.sm),
                           Text('Edit', style: TextStyle(fontSize: 12)),
                         ],
                       ),
@@ -1076,8 +1269,12 @@ class _InteractionTile extends StatelessWidget {
                       height: 32,
                       child: Row(
                         children: [
-                          Icon(Icons.delete, size: 14, color: Colors.red),
-                          SizedBox(width: 6),
+                          Icon(
+                            Icons.delete,
+                            size: AppSizing.iconXs,
+                            color: AppColors.danger,
+                          ),
+                          SizedBox(width: AppSpacing.sm),
                           Text('Delete', style: TextStyle(fontSize: 12)),
                         ],
                       ),
@@ -1106,10 +1303,14 @@ class _SaleTile extends StatelessWidget {
   final VoidCallback onDelete;
 
   void _copySummary(BuildContext context) {
-    final summary = '${sale.clientName} - ${AppFormatters.formatAmount(sale.amount)} (${sale.productDisplay ?? sale.product})';
+    final summary =
+        '${sale.clientName} - ${AppFormatters.formatAmount(sale.amount)} (${sale.productDisplay ?? sale.product})';
     Clipboard.setData(ClipboardData(text: summary));
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Sale summary copied to clipboard!'), duration: Duration(seconds: 2)),
+      const SnackBar(
+        content: Text('Sale summary copied to clipboard!'),
+        duration: Duration(seconds: 2),
+      ),
     );
   }
 
@@ -1117,11 +1318,14 @@ class _SaleTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final isNarrow = MediaQuery.sizeOf(context).width < 500;
     return Container(
-      margin: const EdgeInsets.only(bottom: 6),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.sm,
+      ),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppRadius.md),
         border: Border.all(color: AppColors.border),
       ),
       child: Row(
@@ -1129,13 +1333,18 @@ class _SaleTile extends StatelessWidget {
           Expanded(
             child: InkWell(
               onTap: onTapDetails,
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(AppRadius.md),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(sale.clientName, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: AppColors.textPrimary)),
-                  Text('${sale.company} • ${sale.productDisplay ?? sale.product}',
-                      style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+                  Text(sale.clientName, style: AppTypography.tableCellStrong),
+                  Text(
+                    '${sale.company} • ${sale.productDisplay ?? sale.product}',
+                    style: const TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 12,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -1143,16 +1352,28 @@ class _SaleTile extends StatelessWidget {
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Text(AppFormatters.formatAmount(sale.amount),
-                  style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: AppColors.primaryGreen)),
-              Text(AppFormatters.formatDate(sale.date),
-                  style: const TextStyle(color: AppColors.textMuted, fontSize: 11)),
+              Text(
+                AppFormatters.formatAmount(sale.amount),
+                style: const TextStyle(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 13,
+                  color: AppColors.primaryGreen,
+                ),
+              ),
+              Text(
+                AppFormatters.formatDate(sale.date),
+                style: AppTypography.caption,
+              ),
             ],
           ),
-          const SizedBox(width: 4),
+          const SizedBox(width: AppSpacing.xs),
           if (isNarrow)
             PopupMenuButton<String>(
-              icon: const Icon(Icons.more_vert, size: 16, color: Colors.grey),
+              icon: const Icon(
+                Icons.more_vert,
+                size: AppSizing.iconSm,
+                color: AppColors.textMuted,
+              ),
               padding: EdgeInsets.zero,
               constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
               onSelected: (val) {
@@ -1167,8 +1388,12 @@ class _SaleTile extends StatelessWidget {
                   height: 32,
                   child: Row(
                     children: [
-                      Icon(Icons.copy_outlined, size: 14, color: AppColors.primaryBlue),
-                      SizedBox(width: 6),
+                      Icon(
+                        Icons.copy_outlined,
+                        size: AppSizing.iconXs,
+                        color: AppColors.primaryBlue,
+                      ),
+                      SizedBox(width: AppSpacing.sm),
                       Text('Copy Summary', style: TextStyle(fontSize: 12)),
                     ],
                   ),
@@ -1178,8 +1403,12 @@ class _SaleTile extends StatelessWidget {
                   height: 32,
                   child: Row(
                     children: [
-                      Icon(Icons.info_outline, size: 14, color: Colors.grey),
-                      SizedBox(width: 6),
+                      Icon(
+                        Icons.info_outline,
+                        size: AppSizing.iconXs,
+                        color: AppColors.textMuted,
+                      ),
+                      SizedBox(width: AppSpacing.sm),
                       Text('View Details', style: TextStyle(fontSize: 12)),
                     ],
                   ),
@@ -1189,8 +1418,12 @@ class _SaleTile extends StatelessWidget {
                   height: 32,
                   child: Row(
                     children: [
-                      Icon(Icons.edit, size: 14, color: Colors.blue),
-                      SizedBox(width: 6),
+                      Icon(
+                        Icons.edit,
+                        size: AppSizing.iconXs,
+                        color: AppColors.info,
+                      ),
+                      SizedBox(width: AppSpacing.sm),
                       Text('Edit', style: TextStyle(fontSize: 12)),
                     ],
                   ),
@@ -1200,8 +1433,12 @@ class _SaleTile extends StatelessWidget {
                   height: 32,
                   child: Row(
                     children: [
-                      Icon(Icons.delete, size: 14, color: Colors.red),
-                      SizedBox(width: 6),
+                      Icon(
+                        Icons.delete,
+                        size: AppSizing.iconXs,
+                        color: AppColors.danger,
+                      ),
+                      SizedBox(width: AppSpacing.sm),
                       Text('Delete', style: TextStyle(fontSize: 12)),
                     ],
                   ),
@@ -1215,25 +1452,46 @@ class _SaleTile extends StatelessWidget {
                 Tooltip(
                   message: 'Copy Summary',
                   child: IconButton(
-                    icon: const Icon(Icons.copy_outlined, size: 14, color: AppColors.primaryBlue),
+                    icon: const Icon(
+                      Icons.copy_outlined,
+                      size: AppSizing.iconXs,
+                      color: AppColors.primaryBlue,
+                    ),
                     padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
+                    constraints: const BoxConstraints(
+                      minWidth: 24,
+                      minHeight: 24,
+                    ),
                     onPressed: () => _copySummary(context),
                   ),
                 ),
                 Tooltip(
                   message: 'View Details',
                   child: IconButton(
-                    icon: const Icon(Icons.info_outline, size: 14, color: Colors.grey),
+                    icon: const Icon(
+                      Icons.info_outline,
+                      size: AppSizing.iconXs,
+                      color: AppColors.textMuted,
+                    ),
                     padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
+                    constraints: const BoxConstraints(
+                      minWidth: 24,
+                      minHeight: 24,
+                    ),
                     onPressed: onTapDetails,
                   ),
                 ),
                 PopupMenuButton<String>(
-                  icon: const Icon(Icons.more_vert, size: 15, color: Colors.grey),
+                  icon: const Icon(
+                    Icons.more_vert,
+                    size: AppSizing.iconXs,
+                    color: AppColors.textMuted,
+                  ),
                   padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
+                  constraints: const BoxConstraints(
+                    minWidth: 24,
+                    minHeight: 24,
+                  ),
                   onSelected: (val) {
                     if (val == 'edit') onEdit();
                     if (val == 'delete') onDelete();
@@ -1244,8 +1502,12 @@ class _SaleTile extends StatelessWidget {
                       height: 32,
                       child: Row(
                         children: [
-                          Icon(Icons.edit, size: 14, color: Colors.blue),
-                          SizedBox(width: 6),
+                          Icon(
+                            Icons.edit,
+                            size: AppSizing.iconXs,
+                            color: AppColors.info,
+                          ),
+                          SizedBox(width: AppSpacing.sm),
                           Text('Edit', style: TextStyle(fontSize: 12)),
                         ],
                       ),
@@ -1255,8 +1517,12 @@ class _SaleTile extends StatelessWidget {
                       height: 32,
                       child: Row(
                         children: [
-                          Icon(Icons.delete, size: 14, color: Colors.red),
-                          SizedBox(width: 6),
+                          Icon(
+                            Icons.delete,
+                            size: AppSizing.iconXs,
+                            color: AppColors.danger,
+                          ),
+                          SizedBox(width: AppSpacing.sm),
                           Text('Delete', style: TextStyle(fontSize: 12)),
                         ],
                       ),
@@ -1289,63 +1555,94 @@ class _ReminderTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 6),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.sm,
+      ),
       decoration: BoxDecoration(
         color: priorityBackgroundColor(reminder.priority),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: priorityTextColor(reminder.priority).withValues(alpha: 0.3)),
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        border: Border.all(
+          color: priorityTextColor(reminder.priority).withValues(alpha: 0.3),
+        ),
       ),
       child: Row(
         children: [
           Expanded(
             child: InkWell(
               onTap: onTapDetails,
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(AppRadius.md),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(reminder.eventName, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: AppColors.textPrimary)),
+                  Text(
+                    reminder.eventName,
+                    style: AppTypography.tableCellStrong,
+                  ),
                   Text(
                     '${AppFormatters.formatDate(reminder.date)} at ${AppFormatters.formatTime(reminder.time)}',
-                    style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
+                    ),
                   ),
                   if (showEmployee && reminder.employeeName != null)
-                    Text('👤 ${reminder.employeeName}',
-                        style: const TextStyle(fontSize: 11, color: AppColors.textMuted)),
+                    Text(
+                      '👤 ${reminder.employeeName}',
+                      style: AppTypography.caption,
+                    ),
                 ],
               ),
             ),
           ),
           Icon(
             reminder.type == 'CORPORATE' ? Icons.business : Icons.person,
-            size: 15,
+            size: AppSizing.iconXs,
             color: priorityTextColor(reminder.priority),
           ),
-          const SizedBox(width: 4),
+          const SizedBox(width: AppSpacing.xs),
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               Tooltip(
                 message: 'View Details',
                 child: IconButton(
-                  icon: const Icon(Icons.info_outline, size: 14, color: Colors.grey),
+                  icon: const Icon(
+                    Icons.info_outline,
+                    size: AppSizing.iconXs,
+                    color: AppColors.textMuted,
+                  ),
                   padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
+                  constraints: const BoxConstraints(
+                    minWidth: 24,
+                    minHeight: 24,
+                  ),
                   onPressed: onTapDetails,
                 ),
               ),
               Tooltip(
                 message: 'Dismiss / Complete',
                 child: IconButton(
-                  icon: Icon(Icons.check_circle_outline, size: 14, color: priorityTextColor(reminder.priority)),
+                  icon: Icon(
+                    Icons.check_circle_outline,
+                    size: AppSizing.iconXs,
+                    color: priorityTextColor(reminder.priority),
+                  ),
                   padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
+                  constraints: const BoxConstraints(
+                    minWidth: 24,
+                    minHeight: 24,
+                  ),
                   onPressed: onDelete,
                 ),
               ),
               PopupMenuButton<String>(
-                icon: const Icon(Icons.more_vert, size: 15, color: Colors.grey),
+                icon: const Icon(
+                  Icons.more_vert,
+                  size: AppSizing.iconXs,
+                  color: AppColors.textMuted,
+                ),
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
                 onSelected: (val) {
@@ -1358,8 +1655,12 @@ class _ReminderTile extends StatelessWidget {
                     height: 32,
                     child: Row(
                       children: [
-                        Icon(Icons.edit, size: 14, color: Colors.blue),
-                        SizedBox(width: 6),
+                        Icon(
+                          Icons.edit,
+                          size: AppSizing.iconXs,
+                          color: AppColors.info,
+                        ),
+                        SizedBox(width: AppSpacing.sm),
                         Text('Edit', style: TextStyle(fontSize: 12)),
                       ],
                     ),
@@ -1369,8 +1670,12 @@ class _ReminderTile extends StatelessWidget {
                     height: 32,
                     child: Row(
                       children: [
-                        Icon(Icons.delete, size: 14, color: Colors.red),
-                        SizedBox(width: 6),
+                        Icon(
+                          Icons.delete,
+                          size: AppSizing.iconXs,
+                          color: AppColors.danger,
+                        ),
+                        SizedBox(width: AppSpacing.sm),
                         Text('Dismiss', style: TextStyle(fontSize: 12)),
                       ],
                     ),
@@ -1393,16 +1698,22 @@ class _PriorityChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      width: 72,
+      alignment: Alignment.center,
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.xs,
+        vertical: AppSpacing.xs,
+      ),
       decoration: BoxDecoration(
         color: priorityBackgroundColor(priority),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(AppRadius.sm),
       ),
       child: Text(
         label,
+        textAlign: TextAlign.center,
         style: TextStyle(
-          fontSize: 10.5,
-          fontWeight: FontWeight.bold,
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
           color: priorityTextColor(priority),
           letterSpacing: 0.3,
         ),
@@ -1438,7 +1749,9 @@ class _ScrollableSectionListState extends State<_ScrollableSectionList> {
   @override
   void didUpdateWidget(covariant _ScrollableSectionList oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.children.length <= 4 && _scrollController.hasClients && _scrollController.offset != 0) {
+    if (widget.children.length <= 4 &&
+        _scrollController.hasClients &&
+        _scrollController.offset != 0) {
       _scrollController.jumpTo(0);
     }
   }
@@ -1464,7 +1777,7 @@ class _ScrollableSectionListState extends State<_ScrollableSectionList> {
           controller: _scrollController,
           physics: const ClampingScrollPhysics(),
           child: Padding(
-            padding: const EdgeInsets.only(right: 6),
+            padding: const EdgeInsets.only(right: AppSpacing.sm),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,

@@ -44,7 +44,7 @@ class _AppShellState extends ConsumerState<AppShell> {
                   decoration: BoxDecoration(
                     color: Colors.white,
                     border: Border(
-                      right: BorderSide(color: Colors.grey.shade200, width: 1),
+                      right: BorderSide(color: AppColors.border, width: 1),
                     ),
                   ),
                   child: AppSidebar(
@@ -54,7 +54,10 @@ class _AppShellState extends ConsumerState<AppShell> {
                 ),
                 Expanded(
                   child: Padding(
-                    padding: const EdgeInsets.only(top: 30, right: 16),
+                    padding: const EdgeInsets.only(
+                      top: AppSpacing.xxxl,
+                      right: AppSpacing.lg,
+                    ),
                     child: ClipRect(child: widget.navigationShell),
                   ),
                 ),
@@ -70,10 +73,13 @@ class _AppShellState extends ConsumerState<AppShell> {
       appBar: AppBar(
         title: Container(
           height: 34,
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.sm,
+            vertical: AppSpacing.xs,
+          ),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(6),
+            borderRadius: BorderRadius.circular(AppRadius.sm),
             border: Border.all(color: AppColors.border),
           ),
           child: Image.asset(
@@ -92,4 +98,3 @@ class _AppShellState extends ConsumerState<AppShell> {
     );
   }
 }
-

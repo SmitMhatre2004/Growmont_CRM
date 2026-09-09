@@ -14,7 +14,8 @@ class AddInteractionModal extends ConsumerStatefulWidget {
   final AppUser? currentUser;
 
   @override
-  ConsumerState<AddInteractionModal> createState() => _AddInteractionModalState();
+  ConsumerState<AddInteractionModal> createState() =>
+      _AddInteractionModalState();
 }
 
 class _AddInteractionModalState extends ConsumerState<AddInteractionModal> {
@@ -58,10 +59,15 @@ class _AddInteractionModalState extends ConsumerState<AddInteractionModal> {
       if (mounted) {
         setState(() {
           _employees = list;
-          if (_employeeId == null || !_employees.any((emp) => emp.id == _employeeId)) {
+          if (_employeeId == null ||
+              !_employees.any((emp) => emp.id == _employeeId)) {
             if (_employees.isNotEmpty) {
-              final userInList = _employees.any((emp) => emp.id == widget.currentUser?.id);
-              _employeeId = userInList ? widget.currentUser?.id : _employees.first.id;
+              final userInList = _employees.any(
+                (emp) => emp.id == widget.currentUser?.id,
+              );
+              _employeeId = userInList
+                  ? widget.currentUser?.id
+                  : _employees.first.id;
             } else {
               _employeeId = null;
             }
@@ -85,7 +91,7 @@ class _AddInteractionModalState extends ConsumerState<AddInteractionModal> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Follow-up date cannot be before interaction date'),
-          backgroundColor: Colors.red,
+          backgroundColor: AppColors.danger,
         ),
       );
       return;
@@ -115,7 +121,10 @@ class _AddInteractionModalState extends ConsumerState<AddInteractionModal> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed: $e'), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text('Failed: $e'),
+            backgroundColor: AppColors.danger,
+          ),
         );
       }
     } finally {
@@ -126,17 +135,14 @@ class _AddInteractionModalState extends ConsumerState<AddInteractionModal> {
   @override
   Widget build(BuildContext context) {
     return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
-      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(borderRadius: AppRadius.brXl),
+      backgroundColor: AppColors.surface,
       surfaceTintColor: Colors.transparent,
-      insetPadding: const EdgeInsets.symmetric(
-        horizontal: 24.0,
-        vertical: 24.0,
-      ),
+      insetPadding: const EdgeInsets.all(AppSpacing.xxl),
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 550),
+        constraints: const BoxConstraints(maxWidth: AppSizing.modalMaxWidth),
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24.0),
+          padding: AppLayout.modalPadding,
           child: Form(
             key: _formKey,
             child: Column(
@@ -146,47 +152,59 @@ class _AddInteractionModalState extends ConsumerState<AddInteractionModal> {
                 Row(
                   children: [
                     Text(
-                      widget.existing != null ? 'Edit Interaction' : 'Add Interaction',
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF111827),
-                      ),
+                      widget.existing != null
+                          ? 'Edit Interaction'
+                          : 'Add Interaction',
+                      style: AppTypography.sectionTitle,
                     ),
                     const Spacer(),
                     IconButton(
                       onPressed: () => Navigator.pop(context),
-                      icon: const Icon(Icons.close, color: Color(0xFF6B7280)),
+                      icon: const Icon(
+                        Icons.close,
+                        color: AppColors.textSecondary,
+                      ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: AppSpacing.xl),
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Expanded(
                       child: TextFormField(
                         controller: _clientName,
-                        decoration: const InputDecoration(labelText: 'Client Name *'),
-                        validator: (v) => v == null || v.isEmpty ? 'Required' : null,
+                        decoration: const InputDecoration(
+                          labelText: 'Client Name *',
+                        ),
+                        validator: (v) =>
+                            v == null || v.isEmpty ? 'Required' : null,
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: AppSpacing.md),
                     Expanded(
                       child: TextFormField(
                         controller: _clientContact,
-                        decoration: const InputDecoration(labelText: 'Client Contact *'),
-                        validator: (v) => v == null || v.isEmpty ? 'Required' : null,
+                        decoration: const InputDecoration(
+                          labelText: 'Client Contact *',
+                        ),
+                        validator: (v) =>
+                            v == null || v.isEmpty ? 'Required' : null,
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: AppSpacing.md),
                 ListTile(
                   contentPadding: EdgeInsets.zero,
                   title: const Text('Interaction Date *'),
-                  subtitle: Text(AppFormatters.formatDate(AppFormatters.toApiDate(_date))),
-                  trailing: const Icon(Icons.calendar_today, size: 18),
+                  subtitle: Text(
+                    AppFormatters.formatDate(AppFormatters.toApiDate(_date)),
+                  ),
+                  trailing: const Icon(
+                    Icons.calendar_today,
+                    size: AppSizing.iconMd,
+                  ),
                   onTap: () async {
                     final d = await showDatePicker(
                       context: context,
@@ -200,8 +218,12 @@ class _AddInteractionModalState extends ConsumerState<AddInteractionModal> {
                 ListTile(
                   contentPadding: EdgeInsets.zero,
                   title: const Text('Follow-up Date *'),
-                  subtitle: Text(AppFormatters.formatDate(AppFormatters.toApiDate(_followUpDate))),
-                  trailing: const Icon(Icons.event, size: 18),
+                  subtitle: Text(
+                    AppFormatters.formatDate(
+                      AppFormatters.toApiDate(_followUpDate),
+                    ),
+                  ),
+                  trailing: const Icon(Icons.event, size: AppSizing.iconMd),
                   onTap: () async {
                     final d = await showDatePicker(
                       context: context,
@@ -216,13 +238,19 @@ class _AddInteractionModalState extends ConsumerState<AddInteractionModal> {
                   contentPadding: EdgeInsets.zero,
                   title: const Text('Follow-up Time *'),
                   subtitle: Text(_followUpTime.format(context)),
-                  trailing: const Icon(Icons.access_time, size: 18),
+                  trailing: const Icon(
+                    Icons.access_time,
+                    size: AppSizing.iconMd,
+                  ),
                   onTap: () async {
-                    final t = await showTimePicker(context: context, initialTime: _followUpTime);
+                    final t = await showTimePicker(
+                      context: context,
+                      initialTime: _followUpTime,
+                    );
                     if (t != null) setState(() => _followUpTime = t);
                   },
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: AppSpacing.md),
                 if (_isEmployee)
                   TextFormField(
                     initialValue: widget.currentUser?.name,
@@ -231,34 +259,48 @@ class _AddInteractionModalState extends ConsumerState<AddInteractionModal> {
                   )
                 else
                   DropdownButtonFormField<String>(
-                    key: ValueKey('employee_${_employeeId}_${_employees.length}'),
-                    initialValue: _employees.any((e) => e.id == _employeeId) ? _employeeId : null,
+                    key: ValueKey(
+                      'employee_${_employeeId}_${_employees.length}',
+                    ),
+                    initialValue: _employees.any((e) => e.id == _employeeId)
+                        ? _employeeId
+                        : null,
                     decoration: const InputDecoration(labelText: 'Employee *'),
                     items: _employees
-                        .map((e) => DropdownMenuItem(value: e.id, child: Text(e.name)))
+                        .map(
+                          (e) => DropdownMenuItem(
+                            value: e.id,
+                            child: Text(e.name),
+                          ),
+                        )
                         .toList(),
                     onChanged: (v) => setState(() => _employeeId = v),
-                    validator: (v) => v == null || v.isEmpty ? 'Required' : null,
+                    validator: (v) =>
+                        v == null || v.isEmpty ? 'Required' : null,
                   ),
-                const SizedBox(height: 16),
+                const SizedBox(height: AppSpacing.lg),
                 DropdownButtonFormField<String>(
                   initialValue: _priority,
                   decoration: const InputDecoration(labelText: 'Priority'),
                   items: priorityChoices
-                      .map((c) => DropdownMenuItem(value: c.$1, child: Text(c.$2)))
+                      .map(
+                        (c) => DropdownMenuItem(value: c.$1, child: Text(c.$2)),
+                      )
                       .toList(),
                   onChanged: (v) => setState(() => _priority = v!),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: AppSpacing.lg),
                 TextFormField(
                   controller: _notes,
                   maxLines: 3,
-                  decoration: const InputDecoration(labelText: 'Discussion Notes'),
+                  decoration: const InputDecoration(
+                    labelText: 'Discussion Notes',
+                  ),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: AppSpacing.xxl),
                 SizedBox(
                   width: double.infinity,
-                  height: 48,
+                  height: AppSizing.controlLg,
                   child: FilledButton(
                     onPressed: _loading ? null : _submit,
                     child: Text(_loading ? 'Saving...' : 'Save Interaction'),

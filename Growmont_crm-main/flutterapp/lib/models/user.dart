@@ -30,12 +30,12 @@ class AppUser {
   }
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'name': name,
-        'email': email,
-        'avatar': avatar,
-        'role': role == UserRole.admin ? 'ADMIN' : 'EMPLOYEE',
-      };
+    'id': id,
+    'name': name,
+    'email': email,
+    'avatar': avatar,
+    'role': role == UserRole.admin ? 'ADMIN' : 'EMPLOYEE',
+  };
 
   String get initials {
     return name

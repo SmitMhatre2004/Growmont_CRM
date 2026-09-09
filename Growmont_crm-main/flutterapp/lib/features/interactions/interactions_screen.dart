@@ -13,28 +13,26 @@ import '../../models/user.dart';
 import '../auth/auth_provider.dart';
 import 'widgets/add_interaction_modal.dart';
 
-/// Local design tokens for this screen only — a clean, neutral
-/// "SaaS dashboard" look (thin borders, soft pill badges, plain
-/// header row) inspired by the reference screenshot. Doesn't touch
-/// the shared AppTheme so nothing else in the app is affected.
+/// Screen palette. Every value aliases the shared design tokens in
+/// [AppColors] so this screen can never drift from the rest of the app.
 class _Palette {
   _Palette._();
 
-  static const Color border = Color(0xFFE7E8EC);
-  static const Color headerBg = Color(0xFFFAFAFB);
-  static const Color rowHover = Color(0xFFF5F8FF);
+  static const Color border = AppColors.border;
+  static const Color headerBg = AppColors.surfaceHeader;
+  static const Color rowHover = AppColors.surfaceHover;
 
-  static const Color textPrimary = Color(0xFF13182B);
-  static const Color textSecondary = Color(0xFF6B7280);
-  static const Color textMuted = Color(0xFFA0A4AE);
+  static const Color textPrimary = AppColors.textPrimary;
+  static const Color textSecondary = AppColors.textSecondary;
+  static const Color textMuted = AppColors.textMuted;
 
-  static const Color all = Color.fromARGB(255, 15, 82, 164);
-  static const Color high = Color.fromARGB(255, 220, 50, 50);
-  static const Color highBg = Color(0xFFFEF2F2);
-  static const Color medium = Color.fromARGB(255, 255, 167, 66);
-  static const Color mediumBg = Color(0xFFFFF7ED);
-  static const Color low = Color.fromRGBO(240, 226, 72, 1);
-  static const Color lowBg = Color.fromARGB(255, 255, 252, 216);
+  static const Color all = AppColors.primaryBlue;
+  static const Color high = AppColors.danger;
+  static const Color highBg = AppColors.dangerSoft;
+  static const Color medium = AppColors.warning;
+  static const Color mediumBg = AppColors.warningSoft;
+  static const Color low = AppColors.yellow;
+  static const Color lowBg = AppColors.yellowSoft;
 }
 
 class InteractionsScreen extends ConsumerStatefulWidget {
@@ -45,8 +43,10 @@ class InteractionsScreen extends ConsumerStatefulWidget {
 }
 
 class _InteractionsScreenState extends ConsumerState<InteractionsScreen> {
-  static const double _controlHeight = 40.0;
-  static const double _radius = 20.0;
+  // Control metrics come from the shared design tokens so every screen's
+  // toolbar sits on the same baseline with the same corner treatment.
+  static const double _controlHeight = AppSizing.controlMd; // 40
+  static const double _radius = AppRadius.md; // 8 - controls are not pills
 
   List<Interaction> _interactions = [];
   bool _loading = true;
@@ -54,8 +54,8 @@ class _InteractionsScreenState extends ConsumerState<InteractionsScreen> {
   // Search
   String _search = '';
 
-  // Quick priority tabs
-  final Set<String> _priorityFilter = {}; // empty = all
+  // Quick priority filter
+  String _priorityFilter = ''; // empty = all
 
   // Sorting
   String _sortColumn = 'date';
@@ -108,6 +108,8 @@ class _InteractionsScreenState extends ConsumerState<InteractionsScreen> {
         i.discussionNotes.toLowerCase().contains(q);
   }
 
+  bool get _hasActiveFilters => _priorityFilter.isNotEmpty;
+
   int _severity(String p) {
     switch (p.trim().toUpperCase()) {
       case 'HIGH':
@@ -126,7 +128,9 @@ class _InteractionsScreenState extends ConsumerState<InteractionsScreen> {
 
     if (_priorityFilter.isNotEmpty) {
       list = list.where(
-        (i) => _priorityFilter.contains(i.priority.trim().toUpperCase()),
+        (i) =>
+            i.priority.trim().toUpperCase() ==
+            _priorityFilter.trim().toUpperCase(),
       );
     }
 
@@ -179,8 +183,7 @@ class _InteractionsScreenState extends ConsumerState<InteractionsScreen> {
 
   void _selectTab(String? priority) {
     setState(() {
-      _priorityFilter.clear();
-      if (priority != null) _priorityFilter.add(priority);
+      _priorityFilter = priority ?? '';
     });
   }
 
@@ -259,7 +262,7 @@ class _InteractionsScreenState extends ConsumerState<InteractionsScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Export failed'),
-            backgroundColor: Colors.red,
+            backgroundColor: AppColors.danger,
           ),
         );
       }
@@ -310,7 +313,7 @@ class _InteractionsScreenState extends ConsumerState<InteractionsScreen> {
               ? const Center(child: CircularProgressIndicator())
               : _buildTableCard(filtered),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpacing.lg),
       ],
     );
   }
@@ -321,9 +324,9 @@ class _InteractionsScreenState extends ConsumerState<InteractionsScreen> {
     final isMobile = MediaQuery.sizeOf(context).width < 768;
     return Padding(
       padding: EdgeInsets.fromLTRB(
-        isMobile ? 16 : 24,
+        isMobile ? AppSpacing.lg : AppSpacing.xxl,
         isMobile ? 10 : 16,
-        isMobile ? 16 : 24,
+        isMobile ? AppSpacing.lg : AppSpacing.xxl,
         isMobile ? 8 : 12,
       ),
       child: Align(
@@ -347,16 +350,12 @@ class _InteractionsScreenState extends ConsumerState<InteractionsScreen> {
       height: _controlHeight,
       child: OutlinedButton.icon(
         onPressed: onPressed,
-        icon: Icon(icon, size: 18),
+        icon: Icon(icon, size: AppSizing.iconMd),
         label: Text(label),
         style: OutlinedButton.styleFrom(
           foregroundColor: _Palette.textPrimary,
           side: const BorderSide(color: _Palette.border),
-          backgroundColor: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(_radius),
-          ),
-          padding: const EdgeInsets.symmetric(horizontal: 14),
+          backgroundColor: AppColors.surface,
         ),
       ),
     );
@@ -367,17 +366,15 @@ class _InteractionsScreenState extends ConsumerState<InteractionsScreen> {
   Widget _buildTabsRow(AppUser? user) {
     int activeIndex = 0;
     Color activeColor = _Palette.all;
-    if (_priorityFilter.length == 1) {
-      if (_priorityFilter.contains('HIGH')) {
-        activeIndex = 1;
-        activeColor = _Palette.high;
-      } else if (_priorityFilter.contains('MEDIUM')) {
-        activeIndex = 2;
-        activeColor = _Palette.medium;
-      } else if (_priorityFilter.contains('LOW')) {
-        activeIndex = 3;
-        activeColor = _Palette.low;
-      }
+    if (_priorityFilter == 'HIGH') {
+      activeIndex = 1;
+      activeColor = _Palette.high;
+    } else if (_priorityFilter == 'MEDIUM') {
+      activeIndex = 2;
+      activeColor = _Palette.medium;
+    } else if (_priorityFilter == 'LOW') {
+      activeIndex = 3;
+      activeColor = _Palette.low;
     }
 
     const itemWidth = 74.0;
@@ -390,7 +387,7 @@ class _InteractionsScreenState extends ConsumerState<InteractionsScreen> {
         border: Border.all(color: _Palette.border),
         borderRadius: BorderRadius.circular(_radius),
       ),
-      padding: const EdgeInsets.all(3),
+      padding: const EdgeInsets.all(AppSpacing.xs),
       child: SizedBox(
         width: itemWidth * 4,
         child: Stack(
@@ -408,7 +405,7 @@ class _InteractionsScreenState extends ConsumerState<InteractionsScreen> {
                 curve: Curves.easeOutCubic,
                 decoration: BoxDecoration(
                   color: activeColor,
-                  borderRadius: BorderRadius.circular(_radius - 3),
+                  borderRadius: BorderRadius.circular(AppRadius.sm),
                   boxShadow: [
                     BoxShadow(
                       color: activeColor.withValues(alpha: 0.25),
@@ -462,25 +459,21 @@ class _InteractionsScreenState extends ConsumerState<InteractionsScreen> {
           label: 'Export',
           onPressed: _export,
         ),
-        const SizedBox(width: 8),
+        const SizedBox(width: AppSpacing.sm),
         _outlinedIconButton(
           icon: Icons.upload_outlined,
           label: 'Import',
           onPressed: _import,
         ),
-        const SizedBox(width: 8),
+        const SizedBox(width: AppSpacing.sm),
         SizedBox(
           height: _controlHeight,
           child: FilledButton.icon(
             onPressed: () => _showModal(user),
-            icon: const Icon(Icons.add, size: 18),
+            icon: const Icon(Icons.add, size: AppSizing.iconMd),
             label: const Text('Add Interaction'),
             style: FilledButton.styleFrom(
-              backgroundColor: AppColors.primaryGreen,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(_radius),
-              ),
-              padding: const EdgeInsets.symmetric(horizontal: 16),
+              backgroundColor: AppColors.primaryBlue,
             ),
           ),
         ),
@@ -497,7 +490,7 @@ class _InteractionsScreenState extends ConsumerState<InteractionsScreen> {
               scrollDirection: Axis.horizontal,
               child: segmentWidget,
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: AppSpacing.md),
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: actionButtons,
@@ -521,10 +514,10 @@ class _InteractionsScreenState extends ConsumerState<InteractionsScreen> {
   }) {
     return SizedBox(
       width: width,
-      height: _controlHeight - 6,
+      height: AppSizing.controlSm,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(_radius - 3),
+        borderRadius: BorderRadius.circular(AppRadius.sm),
         splashColor: Colors.transparent,
         highlightColor: Colors.transparent,
         hoverColor: Colors.transparent,
@@ -551,11 +544,11 @@ class _InteractionsScreenState extends ConsumerState<InteractionsScreen> {
     final isMobile = MediaQuery.sizeOf(context).width < 768;
 
     Color activeFilterColor = _Palette.all;
-    if (_priorityFilter.contains('HIGH')) {
+    if (_priorityFilter == 'HIGH') {
       activeFilterColor = _Palette.high;
-    } else if (_priorityFilter.contains('MEDIUM')) {
+    } else if (_priorityFilter == 'MEDIUM') {
       activeFilterColor = _Palette.medium;
-    } else if (_priorityFilter.contains('LOW')) {
+    } else if (_priorityFilter == 'LOW') {
       activeFilterColor = _Palette.low;
     }
 
@@ -565,11 +558,12 @@ class _InteractionsScreenState extends ConsumerState<InteractionsScreen> {
       color: Colors.white,
       elevation: isSearchFocused ? 2.0 : 1.5,
       shadowColor: isSearchFocused
-          ? AppColors.primaryGreen.withValues(alpha: 0.18)
+          ? AppColors.primaryBlue.withValues(alpha: 0.18)
           : Colors.black.withValues(alpha: 0.08),
-      shape: StadiumBorder(
+      shape: RoundedRectangleBorder(
+        borderRadius: AppRadius.brMd,
         side: BorderSide(
-          color: isSearchFocused ? AppColors.primaryGreen : _Palette.border,
+          color: isSearchFocused ? AppColors.primaryBlue : _Palette.border,
           width: isSearchFocused ? 1.5 : 1.0,
         ),
       ),
@@ -582,10 +576,7 @@ class _InteractionsScreenState extends ConsumerState<InteractionsScreen> {
           decoration: InputDecoration(
             isDense: true,
             hintText: 'Search clients, representatives, notes...',
-            hintStyle: const TextStyle(
-              fontSize: 13.5,
-              color: _Palette.textMuted,
-            ),
+            hintStyle: const TextStyle(fontSize: 13, color: _Palette.textMuted),
             prefixIconConstraints: const BoxConstraints(
               minWidth: 72,
               maxHeight: 40,
@@ -593,15 +584,15 @@ class _InteractionsScreenState extends ConsumerState<InteractionsScreen> {
             prefixIcon: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const SizedBox(width: 6),
+                const SizedBox(width: AppSpacing.sm),
                 PopupMenuButton<String>(
                   tooltip: 'Filter & sort options',
                   icon: Icon(
-                    _priorityFilter.isNotEmpty
+                    _hasActiveFilters
                         ? Icons.filter_alt
                         : Icons.filter_alt_outlined,
-                    size: 19,
-                    color: _priorityFilter.isNotEmpty
+                    size: AppSizing.iconMd,
+                    color: _hasActiveFilters
                         ? activeFilterColor
                         : _Palette.textMuted,
                   ),
@@ -609,7 +600,7 @@ class _InteractionsScreenState extends ConsumerState<InteractionsScreen> {
                   splashRadius: 18,
                   offset: const Offset(0, 36),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(AppRadius.lg),
                     side: const BorderSide(color: _Palette.border),
                   ),
                   color: Colors.white,
@@ -617,13 +608,15 @@ class _InteractionsScreenState extends ConsumerState<InteractionsScreen> {
                   onSelected: (val) {
                     if (val == 'CLEAR') {
                       setState(() {
-                        _priorityFilter.clear();
+                        _priorityFilter = '';
                         _sortColumn = 'date';
                         _sortAscending = false;
                       });
                     } else if (val.startsWith('PRIORITY:')) {
                       final p = val.replaceFirst('PRIORITY:', '');
-                      _selectTab(p == 'ALL' ? null : p);
+                      setState(() {
+                        _priorityFilter = (p == 'ALL') ? '' : p;
+                      });
                     } else if (val.startsWith('SORT:')) {
                       final s = val.replaceFirst('SORT:', '');
                       setState(() {
@@ -649,12 +642,7 @@ class _InteractionsScreenState extends ConsumerState<InteractionsScreen> {
                       height: 28,
                       child: Text(
                         'FILTER BY PRIORITY',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                          color: _Palette.textSecondary,
-                          letterSpacing: 0.5,
-                        ),
+                        style: AppTypography.tableHeader,
                       ),
                     ),
                     _filterMenuItem(
@@ -666,34 +654,26 @@ class _InteractionsScreenState extends ConsumerState<InteractionsScreen> {
                     _filterMenuItem(
                       'PRIORITY:HIGH',
                       'High Priority',
-                      _priorityFilter.contains('HIGH'),
+                      _priorityFilter == 'HIGH',
                       activeColor: _Palette.high,
                     ),
                     _filterMenuItem(
                       'PRIORITY:MEDIUM',
                       'Medium Priority',
-                      _priorityFilter.contains('MEDIUM'),
+                      _priorityFilter == 'MEDIUM',
                       activeColor: _Palette.medium,
                     ),
                     _filterMenuItem(
                       'PRIORITY:LOW',
                       'Low Priority',
-                      _priorityFilter.contains('LOW'),
+                      _priorityFilter == 'LOW',
                       activeColor: _Palette.low,
                     ),
                     const PopupMenuDivider(height: 12),
                     const PopupMenuItem<String>(
                       enabled: false,
                       height: 28,
-                      child: Text(
-                        'SORT BY',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                          color: _Palette.textSecondary,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
+                      child: Text('SORT BY', style: AppTypography.tableHeader),
                     ),
                     _filterMenuItem(
                       'SORT:newest',
@@ -715,8 +695,7 @@ class _InteractionsScreenState extends ConsumerState<InteractionsScreen> {
                       'Priority (High to Low)',
                       _sortColumn == 'priority',
                     ),
-                    if (_priorityFilter.isNotEmpty ||
-                        _sortColumn != 'date') ...[
+                    if (_hasActiveFilters) ...[
                       const PopupMenuDivider(height: 12),
                       const PopupMenuItem<String>(
                         value: 'CLEAR',
@@ -725,15 +704,15 @@ class _InteractionsScreenState extends ConsumerState<InteractionsScreen> {
                           children: [
                             Icon(
                               Icons.clear_all,
-                              size: 16,
-                              color: Colors.redAccent,
+                              size: AppSizing.iconSm,
+                              color: AppColors.danger,
                             ),
-                            SizedBox(width: 8),
+                            SizedBox(width: AppSpacing.sm),
                             Text(
-                              'Reset Filters',
+                              'Reset All Filters',
                               style: TextStyle(
                                 fontSize: 13,
-                                color: Colors.redAccent,
+                                color: AppColors.danger,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
@@ -747,14 +726,17 @@ class _InteractionsScreenState extends ConsumerState<InteractionsScreen> {
                   width: 1,
                   height: 16,
                   color: _Palette.border,
-                  margin: const EdgeInsets.only(left: 2, right: 8),
+                  margin: const EdgeInsets.only(
+                    left: AppSpacing.xxs,
+                    right: AppSpacing.sm,
+                  ),
                 ),
                 const Icon(
                   Icons.search,
                   color: _Palette.textMuted,
-                  size: 18,
+                  size: AppSizing.iconMd,
                 ),
-                const SizedBox(width: 4),
+                const SizedBox(width: AppSpacing.xs),
               ],
             ),
             suffixIcon: _search.isNotEmpty
@@ -762,7 +744,7 @@ class _InteractionsScreenState extends ConsumerState<InteractionsScreen> {
                     icon: const Icon(
                       Icons.clear,
                       color: _Palette.textMuted,
-                      size: 18,
+                      size: AppSizing.iconMd,
                     ),
                     onPressed: () => setState(() {
                       _search = '';
@@ -776,9 +758,11 @@ class _InteractionsScreenState extends ConsumerState<InteractionsScreen> {
             focusedErrorBorder: InputBorder.none,
             disabledBorder: InputBorder.none,
             filled: false,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 14),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.lg,
+            ),
           ),
-          style: const TextStyle(fontSize: 13.5),
+          style: const TextStyle(fontSize: 13),
           onChanged: (v) => setState(() {
             _search = v;
           }),
@@ -786,71 +770,44 @@ class _InteractionsScreenState extends ConsumerState<InteractionsScreen> {
       ),
     );
 
-    final selectionBar = hasSelection
-        ? Material(
-            color: const Color(0xFFEFF6FF),
-            elevation: 1.5,
-            shadowColor: const Color(0xFF93C5FD).withValues(alpha: 0.25),
-            shape: const StadiumBorder(
-              side: BorderSide(
-                color: Color(0xFF93C5FD),
-                width: 1.2,
+    final selectionBar = Row(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Visibility(
+          visible: hasSelection,
+          maintainSize: true,
+          maintainAnimation: true,
+          maintainState: true,
+          child: Tooltip(
+            message: 'Delete selected',
+            child: Material(
+              color: AppColors.dangerSoft,
+              borderRadius: BorderRadius.circular(AppRadius.sm),
+              child: InkWell(
+                onTap: hasSelection ? _bulkDelete : null,
+                borderRadius: BorderRadius.circular(AppRadius.sm),
+                child: Container(
+                  width: 26,
+                  height: 26,
+                  alignment: Alignment.center,
+                  child: const Icon(
+                    Icons.delete_outline,
+                    size: 16,
+                    color: AppColors.danger,
+                  ),
+                ),
               ),
             ),
-            clipBehavior: Clip.antiAlias,
-            child: Container(
-              height: _controlHeight,
-              padding: const EdgeInsets.symmetric(horizontal: 14),
-              child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 8,
-                  height: 8,
-                  decoration: const BoxDecoration(
-                    color: _Palette.all,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Text(
-                  '${_selectedIds.length} selected',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 13,
-                    color: _Palette.textPrimary,
-                  ),
-                ),
-                const SizedBox(width: 16),
-                TextButton(
-                  onPressed: () => setState(() => _selectedIds.clear()),
-                  style: TextButton.styleFrom(
-                    foregroundColor: _Palette.textSecondary,
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    minimumSize: const Size(0, 32),
-                  ),
-                  child: const Text('Clear'),
-                ),
-                const SizedBox(width: 8),
-                FilledButton.icon(
-                  onPressed: _bulkDelete,
-                  icon: const Icon(Icons.delete_outline, size: 16),
-                  label: const Text('Delete'),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: Colors.red.shade600,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    minimumSize: const Size(0, 32),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                  ),
-                ),
-              ],
-            ),
           ),
-        )
-        : null;
+        ),
+        const SizedBox(width: AppSpacing.sm),
+        Text(
+          '${_selectedIds.length} selected',
+          style: AppTypography.tableCellStrong.copyWith(fontSize: 14),
+        ),
+      ],
+    );
 
     if (isMobile) {
       return Padding(
@@ -858,13 +815,8 @@ class _InteractionsScreenState extends ConsumerState<InteractionsScreen> {
         child: Column(
           children: [
             searchBar,
-            if (selectionBar != null) ...[
-              const SizedBox(height: 8),
-              Align(
-                alignment: Alignment.centerRight,
-                child: selectionBar,
-              ),
-            ],
+            const SizedBox(height: AppSpacing.sm),
+            Align(alignment: Alignment.centerRight, child: selectionBar),
           ],
         ),
       );
@@ -874,19 +826,14 @@ class _InteractionsScreenState extends ConsumerState<InteractionsScreen> {
       padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
       child: Row(
         children: [
+          Expanded(flex: 1, child: searchBar),
+          const SizedBox(width: AppSpacing.lg),
           Expanded(
             flex: 1,
-            child: searchBar,
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            flex: 1,
-            child: selectionBar != null
-                ? Align(
-                    alignment: Alignment.centerRight,
-                    child: selectionBar,
-                  )
-                : const SizedBox.shrink(),
+            child: Align(
+              alignment: Alignment.centerRight,
+              child: selectionBar,
+            ),
           ),
         ],
       ),
@@ -899,30 +846,40 @@ class _InteractionsScreenState extends ConsumerState<InteractionsScreen> {
     bool isSelected, {
     Color? activeColor,
   }) {
-    final color = activeColor ?? AppColors.primaryBlue;
     return PopupMenuItem<String>(
       value: value,
       height: 34,
       child: Row(
         children: [
-          Icon(
-            isSelected ? Icons.check_circle : Icons.circle_outlined,
-            size: 16,
-            color: isSelected ? color : _Palette.textMuted,
-          ),
-          const SizedBox(width: 10),
+          if (activeColor != null) ...[
+            Container(
+              width: 8,
+              height: 8,
+              decoration: BoxDecoration(
+                color: activeColor,
+                shape: BoxShape.circle,
+              ),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+          ],
           Expanded(
             child: Text(
               label,
               style: TextStyle(
                 fontSize: 13,
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
                 color: isSelected
-                    ? _Palette.textPrimary
-                    : _Palette.textSecondary,
+                    ? AppColors.primaryBlue
+                    : _Palette.textPrimary,
               ),
             ),
           ),
+          if (isSelected)
+            const Icon(
+              Icons.check,
+              size: AppSizing.iconSm,
+              color: AppColors.primaryBlue,
+            ),
         ],
       ),
     );
@@ -933,18 +890,14 @@ class _InteractionsScreenState extends ConsumerState<InteractionsScreen> {
   Widget _buildTableCard(List<Interaction> items) {
     final isMobile = MediaQuery.sizeOf(context).width < 768;
     return Container(
-      margin: EdgeInsets.symmetric(horizontal: isMobile ? 16 : 24),
+      margin: EdgeInsets.symmetric(
+        horizontal: isMobile ? AppSpacing.lg : AppSpacing.xxl,
+      ),
       decoration: BoxDecoration(
         color: Colors.white,
         border: Border.all(color: _Palette.border),
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        boxShadow: AppShadows.sm,
       ),
       clipBehavior: Clip.antiAlias,
       child: LayoutBuilder(
@@ -1002,22 +955,24 @@ class _InteractionsScreenState extends ConsumerState<InteractionsScreen> {
     final someSelected = itemIds.any(_selectedIds.contains);
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      decoration: const BoxDecoration(color: AppColors.primaryBlue),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.lg,
+        vertical: AppSpacing.xs,
+      ),
+      decoration: const BoxDecoration(
+        color: AppColors.surfaceHeader,
+        border: Border(bottom: BorderSide(color: AppColors.border)),
+      ),
       child: Row(
         children: [
           Padding(
-            padding: const EdgeInsets.only(right: 16),
+            padding: const EdgeInsets.only(right: AppSpacing.lg),
             child: SizedBox(
               width: 20,
               height: 20,
               child: Checkbox(
                 value: allSelected ? true : (someSelected ? null : false),
                 tristate: true,
-                shape: const CircleBorder(),
-                side: const BorderSide(color: Colors.white, width: 1.5),
-                activeColor: Colors.white,
-                checkColor: AppColors.primaryBlue,
                 materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 visualDensity: const VisualDensity(
                   horizontal: -4,
@@ -1069,7 +1024,7 @@ class _InteractionsScreenState extends ConsumerState<InteractionsScreen> {
               'ACTIONS',
               textAlign: TextAlign.center,
               style: TextStyle(
-                fontWeight: FontWeight.bold,
+                fontWeight: FontWeight.w700,
                 fontSize: 11,
                 color: Colors.white,
                 letterSpacing: 0.5,
@@ -1098,10 +1053,13 @@ class _InteractionsScreenState extends ConsumerState<InteractionsScreen> {
       flex: flex,
       child: InkWell(
         onTap: () => _onSort(columnKey),
-        borderRadius: BorderRadius.circular(6),
-        hoverColor: Colors.white.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(AppRadius.sm),
+        hoverColor: AppColors.surfaceHover,
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
+          padding: const EdgeInsets.symmetric(
+            vertical: AppSpacing.md,
+            horizontal: AppSpacing.xs,
+          ),
           child: Row(
             mainAxisAlignment: mainAxis,
             mainAxisSize: MainAxisSize.min,
@@ -1110,27 +1068,22 @@ class _InteractionsScreenState extends ConsumerState<InteractionsScreen> {
                 child: Text(
                   title,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 11,
-                    letterSpacing: 0.5,
+                  style: AppTypography.tableHeader.copyWith(
                     color: isSelected
-                        ? Colors.white
-                        : Colors.white.withValues(alpha: 0.85),
+                        ? AppColors.textPrimary
+                        : AppColors.textSecondary,
                   ),
                 ),
               ),
-              const SizedBox(width: 4),
+              const SizedBox(width: AppSpacing.xs),
               Icon(
                 isSelected
                     ? (_sortAscending
                           ? Icons.arrow_upward
                           : Icons.arrow_downward)
                     : Icons.unfold_more,
-                size: 13,
-                color: isSelected
-                    ? Colors.white
-                    : Colors.white.withValues(alpha: 0.6),
+                size: AppSizing.iconXs,
+                color: isSelected ? AppColors.textPrimary : AppColors.textMuted,
               ),
             ],
           ),
@@ -1145,30 +1098,23 @@ class _InteractionsScreenState extends ConsumerState<InteractionsScreen> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Container(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(AppSpacing.xl),
             decoration: BoxDecoration(
               color: _Palette.headerBg,
               shape: BoxShape.circle,
             ),
             child: const Icon(
               Icons.inbox_outlined,
-              size: 36,
+              size: AppSizing.iconDisplay,
               color: _Palette.textMuted,
             ),
           ),
-          const SizedBox(height: 16),
-          const Text(
-            'No interactions found',
-            style: TextStyle(
-              color: _Palette.textPrimary,
-              fontSize: 15,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 6),
+          const SizedBox(height: AppSpacing.lg),
+          const Text('No interactions found', style: AppTypography.itemTitle),
+          const SizedBox(height: AppSpacing.sm),
           const Text(
             'Try adjusting your search or filters.',
-            style: TextStyle(color: _Palette.textMuted, fontSize: 12.5),
+            style: AppTypography.caption,
           ),
         ],
       ),
@@ -1223,16 +1169,22 @@ class _InteractionTableRowState extends State<_InteractionTableRow> {
         label = 'LOW';
     }
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      width: 72,
+      alignment: Alignment.center,
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.xs,
+        vertical: AppSpacing.xs,
+      ),
       decoration: BoxDecoration(
         color: bg,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(AppRadius.sm),
       ),
       child: Text(
         label,
+        textAlign: TextAlign.center,
         style: TextStyle(
-          fontSize: 10.5,
-          fontWeight: FontWeight.bold,
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
           color: fg,
           letterSpacing: 0.3,
         ),
@@ -1254,19 +1206,19 @@ class _InteractionTableRowState extends State<_InteractionTableRow> {
         color: widget.selected
             ? _Palette.rowHover
             : (_isHovered ? _Palette.rowHover : Colors.white),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.lg,
+          vertical: AppSpacing.md,
+        ),
         child: Row(
           children: [
             Padding(
-              padding: const EdgeInsets.only(right: 16),
+              padding: const EdgeInsets.only(right: AppSpacing.lg),
               child: SizedBox(
                 width: 20,
                 height: 20,
                 child: Checkbox(
                   value: widget.selected,
-                  shape: const CircleBorder(),
-                  side: const BorderSide(color: Color(0xFFC4C8D2), width: 1.5),
-                  activeColor: AppColors.primaryBlue,
                   materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   visualDensity: const VisualDensity(
                     horizontal: -4,
@@ -1293,12 +1245,12 @@ class _InteractionTableRowState extends State<_InteractionTableRow> {
                           : widget.item.clientName[0].toUpperCase(),
                       style: const TextStyle(
                         color: AppColors.primaryBlue,
-                        fontWeight: FontWeight.bold,
+                        fontWeight: FontWeight.w700,
                         fontSize: 13,
                       ),
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: AppSpacing.sm),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1308,21 +1260,14 @@ class _InteractionTableRowState extends State<_InteractionTableRow> {
                           widget.item.clientName.isEmpty
                               ? '—'
                               : widget.item.clientName,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 13,
-                            color: _Palette.textPrimary,
-                          ),
+                          style: AppTypography.tableCellStrong,
                           overflow: TextOverflow.ellipsis,
                         ),
                         if (widget.item.clientContact.isNotEmpty) ...[
-                          const SizedBox(height: 2),
+                          const SizedBox(height: AppSpacing.xxs),
                           Text(
                             widget.item.clientContact,
-                            style: const TextStyle(
-                              color: _Palette.textMuted,
-                              fontSize: 11.5,
-                            ),
+                            style: AppTypography.caption,
                             overflow: TextOverflow.ellipsis,
                           ),
                         ],
@@ -1340,23 +1285,23 @@ class _InteractionTableRowState extends State<_InteractionTableRow> {
                 mainAxisAlignment: MainAxisAlignment.start,
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(3),
+                    padding: const EdgeInsets.all(AppSpacing.xs),
                     decoration: BoxDecoration(
                       color: _Palette.headerBg,
-                      borderRadius: BorderRadius.circular(4),
+                      borderRadius: BorderRadius.circular(AppRadius.xs),
                     ),
                     child: const Icon(
                       Icons.person_outline,
-                      size: 14,
+                      size: AppSizing.iconXs,
                       color: _Palette.textSecondary,
                     ),
                   ),
-                  const SizedBox(width: 6),
+                  const SizedBox(width: AppSpacing.sm),
                   Flexible(
                     child: Text(
                       repName.isNotEmpty ? repName : '—',
                       style: TextStyle(
-                        fontSize: 12.5,
+                        fontSize: 12,
                         fontWeight: FontWeight.w500,
                         color: repName.isNotEmpty
                             ? _Palette.textPrimary
@@ -1376,7 +1321,7 @@ class _InteractionTableRowState extends State<_InteractionTableRow> {
                 AppFormatters.formatDate(widget.item.date),
                 textAlign: TextAlign.center,
                 style: const TextStyle(
-                  fontSize: 12.5,
+                  fontSize: 12,
                   color: _Palette.textSecondary,
                   fontWeight: FontWeight.w500,
                 ),
@@ -1398,17 +1343,17 @@ class _InteractionTableRowState extends State<_InteractionTableRow> {
                           children: [
                             const Icon(
                               Icons.calendar_month_outlined,
-                              size: 13,
+                              size: AppSizing.iconXs,
                               color: AppColors.primaryBlue,
                             ),
-                            const SizedBox(width: 4),
+                            const SizedBox(width: AppSpacing.xs),
                             Flexible(
                               child: Text(
                                 AppFormatters.formatDate(
                                   widget.item.followUpDate,
                                 ),
                                 style: const TextStyle(
-                                  fontSize: 12.5,
+                                  fontSize: 12,
                                   fontWeight: FontWeight.w600,
                                   color: _Palette.textPrimary,
                                 ),
@@ -1418,26 +1363,23 @@ class _InteractionTableRowState extends State<_InteractionTableRow> {
                           ],
                         ),
                         if (widget.item.followUpTime.isNotEmpty) ...[
-                          const SizedBox(height: 2),
+                          const SizedBox(height: AppSpacing.xxs),
                           Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               const Icon(
                                 Icons.access_time_outlined,
-                                size: 13,
+                                size: AppSizing.iconXs,
                                 color: _Palette.textMuted,
                               ),
-                              const SizedBox(width: 4),
+                              const SizedBox(width: AppSpacing.xs),
                               Flexible(
                                 child: Text(
                                   AppFormatters.formatTime(
                                     widget.item.followUpTime,
                                   ),
-                                  style: const TextStyle(
-                                    fontSize: 11.5,
-                                    color: _Palette.textMuted,
-                                  ),
+                                  style: AppTypography.caption,
                                   overflow: TextOverflow.ellipsis,
                                 ),
                               ),
@@ -1449,10 +1391,7 @@ class _InteractionTableRowState extends State<_InteractionTableRow> {
                   : const Text(
                       '—',
                       textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 12.5,
-                        color: _Palette.textMuted,
-                      ),
+                      style: AppTypography.caption,
                     ),
             ),
 
@@ -1486,10 +1425,7 @@ class _InteractionTableRowState extends State<_InteractionTableRow> {
                   : const Text(
                       '—',
                       textAlign: TextAlign.left,
-                      style: TextStyle(
-                        fontSize: 12.5,
-                        color: _Palette.textMuted,
-                      ),
+                      style: AppTypography.caption,
                     ),
             ),
 
@@ -1504,7 +1440,7 @@ class _InteractionTableRowState extends State<_InteractionTableRow> {
                     icon: const Icon(
                       Icons.edit_outlined,
                       color: AppColors.primaryBlue,
-                      size: 18,
+                      size: AppSizing.iconMd,
                     ),
                     onPressed: widget.onEdit,
                     tooltip: 'Edit',
@@ -1514,12 +1450,12 @@ class _InteractionTableRowState extends State<_InteractionTableRow> {
                       minHeight: 28,
                     ),
                   ),
-                  const SizedBox(width: 6),
+                  const SizedBox(width: AppSpacing.sm),
                   IconButton(
                     icon: const Icon(
                       Icons.delete_outline,
-                      color: Colors.red,
-                      size: 18,
+                      color: AppColors.danger,
+                      size: AppSizing.iconMd,
                     ),
                     onPressed: widget.onDelete,
                     tooltip: 'Delete',

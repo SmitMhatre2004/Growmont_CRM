@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../theme/app_theme.dart';
 import '../../features/auth/auth_provider.dart';
 import '../../features/auth/login_screen.dart';
 import '../../features/dashboard/dashboard_screen.dart';
@@ -41,9 +42,8 @@ final routerProvider = Provider<GoRouter>((ref) {
     routes: [
       GoRoute(
         path: '/',
-        pageBuilder: (context, state) => const NoTransitionPage(
-          child: LoginScreen(),
-        ),
+        pageBuilder: (context, state) =>
+            const NoTransitionPage(child: LoginScreen()),
       ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) =>
@@ -53,9 +53,8 @@ final routerProvider = Provider<GoRouter>((ref) {
             routes: [
               GoRoute(
                 path: '/dashboard',
-                pageBuilder: (context, state) => const NoTransitionPage(
-                  child: DashboardScreen(),
-                ),
+                pageBuilder: (context, state) =>
+                    const NoTransitionPage(child: DashboardScreen()),
               ),
             ],
           ),
@@ -63,9 +62,8 @@ final routerProvider = Provider<GoRouter>((ref) {
             routes: [
               GoRoute(
                 path: '/sales',
-                pageBuilder: (context, state) => const NoTransitionPage(
-                  child: SalesScreen(),
-                ),
+                pageBuilder: (context, state) =>
+                    const NoTransitionPage(child: SalesScreen()),
               ),
             ],
           ),
@@ -73,9 +71,8 @@ final routerProvider = Provider<GoRouter>((ref) {
             routes: [
               GoRoute(
                 path: '/interactions',
-                pageBuilder: (context, state) => const NoTransitionPage(
-                  child: InteractionsScreen(),
-                ),
+                pageBuilder: (context, state) =>
+                    const NoTransitionPage(child: InteractionsScreen()),
               ),
             ],
           ),
@@ -83,9 +80,8 @@ final routerProvider = Provider<GoRouter>((ref) {
             routes: [
               GoRoute(
                 path: '/employees',
-                pageBuilder: (context, state) => const NoTransitionPage(
-                  child: EmployeesListScreen(),
-                ),
+                pageBuilder: (context, state) =>
+                    const NoTransitionPage(child: EmployeesListScreen()),
                 routes: [
                   GoRoute(
                     path: ':id',
@@ -104,9 +100,8 @@ final routerProvider = Provider<GoRouter>((ref) {
             routes: [
               GoRoute(
                 path: '/info-portal',
-                pageBuilder: (context, state) => const NoTransitionPage(
-                  child: InfoPortalScreen(),
-                ),
+                pageBuilder: (context, state) =>
+                    const NoTransitionPage(child: InfoPortalScreen()),
               ),
             ],
           ),
@@ -131,10 +126,14 @@ final routerProvider = Provider<GoRouter>((ref) {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.error_outline, size: 64, color: Colors.grey),
-            const SizedBox(height: 16),
+            const Icon(
+              Icons.error_outline,
+              size: AppSizing.iconEmptyState,
+              color: AppColors.textMuted,
+            ),
+            const SizedBox(height: AppSpacing.lg),
             Text('Page not found: ${state.uri}'),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSpacing.lg),
             FilledButton(
               onPressed: () => context.go('/dashboard'),
               child: const Text('Go to Dashboard'),

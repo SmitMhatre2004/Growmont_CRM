@@ -39,10 +39,16 @@ class _AddReminderModalState extends ConsumerState<AddReminderModal> {
     _description = TextEditingController(text: e?.description ?? '');
     _date = e != null ? DateTime.parse(e.date) : DateTime.now();
     final timeParts = (e?.time ?? '09:00:00').split(':');
-    _time = TimeOfDay(hour: int.tryParse(timeParts[0]) ?? 9, minute: int.tryParse(timeParts[1]) ?? 0);
+    _time = TimeOfDay(
+      hour: int.tryParse(timeParts[0]) ?? 9,
+      minute: int.tryParse(timeParts[1]) ?? 0,
+    );
     if (e?.endTime != null && e!.endTime!.isNotEmpty) {
       final endParts = e.endTime!.split(':');
-      _endTime = TimeOfDay(hour: int.tryParse(endParts[0]) ?? 10, minute: int.tryParse(endParts[1]) ?? 0);
+      _endTime = TimeOfDay(
+        hour: int.tryParse(endParts[0]) ?? 10,
+        minute: int.tryParse(endParts[1]) ?? 0,
+      );
     }
     _type = e?.type ?? 'CORPORATE';
     _priority = e?.priority ?? 'MEDIUM';
@@ -91,7 +97,10 @@ class _AddReminderModalState extends ConsumerState<AddReminderModal> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed: $e'), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text('Failed: $e'),
+            backgroundColor: AppColors.danger,
+          ),
         );
       }
     } finally {
@@ -102,17 +111,14 @@ class _AddReminderModalState extends ConsumerState<AddReminderModal> {
   @override
   Widget build(BuildContext context) {
     return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
-      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(borderRadius: AppRadius.brXl),
+      backgroundColor: AppColors.surface,
       surfaceTintColor: Colors.transparent,
-      insetPadding: const EdgeInsets.symmetric(
-        horizontal: 24.0,
-        vertical: 24.0,
-      ),
+      insetPadding: const EdgeInsets.all(AppSpacing.xxl),
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 550),
+        constraints: const BoxConstraints(maxWidth: AppSizing.modalMaxWidth),
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24.0),
+          padding: AppLayout.modalPadding,
           child: Form(
             key: _formKey,
             child: Column(
@@ -122,52 +128,66 @@ class _AddReminderModalState extends ConsumerState<AddReminderModal> {
                 Row(
                   children: [
                     Text(
-                      widget.existing != null ? 'Edit Reminder' : 'Add Reminder',
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF111827),
-                      ),
+                      widget.existing != null
+                          ? 'Edit Reminder'
+                          : 'Add Reminder',
+                      style: AppTypography.sectionTitle,
                     ),
                     const Spacer(),
                     IconButton(
                       onPressed: () => Navigator.pop(context),
-                      icon: const Icon(Icons.close, color: Color(0xFF6B7280)),
+                      icon: const Icon(
+                        Icons.close,
+                        color: AppColors.textSecondary,
+                      ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: AppSpacing.lg),
                 TextFormField(
                   controller: _eventName,
                   decoration: const InputDecoration(labelText: 'Event Name *'),
                   validator: (v) => v == null || v.isEmpty ? 'Required' : null,
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: AppSpacing.lg),
                 DropdownButtonFormField<String>(
                   initialValue: _type,
                   decoration: const InputDecoration(labelText: 'Type'),
                   items: reminderTypeChoices
-                      .map((c) => DropdownMenuItem(value: c.$1, child: Text(c.$2)))
+                      .map(
+                        (c) => DropdownMenuItem(value: c.$1, child: Text(c.$2)),
+                      )
                       .toList(),
                   onChanged: (v) => setState(() => _type = v!),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: AppSpacing.lg),
                 DropdownButtonFormField<String>(
                   initialValue: _priority,
                   decoration: const InputDecoration(labelText: 'Priority'),
                   items: const [
-                    DropdownMenuItem(value: 'HIGH', child: Text('High Priority')),
-                    DropdownMenuItem(value: 'MEDIUM', child: Text('Medium Priority')),
+                    DropdownMenuItem(
+                      value: 'HIGH',
+                      child: Text('High Priority'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'MEDIUM',
+                      child: Text('Medium Priority'),
+                    ),
                     DropdownMenuItem(value: 'LOW', child: Text('Low Priority')),
                   ],
                   onChanged: (v) => setState(() => _priority = v!),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: AppSpacing.md),
                 ListTile(
                   contentPadding: EdgeInsets.zero,
                   title: const Text('Date *'),
-                  subtitle: Text(AppFormatters.formatDate(AppFormatters.toApiDate(_date))),
-                  trailing: const Icon(Icons.calendar_today, size: 18),
+                  subtitle: Text(
+                    AppFormatters.formatDate(AppFormatters.toApiDate(_date)),
+                  ),
+                  trailing: const Icon(
+                    Icons.calendar_today,
+                    size: AppSizing.iconMd,
+                  ),
                   onTap: () async {
                     final d = await showDatePicker(
                       context: context,
@@ -182,9 +202,15 @@ class _AddReminderModalState extends ConsumerState<AddReminderModal> {
                   contentPadding: EdgeInsets.zero,
                   title: const Text('Time *'),
                   subtitle: Text(_time.format(context)),
-                  trailing: const Icon(Icons.access_time, size: 18),
+                  trailing: const Icon(
+                    Icons.access_time,
+                    size: AppSizing.iconMd,
+                  ),
                   onTap: () async {
-                    final t = await showTimePicker(context: context, initialTime: _time);
+                    final t = await showTimePicker(
+                      context: context,
+                      initialTime: _time,
+                    );
                     if (t != null) setState(() => _time = t);
                   },
                 ),
@@ -192,7 +218,7 @@ class _AddReminderModalState extends ConsumerState<AddReminderModal> {
                   contentPadding: EdgeInsets.zero,
                   title: const Text('End Time (optional)'),
                   subtitle: Text(_endTime?.format(context) ?? 'Not set'),
-                  trailing: const Icon(Icons.schedule, size: 18),
+                  trailing: const Icon(Icons.schedule, size: AppSizing.iconMd),
                   onTap: () async {
                     final t = await showTimePicker(
                       context: context,
@@ -201,13 +227,13 @@ class _AddReminderModalState extends ConsumerState<AddReminderModal> {
                     if (t != null) setState(() => _endTime = t);
                   },
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: AppSpacing.md),
                 TextFormField(
                   controller: _description,
                   maxLines: 3,
                   decoration: const InputDecoration(labelText: 'Description'),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: AppSpacing.md),
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
                   title: const Text('Repeat Reminder'),
@@ -222,19 +248,22 @@ class _AddReminderModalState extends ConsumerState<AddReminderModal> {
                   },
                 ),
                 if (_repeatReminder) ...[
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppSpacing.md),
                   DropdownButtonFormField<String>(
                     key: ValueKey('repeat_type_$_repeatType'),
                     initialValue: _repeatType == 'NONE' ? 'DAILY' : _repeatType,
                     decoration: const InputDecoration(labelText: 'Repeat Type'),
                     items: repeatTypeChoices
                         .where((c) => c.$1 != 'NONE')
-                        .map((c) => DropdownMenuItem(value: c.$1, child: Text(c.$2)))
+                        .map(
+                          (c) =>
+                              DropdownMenuItem(value: c.$1, child: Text(c.$2)),
+                        )
                         .toList(),
                     onChanged: (v) => setState(() => _repeatType = v!),
                   ),
                   if (_repeatType == 'WEEKLY') ...[
-                    const SizedBox(height: 12),
+                    const SizedBox(height: AppSpacing.md),
                     Wrap(
                       spacing: 8,
                       children: weekDays.map((day) {
@@ -262,10 +291,10 @@ class _AddReminderModalState extends ConsumerState<AddReminderModal> {
                     onChanged: (v) => setState(() => _repeatEveryDay = v),
                   ),
                 ],
-                const SizedBox(height: 24),
+                const SizedBox(height: AppSpacing.xxl),
                 SizedBox(
                   width: double.infinity,
-                  height: 48,
+                  height: AppSizing.controlLg,
                   child: FilledButton(
                     onPressed: _loading ? null : _submit,
                     child: Text(_loading ? 'Saving...' : 'Save Reminder'),

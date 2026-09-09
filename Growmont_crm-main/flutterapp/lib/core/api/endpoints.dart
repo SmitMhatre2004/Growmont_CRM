@@ -32,7 +32,8 @@ class Endpoints {
   static const exportSales = '/api/export/sales/';
   static const exportSalesFiltered = '/api/export/sales/filtered/';
   static const exportInteractions = '/api/export/interactions/';
-  static const exportInteractionsFiltered = '/api/export/interactions/filtered/';
+  static const exportInteractionsFiltered =
+      '/api/export/interactions/filtered/';
 
   static const importSales = '/api/import/sales/';
   static const importInteractions = '/api/import/interactions/';

@@ -17,10 +17,10 @@ class FirestoreService {
     FirebaseFunctions? functions,
     FirebaseStorage? storage,
     this.devUid,
-  })  : _firestore = firestore ?? FirebaseFirestore.instance,
-        _auth = auth ?? FirebaseAuth.instance,
-        _functions = functions ?? FirebaseFunctions.instance,
-        _storage = storage ?? FirebaseStorage.instance;
+  }) : _firestore = firestore ?? FirebaseFirestore.instance,
+       _auth = auth ?? FirebaseAuth.instance,
+       _functions = functions ?? FirebaseFunctions.instance,
+       _storage = storage ?? FirebaseStorage.instance;
 
   final FirebaseFirestore _firestore;
   final FirebaseAuth _auth;
@@ -52,12 +52,18 @@ class FirestoreService {
   // ----------------------------------------------------
 
   Future<List<Employee>> getEmployees() async {
-    final snapshot = await _firestore.collection('employees').orderBy('name').get();
+    final snapshot = await _firestore
+        .collection('employees')
+        .orderBy('name')
+        .get();
     return snapshot.docs.map(Employee.fromFirestore).toList();
   }
 
   Future<Employee> getEmployee(dynamic id) async {
-    final doc = await _firestore.collection('employees').doc(id.toString()).get();
+    final doc = await _firestore
+        .collection('employees')
+        .doc(id.toString())
+        .get();
     if (!doc.exists) {
       throw Exception('Employee not found');
     }
@@ -83,7 +89,10 @@ class FirestoreService {
   }
 
   Future<List<EmployeeDropdown>> getEmployeesDropdown() async {
-    final snapshot = await _firestore.collection('employees').orderBy('name').get();
+    final snapshot = await _firestore
+        .collection('employees')
+        .orderBy('name')
+        .get();
     return snapshot.docs.map(EmployeeDropdown.fromFirestore).toList();
   }
 
@@ -102,9 +111,13 @@ class FirestoreService {
     final email = data['email']?.toString().trim();
     final password = data['password']?.toString();
 
-    if (email != null && email.isNotEmpty && password != null && password.isNotEmpty) {
+    if (email != null &&
+        email.isNotEmpty &&
+        password != null &&
+        password.isNotEmpty) {
       try {
-        final tempAppName = 'EmployeeProvisioning_${DateTime.now().millisecondsSinceEpoch}';
+        final tempAppName =
+            'EmployeeProvisioning_${DateTime.now().millisecondsSinceEpoch}';
         final tempApp = await Firebase.initializeApp(
           name: tempAppName,
           options: Firebase.app().options,
@@ -134,7 +147,9 @@ class FirestoreService {
       final parsed = DateTime.tryParse(cleanData['dob'] as String);
       if (parsed != null) cleanData['dob'] = Timestamp.fromDate(parsed);
     }
-    cleanData['role'] = (cleanData['role']?.toString().toUpperCase() == 'ADMIN') ? 'ADMIN' : 'EMPLOYEE';
+    cleanData['role'] = (cleanData['role']?.toString().toUpperCase() == 'ADMIN')
+        ? 'ADMIN'
+        : 'EMPLOYEE';
     cleanData['avatar_url'] = cleanData['avatar_url'] ?? '';
     cleanData['clients_count'] = cleanData['clients_count'] ?? 0;
     cleanData['sales_count'] = cleanData['sales_count'] ?? 0;
@@ -153,7 +168,10 @@ class FirestoreService {
       if (parsed != null) cleanData['dob'] = Timestamp.fromDate(parsed);
     }
     cleanData['updated_at'] = FieldValue.serverTimestamp();
-    await _firestore.collection('employees').doc(id.toString()).update(cleanData);
+    await _firestore
+        .collection('employees')
+        .doc(id.toString())
+        .update(cleanData);
   }
 
   Future<void> deleteEmployee(dynamic id) async {
@@ -186,8 +204,10 @@ class FirestoreService {
     final saleData = Map<String, dynamic>.from(data);
 
     // Ensure amount_paise is populated
-    if (!saleData.containsKey('amount_paise') || saleData['amount_paise'] == null) {
-      final rupeeVal = double.tryParse(saleData['amount']?.toString() ?? '0') ?? 0.0;
+    if (!saleData.containsKey('amount_paise') ||
+        saleData['amount_paise'] == null) {
+      final rupeeVal =
+          double.tryParse(saleData['amount']?.toString() ?? '0') ?? 0.0;
       saleData['amount_paise'] = (rupeeVal * 100).round();
     }
     saleData.remove('amount');
@@ -218,7 +238,8 @@ class FirestoreService {
     final saleData = Map<String, dynamic>.from(data);
 
     if (saleData.containsKey('amount')) {
-      final rupeeVal = double.tryParse(saleData['amount']?.toString() ?? '0') ?? 0.0;
+      final rupeeVal =
+          double.tryParse(saleData['amount']?.toString() ?? '0') ?? 0.0;
       saleData['amount_paise'] = (rupeeVal * 100).round();
       saleData.remove('amount');
     }
@@ -265,9 +286,12 @@ class FirestoreService {
       final parsed = DateTime.tryParse(interData['date'] as String);
       if (parsed != null) interData['date'] = Timestamp.fromDate(parsed);
     }
-    if (interData['follow_up_date'] is String && (interData['follow_up_date'] as String).isNotEmpty) {
+    if (interData['follow_up_date'] is String &&
+        (interData['follow_up_date'] as String).isNotEmpty) {
       final parsed = DateTime.tryParse(interData['follow_up_date'] as String);
-      if (parsed != null) interData['follow_up_date'] = Timestamp.fromDate(parsed);
+      if (parsed != null) {
+        interData['follow_up_date'] = Timestamp.fromDate(parsed);
+      }
     }
 
     if (interData.containsKey('employee')) {
@@ -284,7 +308,10 @@ class FirestoreService {
     return Interaction.fromFirestore(saved);
   }
 
-  Future<Interaction> updateInteraction(dynamic id, Map<String, dynamic> data) async {
+  Future<Interaction> updateInteraction(
+    dynamic id,
+    Map<String, dynamic> data,
+  ) async {
     final docRef = _firestore.collection('interactions').doc(id.toString());
     final interData = Map<String, dynamic>.from(data);
 
@@ -292,9 +319,12 @@ class FirestoreService {
       final parsed = DateTime.tryParse(interData['date'] as String);
       if (parsed != null) interData['date'] = Timestamp.fromDate(parsed);
     }
-    if (interData['follow_up_date'] is String && (interData['follow_up_date'] as String).isNotEmpty) {
+    if (interData['follow_up_date'] is String &&
+        (interData['follow_up_date'] as String).isNotEmpty) {
       final parsed = DateTime.tryParse(interData['follow_up_date'] as String);
-      if (parsed != null) interData['follow_up_date'] = Timestamp.fromDate(parsed);
+      if (parsed != null) {
+        interData['follow_up_date'] = Timestamp.fromDate(parsed);
+      }
     }
 
     if (interData.containsKey('employee')) {

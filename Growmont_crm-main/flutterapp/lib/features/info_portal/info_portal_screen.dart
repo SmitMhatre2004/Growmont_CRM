@@ -15,25 +15,26 @@ import '../auth/auth_provider.dart';
 import '../interactions/widgets/add_interaction_modal.dart';
 import '../sales/widgets/add_sale_modal.dart';
 
-/// Design tokens matching the SaaS dashboard aesthetic from Interactions screen.
+/// Screen palette. Every value aliases the shared design tokens in
+/// [AppColors] so this screen can never drift from the rest of the app.
 class _Palette {
   _Palette._();
 
-  static const Color border = Color(0xFFE7E8EC);
-  static const Color headerBg = Color(0xFFFAFAFB);
-  static const Color rowHover = Color(0xFFF5F8FF);
+  static const Color border = AppColors.border;
+  static const Color headerBg = AppColors.surfaceHeader;
+  static const Color rowHover = AppColors.surfaceHover;
 
-  static const Color textPrimary = Color(0xFF13182B);
-  static const Color textSecondary = Color(0xFF6B7280);
-  static const Color textMuted = Color(0xFFA0A4AE);
+  static const Color textPrimary = AppColors.textPrimary;
+  static const Color textSecondary = AppColors.textSecondary;
+  static const Color textMuted = AppColors.textMuted;
 
-  static const Color all = Color.fromARGB(255, 15, 82, 164);
-  static const Color high = Color.fromARGB(255, 220, 50, 50);
-  static const Color highBg = Color(0xFFFEF2F2);
-  static const Color medium = Color.fromARGB(255, 255, 167, 66);
-  static const Color mediumBg = Color(0xFFFFF7ED);
-  static const Color low = Color.fromRGBO(240, 226, 72, 1);
-  static const Color lowBg = Color.fromARGB(255, 255, 252, 216);
+  static const Color all = AppColors.primaryBlue;
+  static const Color high = AppColors.danger;
+  static const Color highBg = AppColors.dangerSoft;
+  static const Color medium = AppColors.warning;
+  static const Color mediumBg = AppColors.warningSoft;
+  static const Color low = AppColors.yellow;
+  static const Color lowBg = AppColors.yellowSoft;
 }
 
 class InfoPortalScreen extends ConsumerStatefulWidget {
@@ -44,15 +45,17 @@ class InfoPortalScreen extends ConsumerStatefulWidget {
 }
 
 class _InfoPortalScreenState extends ConsumerState<InfoPortalScreen> {
-  static const double _controlHeight = 40.0;
-  static const double _radius = 20.0;
+  // Control metrics come from the shared design tokens so every screen's
+  // toolbar sits on the same baseline with the same corner treatment.
+  static const double _controlHeight = AppSizing.controlMd; // 40
+  static const double _radius = AppRadius.md; // 8 - controls are not pills
 
   List<Sale> _sales = [];
   List<Interaction> _interactions = [];
   bool _loading = true;
 
-  // Active Tab: 'interactions' or 'sales'
-  String _activeTab = 'interactions';
+  // Active Tab: 'sales' or 'interactions'
+  String _activeTab = 'sales';
 
   // Search
   String _search = '';
@@ -337,7 +340,7 @@ class _InfoPortalScreenState extends ConsumerState<InfoPortalScreen> {
               FilledButton(
                 onPressed: () => Navigator.pop(ctx, true),
                 style: FilledButton.styleFrom(
-                  backgroundColor: Colors.red.shade600,
+                  backgroundColor: AppColors.danger,
                 ),
                 child: const Text('Delete'),
               ),
@@ -420,7 +423,7 @@ class _InfoPortalScreenState extends ConsumerState<InfoPortalScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Export failed'),
-            backgroundColor: Colors.red,
+            backgroundColor: AppColors.danger,
           ),
         );
       }
@@ -503,7 +506,7 @@ class _InfoPortalScreenState extends ConsumerState<InfoPortalScreen> {
               ? const Center(child: CircularProgressIndicator())
               : _buildTableCard(),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpacing.lg),
       ],
     );
   }
@@ -514,9 +517,9 @@ class _InfoPortalScreenState extends ConsumerState<InfoPortalScreen> {
     final isMobile = MediaQuery.sizeOf(context).width < 768;
     return Padding(
       padding: EdgeInsets.fromLTRB(
-        isMobile ? 16 : 24,
+        isMobile ? AppSpacing.lg : AppSpacing.xxl,
         isMobile ? 10 : 16,
-        isMobile ? 16 : 24,
+        isMobile ? AppSpacing.lg : AppSpacing.xxl,
         isMobile ? 8 : 12,
       ),
       child: Align(
@@ -535,8 +538,8 @@ class _InfoPortalScreenState extends ConsumerState<InfoPortalScreen> {
 
   Widget _buildTabsRow(AppUser? user) {
     final isMobile = MediaQuery.sizeOf(context).width < 768;
-    final isInteractions = _activeTab == 'interactions';
-    final activeIndex = isInteractions ? 0 : 1;
+    final isSales = _activeTab == 'sales';
+    final activeIndex = isSales ? 0 : 1;
     const itemWidth = 148.0;
 
     final slidingSegment = Container(
@@ -546,7 +549,7 @@ class _InfoPortalScreenState extends ConsumerState<InfoPortalScreen> {
         border: Border.all(color: _Palette.border),
         borderRadius: BorderRadius.circular(_radius),
       ),
-      padding: const EdgeInsets.all(3),
+      padding: const EdgeInsets.all(AppSpacing.xs),
       child: SizedBox(
         width: itemWidth * 2,
         child: Stack(
@@ -562,7 +565,7 @@ class _InfoPortalScreenState extends ConsumerState<InfoPortalScreen> {
               child: Container(
                 decoration: BoxDecoration(
                   color: _Palette.all,
-                  borderRadius: BorderRadius.circular(_radius - 3),
+                  borderRadius: BorderRadius.circular(AppRadius.sm),
                   boxShadow: [
                     BoxShadow(
                       color: _Palette.all.withValues(alpha: 0.25),
@@ -578,16 +581,16 @@ class _InfoPortalScreenState extends ConsumerState<InfoPortalScreen> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 _slidingSegmentItem(
-                  label: 'Interactions (${_interactions.length})',
-                  isSelected: isInteractions,
-                  width: itemWidth,
-                  onTap: () => setState(() => _activeTab = 'interactions'),
-                ),
-                _slidingSegmentItem(
                   label: 'Sales (${_sales.length})',
-                  isSelected: !isInteractions,
+                  isSelected: isSales,
                   width: itemWidth,
                   onTap: () => setState(() => _activeTab = 'sales'),
+                ),
+                _slidingSegmentItem(
+                  label: 'Interactions (${_interactions.length})',
+                  isSelected: !isSales,
+                  width: itemWidth,
+                  onTap: () => setState(() => _activeTab = 'interactions'),
                 ),
               ],
             ),
@@ -602,25 +605,21 @@ class _InfoPortalScreenState extends ConsumerState<InfoPortalScreen> {
         label: 'Export',
         onPressed: _export,
       ),
-      const SizedBox(width: 8),
+      const SizedBox(width: AppSpacing.sm),
       _outlinedIconButton(
         icon: Icons.upload_outlined,
         label: 'Import',
         onPressed: _import,
       ),
-      const SizedBox(width: 8),
+      const SizedBox(width: AppSpacing.sm),
       SizedBox(
         height: _controlHeight,
         child: FilledButton.icon(
           onPressed: () => _showAddModal(user),
-          icon: const Icon(Icons.add, size: 18),
-          label: Text(isInteractions ? 'Add Interaction' : 'Add Sale'),
+          icon: const Icon(Icons.add, size: AppSizing.iconMd),
+          label: Text(isSales ? 'Add Sale' : 'Add Interaction'),
           style: FilledButton.styleFrom(
-            backgroundColor: AppColors.primaryGreen,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(_radius),
-            ),
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+            backgroundColor: AppColors.primaryBlue,
           ),
         ),
       ),
@@ -636,7 +635,7 @@ class _InfoPortalScreenState extends ConsumerState<InfoPortalScreen> {
               scrollDirection: Axis.horizontal,
               child: slidingSegment,
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: AppSpacing.md),
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: Row(
@@ -663,10 +662,10 @@ class _InfoPortalScreenState extends ConsumerState<InfoPortalScreen> {
   }) {
     return SizedBox(
       width: width,
-      height: _controlHeight - 6,
+      height: AppSizing.controlSm,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(_radius - 3),
+        borderRadius: BorderRadius.circular(AppRadius.sm),
         splashColor: Colors.transparent,
         highlightColor: Colors.transparent,
         hoverColor: Colors.transparent,
@@ -695,16 +694,12 @@ class _InfoPortalScreenState extends ConsumerState<InfoPortalScreen> {
       height: _controlHeight,
       child: OutlinedButton.icon(
         onPressed: onPressed,
-        icon: Icon(icon, size: 18),
+        icon: Icon(icon, size: AppSizing.iconMd),
         label: Text(label),
         style: OutlinedButton.styleFrom(
           foregroundColor: _Palette.textPrimary,
           side: const BorderSide(color: _Palette.border),
-          backgroundColor: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(_radius),
-          ),
-          padding: const EdgeInsets.symmetric(horizontal: 14),
+          backgroundColor: AppColors.surface,
         ),
       ),
     );
@@ -720,71 +715,44 @@ class _InfoPortalScreenState extends ConsumerState<InfoPortalScreen> {
         : _selectedSaleIds;
     final hasSelection = selectedIds.isNotEmpty;
 
-    final selectionBar = hasSelection
-        ? Material(
-            color: const Color(0xFFEFF6FF),
-            elevation: 1.5,
-            shadowColor: const Color(0xFF93C5FD).withValues(alpha: 0.25),
-            shape: const StadiumBorder(
-              side: BorderSide(
-                color: Color(0xFF93C5FD),
-                width: 1.2,
+    final selectionBar = Row(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Visibility(
+          visible: hasSelection,
+          maintainSize: true,
+          maintainAnimation: true,
+          maintainState: true,
+          child: Tooltip(
+            message: 'Delete selected',
+            child: Material(
+              color: AppColors.dangerSoft,
+              borderRadius: BorderRadius.circular(AppRadius.sm),
+              child: InkWell(
+                onTap: hasSelection ? _bulkDelete : null,
+                borderRadius: BorderRadius.circular(AppRadius.sm),
+                child: Container(
+                  width: 26,
+                  height: 26,
+                  alignment: Alignment.center,
+                  child: const Icon(
+                    Icons.delete_outline,
+                    size: 16,
+                    color: AppColors.danger,
+                  ),
+                ),
               ),
             ),
-            clipBehavior: Clip.antiAlias,
-            child: Container(
-              height: _controlHeight,
-              padding: const EdgeInsets.symmetric(horizontal: 14),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 8,
-                    height: 8,
-                    decoration: const BoxDecoration(
-                      color: _Palette.all,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Text(
-                    '${selectedIds.length} selected',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 13,
-                      color: _Palette.textPrimary,
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  TextButton(
-                    onPressed: () => setState(() => selectedIds.clear()),
-                    style: TextButton.styleFrom(
-                      foregroundColor: _Palette.textSecondary,
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      minimumSize: const Size(0, 32),
-                    ),
-                    child: const Text('Clear'),
-                  ),
-                  const SizedBox(width: 8),
-                  FilledButton.icon(
-                    onPressed: _bulkDelete,
-                    icon: const Icon(Icons.delete_outline, size: 16),
-                    label: const Text('Delete'),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: Colors.red.shade600,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      minimumSize: const Size(0, 32),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          )
-        : null;
+          ),
+        ),
+        const SizedBox(width: AppSpacing.sm),
+        Text(
+          '${selectedIds.length} selected',
+          style: AppTypography.tableCellStrong.copyWith(fontSize: 14),
+        ),
+      ],
+    );
 
     Color activeFilterColor = _Palette.all;
     if (_priorityFilter == 'HIGH') {
@@ -801,11 +769,12 @@ class _InfoPortalScreenState extends ConsumerState<InfoPortalScreen> {
       color: Colors.white,
       elevation: isSearchFocused ? 2.0 : 1.5,
       shadowColor: isSearchFocused
-          ? AppColors.primaryGreen.withValues(alpha: 0.18)
+          ? AppColors.primaryBlue.withValues(alpha: 0.18)
           : Colors.black.withValues(alpha: 0.08),
-      shape: StadiumBorder(
+      shape: RoundedRectangleBorder(
+        borderRadius: AppRadius.brMd,
         side: BorderSide(
-          color: isSearchFocused ? AppColors.primaryGreen : _Palette.border,
+          color: isSearchFocused ? AppColors.primaryBlue : _Palette.border,
           width: isSearchFocused ? 1.5 : 1.0,
         ),
       ),
@@ -820,8 +789,7 @@ class _InfoPortalScreenState extends ConsumerState<InfoPortalScreen> {
             hintText: isInteractions
                 ? 'Search clients, representatives, notes...'
                 : 'Search clients, products, representatives, schemes...',
-            hintStyle:
-                const TextStyle(fontSize: 13.5, color: _Palette.textMuted),
+            hintStyle: const TextStyle(fontSize: 13, color: _Palette.textMuted),
             prefixIconConstraints: const BoxConstraints(
               minWidth: 72,
               maxHeight: 40,
@@ -829,14 +797,14 @@ class _InfoPortalScreenState extends ConsumerState<InfoPortalScreen> {
             prefixIcon: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const SizedBox(width: 6),
+                const SizedBox(width: AppSpacing.sm),
                 PopupMenuButton<String>(
                   tooltip: 'Filter & sort options',
                   icon: Icon(
                     _hasActiveFilters
                         ? Icons.filter_alt
                         : Icons.filter_alt_outlined,
-                    size: 19,
+                    size: AppSizing.iconMd,
                     color: _hasActiveFilters
                         ? activeFilterColor
                         : _Palette.textMuted,
@@ -845,7 +813,7 @@ class _InfoPortalScreenState extends ConsumerState<InfoPortalScreen> {
                   splashRadius: 18,
                   offset: const Offset(0, 36),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(AppRadius.lg),
                     side: const BorderSide(color: _Palette.border),
                   ),
                   color: Colors.white,
@@ -919,12 +887,7 @@ class _InfoPortalScreenState extends ConsumerState<InfoPortalScreen> {
                         height: 28,
                         child: Text(
                           'FILTER BY PRIORITY',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                            color: _Palette.textSecondary,
-                            letterSpacing: 0.5,
-                          ),
+                          style: AppTypography.tableHeader,
                         ),
                       ),
                       _filterMenuItem(
@@ -958,18 +921,14 @@ class _InfoPortalScreenState extends ConsumerState<InfoPortalScreen> {
                         height: 28,
                         child: Text(
                           'FILTER BY PRODUCT',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                            color: _Palette.textSecondary,
-                            letterSpacing: 0.5,
-                          ),
+                          style: AppTypography.tableHeader,
                         ),
                       ),
                       _filterMenuItem(
                         'PRODUCT:ALL',
                         'All Products',
                         _productFilter.isEmpty,
+                        activeColor: AppColors.primaryBlue,
                       ),
                       ...productCategories
                           .where((c) => c.$1 != 'ALL')
@@ -978,6 +937,7 @@ class _InfoPortalScreenState extends ConsumerState<InfoPortalScreen> {
                               'PRODUCT:${c.$1}',
                               c.$2,
                               _productFilter == c.$1,
+                              activeColor: productColor(c.$1),
                             ),
                           ),
                       const PopupMenuDivider(height: 12),
@@ -985,15 +945,7 @@ class _InfoPortalScreenState extends ConsumerState<InfoPortalScreen> {
                     const PopupMenuItem<String>(
                       enabled: false,
                       height: 28,
-                      child: Text(
-                        'SORT BY',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                          color: _Palette.textSecondary,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
+                      child: Text('SORT BY', style: AppTypography.tableHeader),
                     ),
                     _filterMenuItem(
                       'SORT:newest',
@@ -1001,7 +953,8 @@ class _InfoPortalScreenState extends ConsumerState<InfoPortalScreen> {
                       isInteractions
                           ? (_sortColumnInteractions == 'date' &&
                                 !_sortAscendingInteractions)
-                          : (_sortColumnSales == 'date' && !_sortAscendingSales),
+                          : (_sortColumnSales == 'date' &&
+                                !_sortAscendingSales),
                     ),
                     _filterMenuItem(
                       'SORT:oldest',
@@ -1039,15 +992,15 @@ class _InfoPortalScreenState extends ConsumerState<InfoPortalScreen> {
                           children: [
                             Icon(
                               Icons.clear_all,
-                              size: 16,
-                              color: Colors.redAccent,
+                              size: AppSizing.iconSm,
+                              color: AppColors.danger,
                             ),
-                            SizedBox(width: 8),
+                            SizedBox(width: AppSpacing.sm),
                             Text(
                               'Reset All Filters',
                               style: TextStyle(
                                 fontSize: 13,
-                                color: Colors.redAccent,
+                                color: AppColors.danger,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
@@ -1061,14 +1014,17 @@ class _InfoPortalScreenState extends ConsumerState<InfoPortalScreen> {
                   width: 1,
                   height: 16,
                   color: _Palette.border,
-                  margin: const EdgeInsets.only(left: 2, right: 8),
+                  margin: const EdgeInsets.only(
+                    left: AppSpacing.xxs,
+                    right: AppSpacing.sm,
+                  ),
                 ),
                 const Icon(
                   Icons.search,
                   color: _Palette.textMuted,
-                  size: 18,
+                  size: AppSizing.iconMd,
                 ),
-                const SizedBox(width: 4),
+                const SizedBox(width: AppSpacing.xs),
               ],
             ),
             suffixIcon: _search.isNotEmpty
@@ -1076,7 +1032,7 @@ class _InfoPortalScreenState extends ConsumerState<InfoPortalScreen> {
                     icon: const Icon(
                       Icons.clear,
                       color: _Palette.textMuted,
-                      size: 18,
+                      size: AppSizing.iconMd,
                     ),
                     onPressed: () => setState(() => _search = ''),
                   )
@@ -1088,9 +1044,11 @@ class _InfoPortalScreenState extends ConsumerState<InfoPortalScreen> {
             focusedErrorBorder: InputBorder.none,
             disabledBorder: InputBorder.none,
             filled: false,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 14),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.lg,
+            ),
           ),
-          style: const TextStyle(fontSize: 13.5),
+          style: const TextStyle(fontSize: 13),
           onChanged: (v) => setState(() => _search = v),
         ),
       ),
@@ -1102,10 +1060,8 @@ class _InfoPortalScreenState extends ConsumerState<InfoPortalScreen> {
         child: Column(
           children: [
             searchBar,
-            if (selectionBar != null) ...[
-              const SizedBox(height: 8),
-              Align(alignment: Alignment.centerRight, child: selectionBar),
-            ],
+            const SizedBox(height: AppSpacing.sm),
+            Align(alignment: Alignment.centerRight, child: selectionBar),
           ],
         ),
       );
@@ -1116,12 +1072,13 @@ class _InfoPortalScreenState extends ConsumerState<InfoPortalScreen> {
       child: Row(
         children: [
           Expanded(flex: 1, child: searchBar),
-          const SizedBox(width: 16),
+          const SizedBox(width: AppSpacing.lg),
           Expanded(
             flex: 1,
-            child: selectionBar != null
-                ? Align(alignment: Alignment.centerRight, child: selectionBar)
-                : const SizedBox.shrink(),
+            child: Align(
+              alignment: Alignment.centerRight,
+              child: selectionBar,
+            ),
           ),
         ],
       ),
@@ -1148,22 +1105,24 @@ class _InfoPortalScreenState extends ConsumerState<InfoPortalScreen> {
                 shape: BoxShape.circle,
               ),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: AppSpacing.sm),
           ],
           Expanded(
             child: Text(
               label,
               style: TextStyle(
                 fontSize: 13,
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                color: isSelected ? AppColors.primaryBlue : _Palette.textPrimary,
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                color: isSelected
+                    ? AppColors.primaryBlue
+                    : _Palette.textPrimary,
               ),
             ),
           ),
           if (isSelected)
             const Icon(
               Icons.check,
-              size: 16,
+              size: AppSizing.iconSm,
               color: AppColors.primaryBlue,
             ),
         ],
@@ -1180,18 +1139,14 @@ class _InfoPortalScreenState extends ConsumerState<InfoPortalScreen> {
     final saleItems = _filteredSales;
 
     return Container(
-      margin: EdgeInsets.symmetric(horizontal: isMobile ? 16 : 24),
+      margin: EdgeInsets.symmetric(
+        horizontal: isMobile ? AppSpacing.lg : AppSpacing.xxl,
+      ),
       decoration: BoxDecoration(
         color: Colors.white,
         border: Border.all(color: _Palette.border),
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        boxShadow: AppShadows.sm,
       ),
       clipBehavior: Clip.antiAlias,
       child: LayoutBuilder(
@@ -1297,22 +1252,24 @@ class _InfoPortalScreenState extends ConsumerState<InfoPortalScreen> {
     final someSelected = itemIds.any(_selectedInteractionIds.contains);
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      decoration: const BoxDecoration(color: AppColors.primaryBlue),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.lg,
+        vertical: AppSpacing.xs,
+      ),
+      decoration: const BoxDecoration(
+        color: AppColors.surfaceHeader,
+        border: Border(bottom: BorderSide(color: AppColors.border)),
+      ),
       child: Row(
         children: [
           Padding(
-            padding: const EdgeInsets.only(right: 16),
+            padding: const EdgeInsets.only(right: AppSpacing.lg),
             child: SizedBox(
               width: 20,
               height: 20,
               child: Checkbox(
                 value: allSelected ? true : (someSelected ? null : false),
                 tristate: true,
-                shape: const CircleBorder(),
-                side: const BorderSide(color: Colors.white, width: 1.5),
-                activeColor: Colors.white,
-                checkColor: AppColors.primaryBlue,
                 materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 visualDensity: const VisualDensity(
                   horizontal: -4,
@@ -1386,7 +1343,7 @@ class _InfoPortalScreenState extends ConsumerState<InfoPortalScreen> {
               'ACTIONS',
               textAlign: TextAlign.center,
               style: TextStyle(
-                fontWeight: FontWeight.bold,
+                fontWeight: FontWeight.w700,
                 fontSize: 11,
                 color: Colors.white,
                 letterSpacing: 0.5,
@@ -1407,22 +1364,24 @@ class _InfoPortalScreenState extends ConsumerState<InfoPortalScreen> {
     final someSelected = itemIds.any(_selectedSaleIds.contains);
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      decoration: const BoxDecoration(color: AppColors.primaryBlue),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.lg,
+        vertical: AppSpacing.xs,
+      ),
+      decoration: const BoxDecoration(
+        color: AppColors.surfaceHeader,
+        border: Border(bottom: BorderSide(color: AppColors.border)),
+      ),
       child: Row(
         children: [
           Padding(
-            padding: const EdgeInsets.only(right: 16),
+            padding: const EdgeInsets.only(right: AppSpacing.lg),
             child: SizedBox(
               width: 20,
               height: 20,
               child: Checkbox(
                 value: allSelected ? true : (someSelected ? null : false),
                 tristate: true,
-                shape: const CircleBorder(),
-                side: const BorderSide(color: Colors.white, width: 1.5),
-                activeColor: Colors.white,
-                checkColor: AppColors.primaryBlue,
                 materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 visualDensity: const VisualDensity(
                   horizontal: -4,
@@ -1450,7 +1409,7 @@ class _InfoPortalScreenState extends ConsumerState<InfoPortalScreen> {
             columnKey: 'product',
             title: 'PRODUCT',
             flex: 3,
-            alignment: Alignment.center,
+            alignment: Alignment.centerLeft,
             currentSort: _sortColumnSales,
             sortAscending: _sortAscendingSales,
             onSort: _onSortSales,
@@ -1459,7 +1418,7 @@ class _InfoPortalScreenState extends ConsumerState<InfoPortalScreen> {
             columnKey: 'amount',
             title: 'AMOUNT',
             flex: 2,
-            alignment: Alignment.centerRight,
+            alignment: Alignment.center,
             currentSort: _sortColumnSales,
             sortAscending: _sortAscendingSales,
             onSort: _onSortSales,
@@ -1497,7 +1456,7 @@ class _InfoPortalScreenState extends ConsumerState<InfoPortalScreen> {
               'ACTIONS',
               textAlign: TextAlign.center,
               style: TextStyle(
-                fontWeight: FontWeight.bold,
+                fontWeight: FontWeight.w700,
                 fontSize: 11,
                 color: Colors.white,
                 letterSpacing: 0.5,
@@ -1529,10 +1488,13 @@ class _InfoPortalScreenState extends ConsumerState<InfoPortalScreen> {
       flex: flex,
       child: InkWell(
         onTap: () => onSort(columnKey),
-        borderRadius: BorderRadius.circular(6),
-        hoverColor: Colors.white.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(AppRadius.sm),
+        hoverColor: AppColors.surfaceHover,
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
+          padding: const EdgeInsets.symmetric(
+            vertical: AppSpacing.md,
+            horizontal: AppSpacing.xs,
+          ),
           child: Row(
             mainAxisAlignment: mainAxis,
             mainAxisSize: MainAxisSize.min,
@@ -1541,27 +1503,22 @@ class _InfoPortalScreenState extends ConsumerState<InfoPortalScreen> {
                 child: Text(
                   title,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 11,
-                    letterSpacing: 0.5,
+                  style: AppTypography.tableHeader.copyWith(
                     color: isSelected
-                        ? Colors.white
-                        : Colors.white.withValues(alpha: 0.85),
+                        ? AppColors.textPrimary
+                        : AppColors.textSecondary,
                   ),
                 ),
               ),
-              const SizedBox(width: 4),
+              const SizedBox(width: AppSpacing.xs),
               Icon(
                 isSelected
                     ? (sortAscending
                           ? Icons.arrow_upward
                           : Icons.arrow_downward)
                     : Icons.unfold_more,
-                size: 13,
-                color: isSelected
-                    ? Colors.white
-                    : Colors.white.withValues(alpha: 0.6),
+                size: AppSizing.iconXs,
+                color: isSelected ? AppColors.textPrimary : AppColors.textMuted,
               ),
             ],
           ),
@@ -1576,31 +1533,21 @@ class _InfoPortalScreenState extends ConsumerState<InfoPortalScreen> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Container(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(AppSpacing.xl),
             decoration: const BoxDecoration(
               color: _Palette.headerBg,
               shape: BoxShape.circle,
             ),
             child: const Icon(
               Icons.inbox_outlined,
-              size: 36,
+              size: AppSizing.iconDisplay,
               color: _Palette.textMuted,
             ),
           ),
-          const SizedBox(height: 16),
-          Text(
-            message,
-            style: const TextStyle(
-              color: _Palette.textPrimary,
-              fontSize: 15,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            subtitle,
-            style: const TextStyle(color: _Palette.textMuted, fontSize: 12.5),
-          ),
+          const SizedBox(height: AppSpacing.lg),
+          Text(message, style: AppTypography.itemTitle),
+          const SizedBox(height: AppSpacing.sm),
+          Text(subtitle, style: AppTypography.caption),
         ],
       ),
     );
@@ -1655,16 +1602,22 @@ class _InteractionTableRowState extends State<_InteractionTableRow> {
     }
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      width: 72,
+      alignment: Alignment.center,
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.xs,
+        vertical: AppSpacing.xs,
+      ),
       decoration: BoxDecoration(
         color: bg,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(AppRadius.sm),
       ),
       child: Text(
         label,
+        textAlign: TextAlign.center,
         style: TextStyle(
-          fontSize: 10.5,
-          fontWeight: FontWeight.bold,
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
           color: fg,
           letterSpacing: 0.3,
         ),
@@ -1686,19 +1639,19 @@ class _InteractionTableRowState extends State<_InteractionTableRow> {
         color: widget.selected
             ? _Palette.rowHover
             : (_isHovered ? _Palette.rowHover : Colors.white),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.lg,
+          vertical: AppSpacing.md,
+        ),
         child: Row(
           children: [
             Padding(
-              padding: const EdgeInsets.only(right: 16),
+              padding: const EdgeInsets.only(right: AppSpacing.lg),
               child: SizedBox(
                 width: 20,
                 height: 20,
                 child: Checkbox(
                   value: widget.selected,
-                  shape: const CircleBorder(),
-                  side: const BorderSide(color: Color(0xFFC4C8D2), width: 1.5),
-                  activeColor: AppColors.primaryBlue,
                   materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   visualDensity: const VisualDensity(
                     horizontal: -4,
@@ -1725,12 +1678,12 @@ class _InteractionTableRowState extends State<_InteractionTableRow> {
                           : widget.item.clientName[0].toUpperCase(),
                       style: const TextStyle(
                         color: AppColors.primaryBlue,
-                        fontWeight: FontWeight.bold,
+                        fontWeight: FontWeight.w700,
                         fontSize: 13,
                       ),
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: AppSpacing.sm),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1740,21 +1693,14 @@ class _InteractionTableRowState extends State<_InteractionTableRow> {
                           widget.item.clientName.isEmpty
                               ? '—'
                               : widget.item.clientName,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 13,
-                            color: _Palette.textPrimary,
-                          ),
+                          style: AppTypography.tableCellStrong,
                           overflow: TextOverflow.ellipsis,
                         ),
                         if (widget.item.clientContact.isNotEmpty) ...[
-                          const SizedBox(height: 2),
+                          const SizedBox(height: AppSpacing.xxs),
                           Text(
                             widget.item.clientContact,
-                            style: const TextStyle(
-                              color: _Palette.textMuted,
-                              fontSize: 11.5,
-                            ),
+                            style: AppTypography.caption,
                             overflow: TextOverflow.ellipsis,
                           ),
                         ],
@@ -1772,23 +1718,23 @@ class _InteractionTableRowState extends State<_InteractionTableRow> {
                 mainAxisAlignment: MainAxisAlignment.start,
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(3),
+                    padding: const EdgeInsets.all(AppSpacing.xs),
                     decoration: BoxDecoration(
                       color: _Palette.headerBg,
-                      borderRadius: BorderRadius.circular(4),
+                      borderRadius: BorderRadius.circular(AppRadius.xs),
                     ),
                     child: const Icon(
                       Icons.person_outline,
-                      size: 14,
+                      size: AppSizing.iconXs,
                       color: _Palette.textSecondary,
                     ),
                   ),
-                  const SizedBox(width: 6),
+                  const SizedBox(width: AppSpacing.sm),
                   Flexible(
                     child: Text(
                       repName.isNotEmpty ? repName : '—',
                       style: TextStyle(
-                        fontSize: 12.5,
+                        fontSize: 12,
                         fontWeight: FontWeight.w500,
                         color: repName.isNotEmpty
                             ? _Palette.textPrimary
@@ -1808,7 +1754,7 @@ class _InteractionTableRowState extends State<_InteractionTableRow> {
                 AppFormatters.formatDate(widget.item.date),
                 textAlign: TextAlign.center,
                 style: const TextStyle(
-                  fontSize: 12.5,
+                  fontSize: 12,
                   color: _Palette.textSecondary,
                   fontWeight: FontWeight.w500,
                 ),
@@ -1830,17 +1776,17 @@ class _InteractionTableRowState extends State<_InteractionTableRow> {
                           children: [
                             const Icon(
                               Icons.calendar_month_outlined,
-                              size: 13,
+                              size: AppSizing.iconXs,
                               color: AppColors.primaryBlue,
                             ),
-                            const SizedBox(width: 4),
+                            const SizedBox(width: AppSpacing.xs),
                             Flexible(
                               child: Text(
                                 AppFormatters.formatDate(
                                   widget.item.followUpDate,
                                 ),
                                 style: const TextStyle(
-                                  fontSize: 12.5,
+                                  fontSize: 12,
                                   fontWeight: FontWeight.w600,
                                   color: _Palette.textPrimary,
                                 ),
@@ -1850,26 +1796,23 @@ class _InteractionTableRowState extends State<_InteractionTableRow> {
                           ],
                         ),
                         if (widget.item.followUpTime.isNotEmpty) ...[
-                          const SizedBox(height: 2),
+                          const SizedBox(height: AppSpacing.xxs),
                           Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               const Icon(
                                 Icons.access_time_outlined,
-                                size: 13,
+                                size: AppSizing.iconXs,
                                 color: _Palette.textMuted,
                               ),
-                              const SizedBox(width: 4),
+                              const SizedBox(width: AppSpacing.xs),
                               Flexible(
                                 child: Text(
                                   AppFormatters.formatTime(
                                     widget.item.followUpTime,
                                   ),
-                                  style: const TextStyle(
-                                    fontSize: 11.5,
-                                    color: _Palette.textMuted,
-                                  ),
+                                  style: AppTypography.caption,
                                   overflow: TextOverflow.ellipsis,
                                 ),
                               ),
@@ -1881,10 +1824,7 @@ class _InteractionTableRowState extends State<_InteractionTableRow> {
                   : const Text(
                       '—',
                       textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 12.5,
-                        color: _Palette.textMuted,
-                      ),
+                      style: AppTypography.caption,
                     ),
             ),
 
@@ -1918,10 +1858,7 @@ class _InteractionTableRowState extends State<_InteractionTableRow> {
                   : const Text(
                       '—',
                       textAlign: TextAlign.left,
-                      style: TextStyle(
-                        fontSize: 12.5,
-                        color: _Palette.textMuted,
-                      ),
+                      style: AppTypography.caption,
                     ),
             ),
 
@@ -1936,7 +1873,7 @@ class _InteractionTableRowState extends State<_InteractionTableRow> {
                     icon: const Icon(
                       Icons.edit_outlined,
                       color: AppColors.primaryBlue,
-                      size: 18,
+                      size: AppSizing.iconMd,
                     ),
                     onPressed: widget.onEdit,
                     tooltip: 'Edit',
@@ -1946,12 +1883,12 @@ class _InteractionTableRowState extends State<_InteractionTableRow> {
                       minHeight: 28,
                     ),
                   ),
-                  const SizedBox(width: 6),
+                  const SizedBox(width: AppSpacing.sm),
                   IconButton(
                     icon: const Icon(
                       Icons.delete_outline,
-                      color: Colors.red,
-                      size: 18,
+                      color: AppColors.danger,
+                      size: AppSizing.iconMd,
                     ),
                     onPressed: widget.onDelete,
                     tooltip: 'Delete',
@@ -2031,19 +1968,19 @@ class _SalesTableRowState extends State<_SalesTableRow> {
         color: widget.selected
             ? _Palette.rowHover
             : (_isHovered ? _Palette.rowHover : Colors.white),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.lg,
+          vertical: AppSpacing.md,
+        ),
         child: Row(
           children: [
             Padding(
-              padding: const EdgeInsets.only(right: 16),
+              padding: const EdgeInsets.only(right: AppSpacing.lg),
               child: SizedBox(
                 width: 20,
                 height: 20,
                 child: Checkbox(
                   value: widget.selected,
-                  shape: const CircleBorder(),
-                  side: const BorderSide(color: Color(0xFFC4C8D2), width: 1.5),
-                  activeColor: AppColors.primaryBlue,
                   materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   visualDensity: const VisualDensity(
                     horizontal: -4,
@@ -2070,12 +2007,12 @@ class _SalesTableRowState extends State<_SalesTableRow> {
                           : widget.sale.clientName[0].toUpperCase(),
                       style: const TextStyle(
                         color: AppColors.primaryBlue,
-                        fontWeight: FontWeight.bold,
+                        fontWeight: FontWeight.w700,
                         fontSize: 13,
                       ),
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: AppSpacing.sm),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -2085,24 +2022,17 @@ class _SalesTableRowState extends State<_SalesTableRow> {
                           widget.sale.clientName.isEmpty
                               ? '—'
                               : widget.sale.clientName,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 13,
-                            color: _Palette.textPrimary,
-                          ),
+                          style: AppTypography.tableCellStrong,
                           overflow: TextOverflow.ellipsis,
                         ),
                         if (hasCompany || hasScheme) ...[
-                          const SizedBox(height: 2),
+                          const SizedBox(height: AppSpacing.xxs),
                           Text(
                             [
                               if (hasCompany) widget.sale.company.trim(),
                               if (hasScheme) widget.sale.scheme.trim(),
                             ].join(' • '),
-                            style: const TextStyle(
-                              color: _Palette.textMuted,
-                              fontSize: 11.5,
-                            ),
+                            style: AppTypography.caption,
                             overflow: TextOverflow.ellipsis,
                           ),
                         ],
@@ -2113,46 +2043,47 @@ class _SalesTableRowState extends State<_SalesTableRow> {
               ),
             ),
 
-            // Product Badge
+            // Product Category (Dot + Text treatment, aligned left)
             Expanded(
               flex: 3,
-              child: Align(
-                alignment: Alignment.center,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 9,
-                    vertical: 3,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppColors.primaryBlue.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: AppColors.primaryBlue.withValues(alpha: 0.2),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 10,
+                    height: 10,
+                    decoration: BoxDecoration(
+                      color: productColor(widget.sale.product),
+                      shape: BoxShape.circle,
                     ),
                   ),
-                  child: Text(
-                    widget.sale.productDisplay ??
-                        _getProductName(widget.sale.product),
-                    style: const TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.primaryBlue,
+                  const SizedBox(width: 8),
+                  Flexible(
+                    child: Text(
+                      widget.sale.productDisplay ??
+                          _getProductName(widget.sale.product),
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: _Palette.textPrimary,
+                      ),
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    overflow: TextOverflow.ellipsis,
                   ),
-                ),
+                ],
               ),
             ),
 
-            // Amount (Right-aligned)
+            // Amount (Center-aligned)
             Expanded(
               flex: 2,
               child: Text(
                 AppFormatters.formatAmount(widget.sale.amount),
-                textAlign: TextAlign.right,
+                textAlign: TextAlign.center,
                 style: const TextStyle(
-                  fontSize: 13.5,
-                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
                   color: _Palette.textPrimary,
                 ),
                 overflow: TextOverflow.ellipsis,
@@ -2165,17 +2096,20 @@ class _SalesTableRowState extends State<_SalesTableRow> {
               child: Align(
                 alignment: Alignment.center,
                 child: Container(
+                  width: 84,
+                  alignment: Alignment.center,
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 3,
+                    horizontal: AppSpacing.xs,
+                    vertical: AppSpacing.xs,
                   ),
                   decoration: BoxDecoration(
                     color: _Palette.headerBg,
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(AppRadius.lg),
                     border: Border.all(color: _Palette.border),
                   ),
                   child: Text(
                     freqText,
+                    textAlign: TextAlign.center,
                     style: const TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w500,
@@ -2194,23 +2128,23 @@ class _SalesTableRowState extends State<_SalesTableRow> {
                 mainAxisAlignment: MainAxisAlignment.start,
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(3),
+                    padding: const EdgeInsets.all(AppSpacing.xs),
                     decoration: BoxDecoration(
                       color: _Palette.headerBg,
-                      borderRadius: BorderRadius.circular(4),
+                      borderRadius: BorderRadius.circular(AppRadius.xs),
                     ),
                     child: const Icon(
                       Icons.person_outline,
-                      size: 14,
+                      size: AppSizing.iconXs,
                       color: _Palette.textSecondary,
                     ),
                   ),
-                  const SizedBox(width: 6),
+                  const SizedBox(width: AppSpacing.sm),
                   Flexible(
                     child: Text(
                       repName.isNotEmpty ? repName : '—',
                       style: TextStyle(
-                        fontSize: 12.5,
+                        fontSize: 12,
                         fontWeight: FontWeight.w500,
                         color: repName.isNotEmpty
                             ? _Palette.textPrimary
@@ -2230,7 +2164,7 @@ class _SalesTableRowState extends State<_SalesTableRow> {
                 AppFormatters.formatDate(widget.sale.date),
                 textAlign: TextAlign.center,
                 style: const TextStyle(
-                  fontSize: 12.5,
+                  fontSize: 12,
                   color: _Palette.textSecondary,
                   fontWeight: FontWeight.w500,
                 ),
@@ -2249,7 +2183,7 @@ class _SalesTableRowState extends State<_SalesTableRow> {
                     icon: const Icon(
                       Icons.edit_outlined,
                       color: AppColors.primaryBlue,
-                      size: 18,
+                      size: AppSizing.iconMd,
                     ),
                     onPressed: widget.onEdit,
                     tooltip: 'Edit',
@@ -2259,12 +2193,12 @@ class _SalesTableRowState extends State<_SalesTableRow> {
                       minHeight: 28,
                     ),
                   ),
-                  const SizedBox(width: 6),
+                  const SizedBox(width: AppSpacing.sm),
                   IconButton(
                     icon: const Icon(
                       Icons.delete_outline,
-                      color: Colors.red,
-                      size: 18,
+                      color: AppColors.danger,
+                      size: AppSizing.iconMd,
                     ),
                     onPressed: widget.onDelete,
                     tooltip: 'Delete',

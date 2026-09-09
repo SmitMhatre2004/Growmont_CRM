@@ -57,7 +57,8 @@ class Reminder {
       description: json['description'] as String? ?? '',
       repeatReminder: json['repeat_reminder'] as bool? ?? false,
       repeatType: json['repeat_type'] as String? ?? 'NONE',
-      repeatDays: (json['repeat_days'] as List<dynamic>?)
+      repeatDays:
+          (json['repeat_days'] as List<dynamic>?)
               ?.map((e) => e.toString())
               .toList() ??
           [],
@@ -70,38 +71,38 @@ class Reminder {
   }
 
   Map<String, dynamic> toFirestore() => {
-        'employee_id': employee,
-        if (employeeName != null) 'employee_name': employeeName,
-        'event_name': eventName,
-        'type': type,
-        'priority': priority,
-        'date': Timestamp.fromDate(DateTime.tryParse(date) ?? DateTime.now()),
-        'time': time.length == 5 ? '$time:00' : time,
-        if (endTime != null && endTime!.isNotEmpty)
-          'end_time': endTime!.length == 5 ? '$endTime:00' : endTime,
-        'description': description,
-        'repeat_reminder': repeatReminder,
-        'repeat_type': repeatType,
-        'repeat_days': repeatDays,
-        'repeat_every_day': repeatEveryDay,
-        'is_sent': false,
-        'created_at': FieldValue.serverTimestamp(),
-        'updated_at': FieldValue.serverTimestamp(),
-      };
+    'employee_id': employee,
+    if (employeeName != null) 'employee_name': employeeName,
+    'event_name': eventName,
+    'type': type,
+    'priority': priority,
+    'date': Timestamp.fromDate(DateTime.tryParse(date) ?? DateTime.now()),
+    'time': time.length == 5 ? '$time:00' : time,
+    if (endTime != null && endTime!.isNotEmpty)
+      'end_time': endTime!.length == 5 ? '$endTime:00' : endTime,
+    'description': description,
+    'repeat_reminder': repeatReminder,
+    'repeat_type': repeatType,
+    'repeat_days': repeatDays,
+    'repeat_every_day': repeatEveryDay,
+    'is_sent': false,
+    'created_at': FieldValue.serverTimestamp(),
+    'updated_at': FieldValue.serverTimestamp(),
+  };
 
   Map<String, dynamic> toPayload() => {
-        'employee': employee,
-        'event_name': eventName,
-        'type': type,
-        'priority': priority,
-        'date': date,
-        'time': time.length == 5 ? '$time:00' : time,
-        if (endTime != null && endTime!.isNotEmpty)
-          'end_time': endTime!.length == 5 ? '$endTime:00' : endTime,
-        'description': description,
-        'repeat_reminder': repeatReminder,
-        'repeat_type': repeatType,
-        'repeat_days': repeatDays,
-        'repeat_every_day': repeatEveryDay,
-      };
+    'employee': employee,
+    'event_name': eventName,
+    'type': type,
+    'priority': priority,
+    'date': date,
+    'time': time.length == 5 ? '$time:00' : time,
+    if (endTime != null && endTime!.isNotEmpty)
+      'end_time': endTime!.length == 5 ? '$endTime:00' : endTime,
+    'description': description,
+    'repeat_reminder': repeatReminder,
+    'repeat_type': repeatType,
+    'repeat_days': repeatDays,
+    'repeat_every_day': repeatEveryDay,
+  };
 }

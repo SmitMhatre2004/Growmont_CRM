@@ -16,15 +16,20 @@ import 'widgets/add_sale_modal.dart';
 // -----------------------------------------------------------------------------
 // Design tokens matching Interactions & Info Portal screens
 // -----------------------------------------------------------------------------
+/// Screen palette. Every value aliases the shared design tokens in
+/// [AppColors] so this screen can never drift from the rest of the app.
 class _Palette {
-  static const Color surface = Colors.white;
-  static const Color headerBg = Color(0xFFF8FAFC);
-  static const Color border = Color(0xFFE2E8F0);
-  static const Color hover = Color(0xFFF1F5F9);
-  static const Color selected = Color(0xFFEFF6FF);
-  static const Color textPrimary = Color(0xFF0F172A);
-  static const Color textSecondary = Color(0xFF475569);
-  static const Color textMuted = Color(0xFF94A3B8);
+  _Palette._();
+
+  static const Color surface = AppColors.surface;
+  static const Color border = AppColors.border;
+  static const Color headerBg = AppColors.surfaceHeader;
+  static const Color hover = AppColors.surfaceHover;
+  static const Color selected = AppColors.surfaceSelected;
+
+  static const Color textPrimary = AppColors.textPrimary;
+  static const Color textSecondary = AppColors.textSecondary;
+  static const Color textMuted = AppColors.textMuted;
 }
 
 class SalesScreen extends ConsumerStatefulWidget {
@@ -35,8 +40,9 @@ class SalesScreen extends ConsumerStatefulWidget {
 }
 
 class _SalesScreenState extends ConsumerState<SalesScreen> {
-  static const double _controlHeight = 40.0;
-  static const double _radius = 20.0;
+  // Control metrics come from the shared design tokens so every screen's
+  // toolbar sits on the same baseline with the same corner treatment.
+  static const double _controlHeight = AppSizing.controlMd; // 40
 
   List<Sale> _sales = [];
   String _selectedProduct = 'ALL';
@@ -80,7 +86,9 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
         _sortAscending = !_sortAscending;
       } else {
         _sortColumn = column;
-        _sortAscending = (column == 'amount' || column == 'date') ? false : true;
+        _sortAscending = (column == 'amount' || column == 'date')
+            ? false
+            : true;
       }
     });
   }
@@ -98,7 +106,9 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
       int cmp = 0;
       switch (_sortColumn) {
         case 'client':
-          cmp = a.clientName.toLowerCase().compareTo(b.clientName.toLowerCase());
+          cmp = a.clientName.toLowerCase().compareTo(
+            b.clientName.toLowerCase(),
+          );
           break;
         case 'product':
           cmp = a.product.toLowerCase().compareTo(b.product.toLowerCase());
@@ -139,9 +149,7 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
           ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
-            style: FilledButton.styleFrom(
-              backgroundColor: Colors.red.shade600,
-            ),
+            style: FilledButton.styleFrom(backgroundColor: AppColors.danger),
             child: const Text('Delete'),
           ),
         ],
@@ -175,7 +183,7 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
           ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
-            style: FilledButton.styleFrom(backgroundColor: Colors.red.shade600),
+            style: FilledButton.styleFrom(backgroundColor: AppColors.danger),
             child: const Text('Delete'),
           ),
         ],
@@ -196,8 +204,9 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
 
   Future<void> _exportSales() async {
     try {
-      final base64Data =
-          await ref.read(firestoreServiceProvider).exportSalesExcel();
+      final base64Data = await ref
+          .read(firestoreServiceProvider)
+          .exportSalesExcel();
       final bytes = base64Decode(base64Data);
       final dir = await getTemporaryDirectory();
       final file = File('${dir.path}/sales_export.xlsx');
@@ -229,7 +238,7 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
 
   void _showError(String msg) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(msg), backgroundColor: Colors.red),
+      SnackBar(content: Text(msg), backgroundColor: AppColors.danger),
     );
   }
 
@@ -253,16 +262,12 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
       height: _controlHeight,
       child: OutlinedButton.icon(
         onPressed: onPressed,
-        icon: Icon(icon, size: 18),
+        icon: Icon(icon, size: AppSizing.iconMd),
         label: Text(label),
         style: OutlinedButton.styleFrom(
           foregroundColor: _Palette.textPrimary,
           side: const BorderSide(color: _Palette.border),
-          backgroundColor: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(_radius),
-          ),
-          padding: const EdgeInsets.symmetric(horizontal: 14),
+          backgroundColor: AppColors.surface,
         ),
       ),
     );
@@ -279,18 +284,19 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildTitleRow(),
-        _buildActionsRow(user),
-        _summaryRow(),
+        _summaryRow(user),
         Expanded(
           child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: isMobile ? 16 : 24),
+            padding: EdgeInsets.symmetric(
+              horizontal: isMobile ? AppSpacing.lg : AppSpacing.xxl,
+            ),
             child: isWide
                 ? Row(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       // Filter by product side column
                       SizedBox(width: 250, child: _filterPanel()),
-                      const SizedBox(width: 16),
+                      const SizedBox(width: AppSpacing.lg),
                       Expanded(
                         child: _loading
                             ? const Center(child: CircularProgressIndicator())
@@ -304,7 +310,7 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                         height: 120,
                         child: _filterPanel(horizontal: true),
                       ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: AppSpacing.md),
                       Expanded(
                         child: _loading
                             ? const Center(child: CircularProgressIndicator())
@@ -314,7 +320,7 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                   ),
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpacing.lg),
       ],
     );
   }
@@ -325,9 +331,9 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
     final isMobile = MediaQuery.sizeOf(context).width < 768;
     return Padding(
       padding: EdgeInsets.fromLTRB(
-        isMobile ? 16 : 24,
+        isMobile ? AppSpacing.lg : AppSpacing.xxl,
         isMobile ? 10 : 16,
-        isMobile ? 16 : 24,
+        isMobile ? AppSpacing.lg : AppSpacing.xxl,
         isMobile ? 8 : 12,
       ),
       child: Align(
@@ -342,12 +348,10 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
     );
   }
 
-  // -- Actions Row: Export / Import / Add Sale ------------------------------
+  // -- Actions: Export / Import / Add Sale ----------------------------------
 
-  Widget _buildActionsRow(AppUser? user) {
-    final isMobile = MediaQuery.sizeOf(context).width < 768;
-
-    final actionButtons = Row(
+  Widget _buildActions(AppUser? user) {
+    return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         _outlinedIconButton(
@@ -355,236 +359,233 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
           label: 'Export',
           onPressed: _exportSales,
         ),
-        const SizedBox(width: 8),
+        const SizedBox(width: AppSpacing.sm),
         _outlinedIconButton(
           icon: Icons.upload_outlined,
           label: 'Import',
           onPressed: _importSales,
         ),
-        const SizedBox(width: 8),
+        const SizedBox(width: AppSpacing.sm),
         SizedBox(
           height: _controlHeight,
           child: FilledButton.icon(
             onPressed: () => _showSaleModal(context, user),
-            icon: const Icon(Icons.add, size: 18),
+            icon: const Icon(Icons.add, size: AppSizing.iconMd),
             label: const Text('Add Sale'),
             style: FilledButton.styleFrom(
-              backgroundColor: AppColors.primaryGreen,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(_radius),
-              ),
-              padding: const EdgeInsets.symmetric(horizontal: 16),
+              backgroundColor: AppColors.primaryBlue,
             ),
           ),
         ),
       ],
-    );
-
-    return Padding(
-      padding: EdgeInsets.fromLTRB(
-        isMobile ? 16 : 24,
-        0,
-        isMobile ? 16 : 24,
-        isMobile ? 10 : 16,
-      ),
-      child: Align(
-        alignment: Alignment.centerRight,
-        child: SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: actionButtons,
-        ),
-      ),
     );
   }
 
   // -- Selection Action Bar -------------------------------------------------
 
   Widget _buildSelectionBar() {
-    return Material(
-      color: const Color(0xFFEFF6FF),
-      elevation: 1.5,
-      shadowColor: const Color(0xFF93C5FD).withValues(alpha: 0.25),
-      shape: const StadiumBorder(
-        side: BorderSide(
-          color: Color(0xFF93C5FD),
-          width: 1.2,
-        ),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Container(
-        height: _controlHeight,
-        padding: const EdgeInsets.symmetric(horizontal: 14),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 8,
-              height: 8,
-              decoration: const BoxDecoration(
-                color: AppColors.primaryBlue,
-                shape: BoxShape.circle,
-              ),
-            ),
-            const SizedBox(width: 10),
-            Text(
-              '${_selectedIds.length} selected',
-              style: const TextStyle(
-                fontWeight: FontWeight.w600,
-                fontSize: 13,
-                color: _Palette.textPrimary,
-              ),
-            ),
-            const SizedBox(width: 16),
-            TextButton(
-              onPressed: () => setState(() => _selectedIds.clear()),
-              style: TextButton.styleFrom(
-                foregroundColor: _Palette.textSecondary,
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                minimumSize: const Size(0, 32),
-              ),
-              child: const Text('Clear'),
-            ),
-            const SizedBox(width: 8),
-            FilledButton.icon(
-              onPressed: _bulkDelete,
-              icon: const Icon(Icons.delete_outline, size: 16),
-              label: const Text('Delete'),
-              style: FilledButton.styleFrom(
-                backgroundColor: Colors.red.shade600,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                minimumSize: const Size(0, 32),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
+    final hasSelection = _selectedIds.isNotEmpty;
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Visibility(
+          visible: hasSelection,
+          maintainSize: true,
+          maintainAnimation: true,
+          maintainState: true,
+          child: Tooltip(
+            message: 'Delete selected',
+            child: Material(
+              color: AppColors.dangerSoft,
+              borderRadius: BorderRadius.circular(AppRadius.sm),
+              child: InkWell(
+                onTap: hasSelection ? _bulkDelete : null,
+                borderRadius: BorderRadius.circular(AppRadius.sm),
+                child: Container(
+                  width: 26,
+                  height: 26,
+                  alignment: Alignment.center,
+                  child: const Icon(
+                    Icons.delete_outline,
+                    size: 16,
+                    color: AppColors.danger,
+                  ),
                 ),
               ),
             ),
-          ],
+          ),
         ),
+        const SizedBox(width: AppSpacing.sm),
+        Text(
+          '${_selectedIds.length} selected',
+          style: AppTypography.tableCellStrong.copyWith(fontSize: 14),
+        ),
+      ],
+    );
+  }
+
+  // -- Summary Row & Info Boxes ---------------------------------------------
+
+  Widget _infoBox({
+    required String title,
+    required String value,
+    Color? valueColor,
+    Widget? trailing,
+  }) {
+    return Container(
+      constraints: const BoxConstraints(minWidth: 160),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.xl,
+        vertical: AppSpacing.lg,
+      ),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        border: Border.all(color: _Palette.border),
+        boxShadow: AppShadows.sm,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                title,
+                style: AppTypography.metricLabel,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              if (trailing != null) ...[
+                const SizedBox(width: AppSpacing.sm),
+                trailing,
+              ],
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            value,
+            style: AppTypography.metricLarge.copyWith(color: valueColor),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
       ),
     );
   }
 
-  // -- Summary Row ----------------------------------------------------------
-
-  Widget _summaryRow() {
+  Widget _summaryRow(AppUser? user) {
     final count = _filtered.length;
     final total = _filtered.fold<double>(
       0.0,
-      (sum, s) =>
-          sum + (double.tryParse(s.amount) ?? (s.amountPaise / 100.0)),
+      (sum, s) => sum + (double.tryParse(s.amount) ?? (s.amountPaise / 100.0)),
     );
+    final avgDeal = count > 0 ? total / count : 0.0;
+    final uniqueClients = _filtered
+        .map((s) => s.clientName.trim().toLowerCase())
+        .where((n) => n.isNotEmpty)
+        .toSet()
+        .length;
+
     final isFiltered = _selectedProduct != 'ALL';
     final currentCatName = _getCategoryName(_selectedProduct);
     final isMobile = MediaQuery.sizeOf(context).width < 768;
 
-    final summaryContent = Container(
-      height: _controlHeight,
-      padding: const EdgeInsets.symmetric(horizontal: 14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(_radius),
-        border: Border.all(color: _Palette.border),
-      ),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(
-              Icons.receipt_long_outlined,
-              size: 16,
-              color: AppColors.primaryBlue,
-            ),
-            const SizedBox(width: 6),
-            Text(
-              isFiltered ? '$currentCatName: $count' : 'Total Deals: $count',
-              style: const TextStyle(
-                fontSize: 12.5,
-                fontWeight: FontWeight.w600,
-                color: _Palette.textPrimary,
-              ),
-            ),
-            const SizedBox(width: 16),
-            Container(width: 1, height: 18, color: _Palette.border),
-            const SizedBox(width: 16),
-            const Icon(
-              Icons.currency_rupee,
-              size: 16,
-              color: AppColors.primaryGreen,
-            ),
-            const SizedBox(width: 4),
-            Text(
-              AppFormatters.formatAmount(total.toStringAsFixed(2)),
-              style: const TextStyle(
-                fontSize: 12.5,
-                fontWeight: FontWeight.bold,
-                color: _Palette.textPrimary,
-              ),
-            ),
-            if (isFiltered) ...[
-              const SizedBox(width: 14),
-              InkWell(
-                onTap: () => setState(() => _selectedProduct = 'ALL'),
-                borderRadius: BorderRadius.circular(12),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: _Palette.headerBg,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: _Palette.border),
-                  ),
-                  child: const Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.close, size: 12, color: _Palette.textSecondary),
-                      SizedBox(width: 4),
-                      Text(
-                        'Reset',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: _Palette.textSecondary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ],
-        ),
-      ),
+    final dealsBox = _infoBox(
+      title: isFiltered ? currentCatName.toUpperCase() : 'TOTAL DEALS',
+      value: '$count',
     );
+
+    final clientsBox = _infoBox(
+      title: 'ACTIVE CLIENTS',
+      value: '$uniqueClients',
+    );
+
+    final amountBox = _infoBox(
+      title: 'TOTAL REVENUE',
+      value: AppFormatters.formatAmount(total.toStringAsFixed(2)),
+    );
+
+    final avgBox = _infoBox(
+      title: 'AVG DEAL VALUE',
+      value: AppFormatters.formatAmount(avgDeal.toStringAsFixed(2)),
+    );
+
+    final actionButtons = _buildActions(user);
+    const gap = 10.0;
 
     return Padding(
       padding: EdgeInsets.fromLTRB(
-        isMobile ? 16 : 24,
+        isMobile ? AppSpacing.lg : AppSpacing.xxl,
         0,
-        isMobile ? 16 : 24,
-        isMobile ? 10 : 16,
+        isMobile ? AppSpacing.lg : AppSpacing.xxl,
+        gap,
       ),
       child: isMobile
           ? Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                summaryContent,
-                if (_selectedIds.isNotEmpty) ...[
-                  const SizedBox(height: 8),
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: _buildSelectionBar(),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    _buildSelectionBar(),
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: actionButtons,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.md),
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      dealsBox,
+                      const SizedBox(width: AppSpacing.md),
+                      clientsBox,
+                      const SizedBox(width: AppSpacing.md),
+                      amountBox,
+                      const SizedBox(width: AppSpacing.md),
+                      avgBox,
+                    ],
                   ),
-                ],
+                ),
               ],
             )
           : Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(child: summaryContent),
-                if (_selectedIds.isNotEmpty) ...[
-                  const SizedBox(width: 16),
-                  _buildSelectionBar(),
-                ],
+                Expanded(
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        dealsBox,
+                        const SizedBox(width: AppSpacing.md),
+                        clientsBox,
+                        const SizedBox(width: AppSpacing.md),
+                        amountBox,
+                        const SizedBox(width: AppSpacing.md),
+                        avgBox,
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.lg),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    actionButtons,
+                    const SizedBox(height: gap),
+                    _buildSelectionBar(),
+                  ],
+                ),
               ],
             ),
     );
@@ -594,8 +595,9 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
 
   Widget _filterPanel({bool horizontal = false}) {
     final allCategory = productCategories.firstWhere((c) => c.$1 == 'ALL');
-    final otherCategories =
-        productCategories.where((c) => c.$1 != 'ALL').toList();
+    final otherCategories = productCategories
+        .where((c) => c.$1 != 'ALL')
+        .toList();
 
     final activeCategories = otherCategories.where((cat) {
       return _sales.any((s) => s.product == cat.$1);
@@ -610,27 +612,28 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
           ? _sales.length
           : _sales.where((s) => s.product == cat.$1).length;
       final selected = _selectedProduct == cat.$1;
+      final catColor = productColor(cat.$1);
 
       return InkWell(
         onTap: () => setState(() => _selectedProduct = cat.$1),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppRadius.md),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 150),
-          margin: const EdgeInsets.only(bottom: 4),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          margin: const EdgeInsets.only(bottom: AppSpacing.xs),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.md,
+            vertical: AppSpacing.md,
+          ),
           decoration: BoxDecoration(
             color: selected
-                ? AppColors.primaryBlue.withValues(alpha: 0.08)
+                ? catColor.withValues(alpha: 0.08)
                 : Colors.transparent,
             border: selected
-                ? const Border(
-                    left: BorderSide(
-                      color: AppColors.primaryBlue,
-                      width: 3.5,
-                    ),
+                ? Border(
+                    left: BorderSide(color: catColor, width: 3.5),
                   )
                 : null,
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(AppRadius.md),
           ),
           child: Row(
             children: [
@@ -644,19 +647,21 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         fontSize: 13,
-                        fontWeight: selected ? FontWeight.bold : FontWeight.w500,
+                        fontWeight: selected
+                            ? FontWeight.w700
+                            : FontWeight.w500,
                         color: selected
-                            ? AppColors.primaryBlue
+                            ? catColor
                             : _Palette.textPrimary,
                       ),
                     ),
-                    const SizedBox(height: 2),
+                    const SizedBox(height: AppSpacing.xxs),
                     Text(
                       '$count sale${count == 1 ? '' : 's'}',
                       style: TextStyle(
                         fontSize: 11,
                         color: selected
-                            ? AppColors.primaryBlue.withValues(alpha: 0.8)
+                            ? catColor.withValues(alpha: 0.8)
                             : _Palette.textMuted,
                       ),
                     ),
@@ -665,10 +670,10 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
               ),
               if (selected)
                 Container(
-                  width: 6,
-                  height: 6,
-                  decoration: const BoxDecoration(
-                    color: AppColors.primaryBlue,
+                  width: 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    color: catColor,
                     shape: BoxShape.circle,
                   ),
                 ),
@@ -679,10 +684,7 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
     }
 
     if (horizontal) {
-      final itemsToShow = <(String, String)>[
-        allCategory,
-        ...activeCategories,
-      ];
+      final itemsToShow = <(String, String)>[allCategory, ...activeCategories];
       if (_expandZeroCountFilters) {
         itemsToShow.addAll(zeroCountCategories);
       } else if (_selectedProduct != 'ALL' &&
@@ -697,41 +699,37 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
         decoration: BoxDecoration(
           color: Colors.white,
           border: Border.all(color: _Palette.border),
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(AppRadius.lg),
         ),
         clipBehavior: Clip.antiAlias,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.lg,
+                vertical: AppSpacing.sm,
+              ),
               decoration: const BoxDecoration(
-                color: AppColors.primaryBlue,
+                color: AppColors.surfaceHeader,
+                border: Border(bottom: BorderSide(color: AppColors.border)),
               ),
               child: Row(
                 children: [
-                  const Text(
-                    'FILTER BY PRODUCT',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 11,
-                      color: Colors.white,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
+                  Text('FILTER BY PRODUCT', style: AppTypography.tableHeader),
                   const Spacer(),
                   if (zeroCountCategories.isNotEmpty)
                     InkWell(
-                      onTap: () => setState(() =>
-                          _expandZeroCountFilters = !_expandZeroCountFilters),
+                      onTap: () => setState(
+                        () =>
+                            _expandZeroCountFilters = !_expandZeroCountFilters,
+                      ),
                       child: Text(
                         _expandZeroCountFilters
                             ? 'Show less'
                             : '+ ${zeroCountCategories.length} more',
-                        style: const TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
+                        style: AppTypography.tableHeader.copyWith(
+                          color: AppColors.primaryBlue,
                         ),
                       ),
                     ),
@@ -740,16 +738,17 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
             ),
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.sm,
+                  vertical: AppSpacing.xs,
+                ),
                 child: SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   child: Row(
                     children: itemsToShow
                         .map(
-                          (c) => SizedBox(
-                            width: 160,
-                            child: buildCategoryItem(c),
-                          ),
+                          (c) =>
+                              SizedBox(width: 160, child: buildCategoryItem(c)),
                         )
                         .toList(),
                   ),
@@ -781,14 +780,8 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         border: Border.all(color: _Palette.border),
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        boxShadow: AppShadows.sm,
       ),
       clipBehavior: Clip.antiAlias,
       child: Column(
@@ -796,36 +789,29 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
         children: [
           Container(
             height: 48,
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
             decoration: const BoxDecoration(
-              color: AppColors.primaryBlue,
+              color: AppColors.surfaceHeader,
+              border: Border(bottom: BorderSide(color: AppColors.border)),
             ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                const Text(
-                  'FILTER BY PRODUCT',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 11,
-                    color: Colors.white,
-                    letterSpacing: 0.5,
-                  ),
-                ),
+                Text('FILTER BY PRODUCT', style: AppTypography.tableHeader),
                 const Spacer(),
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.sm,
+                    vertical: AppSpacing.xxs,
+                  ),
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.18),
-                    borderRadius: BorderRadius.circular(10),
+                    color: AppColors.infoSoft,
+                    borderRadius: AppRadius.brSm,
                   ),
                   child: Text(
                     '${activeCategories.length + 1} active',
-                    style: const TextStyle(
-                      fontSize: 10.5,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white,
+                    style: AppTypography.badge.copyWith(
+                      color: AppColors.primaryBlue,
                     ),
                   ),
                 ),
@@ -834,24 +820,26 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
           ),
           Expanded(
             child: Padding(
-              padding: const EdgeInsets.all(8),
+              padding: const EdgeInsets.all(AppSpacing.sm),
               child: ListView(
                 children: [
                   ...visibleCategories.map(buildCategoryItem),
                   if (zeroCountCategories.isNotEmpty) ...[
-                    const SizedBox(height: 4),
+                    const SizedBox(height: AppSpacing.xs),
                     InkWell(
-                      onTap: () => setState(() =>
-                          _expandZeroCountFilters = !_expandZeroCountFilters),
-                      borderRadius: BorderRadius.circular(6),
+                      onTap: () => setState(
+                        () =>
+                            _expandZeroCountFilters = !_expandZeroCountFilters,
+                      ),
+                      borderRadius: BorderRadius.circular(AppRadius.sm),
                       child: Container(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 8,
+                          horizontal: AppSpacing.sm,
+                          vertical: AppSpacing.sm,
                         ),
                         decoration: BoxDecoration(
                           color: _Palette.headerBg,
-                          borderRadius: BorderRadius.circular(6),
+                          borderRadius: BorderRadius.circular(AppRadius.sm),
                           border: Border.all(color: _Palette.border),
                         ),
                         child: Row(
@@ -861,10 +849,10 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                               _expandZeroCountFilters
                                   ? Icons.keyboard_arrow_up
                                   : Icons.keyboard_arrow_down,
-                              size: 16,
+                              size: AppSizing.iconSm,
                               color: AppColors.primaryBlue,
                             ),
-                            const SizedBox(width: 4),
+                            const SizedBox(width: AppSpacing.xs),
                             Text(
                               _expandZeroCountFilters
                                   ? 'Hide inactive categories'
@@ -897,7 +885,7 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
         decoration: BoxDecoration(
           color: Colors.white,
           border: Border.all(color: _Palette.border),
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(AppRadius.lg),
         ),
         child: _emptyState(),
       );
@@ -912,14 +900,8 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
       decoration: BoxDecoration(
         color: _Palette.surface,
         border: Border.all(color: _Palette.border),
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        boxShadow: AppShadows.sm,
       ),
       clipBehavior: Clip.antiAlias,
       child: LayoutBuilder(
@@ -993,27 +975,27 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
   }) {
     return Container(
       height: 48,
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
       decoration: const BoxDecoration(
-        color: AppColors.primaryBlue,
+        color: AppColors.surfaceHeader,
+        border: Border(bottom: BorderSide(color: AppColors.border)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Padding(
-            padding: const EdgeInsets.only(right: 16),
+            padding: const EdgeInsets.only(right: AppSpacing.lg),
             child: SizedBox(
               width: 20,
               height: 20,
               child: Checkbox(
                 value: allSelected ? true : (someSelected ? null : false),
                 tristate: true,
-                shape: const CircleBorder(),
-                side: const BorderSide(color: Colors.white, width: 1.5),
-                activeColor: Colors.white,
-                checkColor: AppColors.primaryBlue,
                 materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                visualDensity: const VisualDensity(horizontal: -4, vertical: -4),
+                visualDensity: const VisualDensity(
+                  horizontal: -4,
+                  vertical: -4,
+                ),
                 onChanged: onSelectAll,
               ),
             ),
@@ -1027,13 +1009,13 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
             columnKey: 'product',
             title: 'PRODUCT',
             flex: 3,
-            alignment: Alignment.center,
+            alignment: Alignment.centerLeft,
           ),
           _salesSortHeader(
             columnKey: 'amount',
             title: 'AMOUNT',
             flex: 2,
-            alignment: Alignment.centerRight,
+            alignment: Alignment.center,
           ),
           _salesSortHeader(
             columnKey: 'frequency',
@@ -1059,7 +1041,7 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
               'ACTIONS',
               textAlign: TextAlign.center,
               style: TextStyle(
-                fontWeight: FontWeight.bold,
+                fontWeight: FontWeight.w700,
                 fontSize: 11,
                 color: Colors.white,
                 letterSpacing: 0.5,
@@ -1081,18 +1063,18 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
     final mainAxis = alignment == Alignment.center
         ? MainAxisAlignment.center
         : (alignment == Alignment.centerRight
-            ? MainAxisAlignment.end
-            : MainAxisAlignment.start);
+              ? MainAxisAlignment.end
+              : MainAxisAlignment.start);
 
     return Expanded(
       flex: flex,
       child: InkWell(
         onTap: () => _onSort(columnKey),
-        borderRadius: BorderRadius.circular(6),
-        hoverColor: Colors.white.withValues(alpha: 0.12),
+        borderRadius: AppRadius.brSm,
+        hoverColor: AppColors.surfaceHover,
         child: Container(
           height: 48,
-          padding: const EdgeInsets.symmetric(horizontal: 4),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
           alignment: alignment,
           child: Row(
             mainAxisAlignment: mainAxis,
@@ -1102,27 +1084,22 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                 child: Text(
                   title,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 11,
-                    letterSpacing: 0.5,
+                  style: AppTypography.tableHeader.copyWith(
                     color: isSelected
-                        ? Colors.white
-                        : Colors.white.withValues(alpha: 0.85),
+                        ? AppColors.textPrimary
+                        : AppColors.textSecondary,
                   ),
                 ),
               ),
-              const SizedBox(width: 4),
+              const SizedBox(width: AppSpacing.xs),
               Icon(
                 isSelected
                     ? (_sortAscending
-                        ? Icons.arrow_upward
-                        : Icons.arrow_downward)
+                          ? Icons.arrow_upward
+                          : Icons.arrow_downward)
                     : Icons.unfold_more,
-                size: 13,
-                color: isSelected
-                    ? Colors.white
-                    : Colors.white.withValues(alpha: 0.6),
+                size: AppSizing.iconXs,
+                color: isSelected ? AppColors.textPrimary : AppColors.textMuted,
               ),
             ],
           ),
@@ -1137,35 +1114,34 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
 
     return Center(
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 48, horizontal: 24),
+        padding: const EdgeInsets.symmetric(
+          vertical: AppSpacing.huge,
+          horizontal: AppSpacing.xxl,
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.all(AppSpacing.xl),
               decoration: BoxDecoration(
                 color: AppColors.primaryBlue.withValues(alpha: 0.08),
                 shape: BoxShape.circle,
               ),
               child: const Icon(
                 Icons.receipt_long_outlined,
-                size: 48,
+                size: AppSizing.iconEmptyState,
                 color: AppColors.primaryBlue,
               ),
             ),
-            const SizedBox(height: 18),
+            const SizedBox(height: AppSpacing.xl),
             Text(
               isFiltered
                   ? 'No sales found in $categoryName'
                   : 'No sales recorded yet',
-              style: const TextStyle(
-                fontSize: 17,
-                fontWeight: FontWeight.bold,
-                color: _Palette.textPrimary,
-              ),
+              style: AppTypography.sectionTitle,
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpacing.sm),
             ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 420),
               child: Text(
@@ -1180,7 +1156,7 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                 textAlign: TextAlign.center,
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: AppSpacing.xxl),
             Wrap(
               spacing: 12,
               runSpacing: 12,
@@ -1192,18 +1168,21 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                     ref.read(authProvider).user,
                     defaultProduct: isFiltered ? _selectedProduct : null,
                   ),
-                  icon: const Icon(Icons.add, size: 18),
+                  icon: const Icon(Icons.add, size: AppSizing.iconMd),
                   label: Text(
                     isFiltered ? 'Add $categoryName Sale' : 'Add First Sale',
                   ),
                   style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.primaryGreen,
+                    backgroundColor: AppColors.primaryBlue,
                   ),
                 ),
                 if (isFiltered)
                   OutlinedButton.icon(
                     onPressed: () => setState(() => _selectedProduct = 'ALL'),
-                    icon: const Icon(Icons.filter_alt_off, size: 18),
+                    icon: const Icon(
+                      Icons.filter_alt_off,
+                      size: AppSizing.iconMd,
+                    ),
                     label: const Text('View All Categories'),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: _Palette.textPrimary,
@@ -1281,9 +1260,11 @@ class _SalesTableRowState extends State<_SalesTableRow> {
 
   @override
   Widget build(BuildContext context) {
-    final repName = widget.sale.salesRepName ??
+    final repName =
+        widget.sale.salesRepName ??
         (widget.sale.salesRep.isNotEmpty ? widget.sale.salesRep : '');
-    final freqText = widget.sale.frequencyDisplay ??
+    final freqText =
+        widget.sale.frequencyDisplay ??
         _getFrequencyLabel(widget.sale.frequency);
     final hasCompany = widget.sale.company.trim().isNotEmpty;
     final hasScheme = widget.sale.scheme.trim().isNotEmpty;
@@ -1295,21 +1276,24 @@ class _SalesTableRowState extends State<_SalesTableRow> {
         color: widget.selected
             ? _Palette.selected
             : (_isHovered ? _Palette.hover : Colors.white),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.lg,
+          vertical: AppSpacing.md,
+        ),
         child: Row(
           children: [
             Padding(
-              padding: const EdgeInsets.only(right: 16),
+              padding: const EdgeInsets.only(right: AppSpacing.lg),
               child: SizedBox(
                 width: 20,
                 height: 20,
                 child: Checkbox(
                   value: widget.selected,
-                  shape: const CircleBorder(),
-                  side: const BorderSide(color: Color(0xFFC4C8D2), width: 1.5),
-                  activeColor: AppColors.primaryBlue,
                   materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  visualDensity: const VisualDensity(horizontal: -4, vertical: -4),
+                  visualDensity: const VisualDensity(
+                    horizontal: -4,
+                    vertical: -4,
+                  ),
                   onChanged: widget.onSelectChanged,
                 ),
               ),
@@ -1331,12 +1315,12 @@ class _SalesTableRowState extends State<_SalesTableRow> {
                           : widget.sale.clientName[0].toUpperCase(),
                       style: const TextStyle(
                         color: AppColors.primaryBlue,
-                        fontWeight: FontWeight.bold,
+                        fontWeight: FontWeight.w700,
                         fontSize: 13,
                       ),
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: AppSpacing.sm),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1346,24 +1330,17 @@ class _SalesTableRowState extends State<_SalesTableRow> {
                           widget.sale.clientName.isEmpty
                               ? '—'
                               : widget.sale.clientName,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 13,
-                            color: _Palette.textPrimary,
-                          ),
+                          style: AppTypography.tableCellStrong,
                           overflow: TextOverflow.ellipsis,
                         ),
                         if (hasCompany || hasScheme) ...[
-                          const SizedBox(height: 2),
+                          const SizedBox(height: AppSpacing.xxs),
                           Text(
                             [
                               if (hasCompany) widget.sale.company.trim(),
                               if (hasScheme) widget.sale.scheme.trim(),
                             ].join(' • '),
-                            style: const TextStyle(
-                              color: _Palette.textMuted,
-                              fontSize: 11.5,
-                            ),
+                            style: AppTypography.caption,
                             overflow: TextOverflow.ellipsis,
                           ),
                         ],
@@ -1374,44 +1351,47 @@ class _SalesTableRowState extends State<_SalesTableRow> {
               ),
             ),
 
-            // Product Badge
+            // Product Category (Dot + Text treatment, aligned left)
             Expanded(
               flex: 3,
-              child: Align(
-                alignment: Alignment.center,
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: AppColors.primaryBlue.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: AppColors.primaryBlue.withValues(alpha: 0.2),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 10,
+                    height: 10,
+                    decoration: BoxDecoration(
+                      color: productColor(widget.sale.product),
+                      shape: BoxShape.circle,
                     ),
                   ),
-                  child: Text(
-                    widget.sale.productDisplay ??
-                        _getProductName(widget.sale.product),
-                    style: const TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.primaryBlue,
+                  const SizedBox(width: 8),
+                  Flexible(
+                    child: Text(
+                      widget.sale.productDisplay ??
+                          _getProductName(widget.sale.product),
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: _Palette.textPrimary,
+                      ),
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    overflow: TextOverflow.ellipsis,
                   ),
-                ),
+                ],
               ),
             ),
 
-            // Amount (Right-aligned)
+            // Amount (Center-aligned)
             Expanded(
               flex: 2,
               child: Text(
                 AppFormatters.formatAmount(widget.sale.amount),
-                textAlign: TextAlign.right,
+                textAlign: TextAlign.center,
                 style: const TextStyle(
-                  fontSize: 13.5,
-                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
                   color: _Palette.textPrimary,
                 ),
                 overflow: TextOverflow.ellipsis,
@@ -1424,15 +1404,20 @@ class _SalesTableRowState extends State<_SalesTableRow> {
               child: Align(
                 alignment: Alignment.center,
                 child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  width: 84,
+                  alignment: Alignment.center,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.xs,
+                    vertical: AppSpacing.xs,
+                  ),
                   decoration: BoxDecoration(
                     color: _Palette.headerBg,
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(AppRadius.lg),
                     border: Border.all(color: _Palette.border),
                   ),
                   child: Text(
                     freqText,
+                    textAlign: TextAlign.center,
                     style: const TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w500,
@@ -1451,23 +1436,23 @@ class _SalesTableRowState extends State<_SalesTableRow> {
                 mainAxisAlignment: MainAxisAlignment.start,
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(3),
+                    padding: const EdgeInsets.all(AppSpacing.xs),
                     decoration: BoxDecoration(
                       color: _Palette.headerBg,
-                      borderRadius: BorderRadius.circular(4),
+                      borderRadius: BorderRadius.circular(AppRadius.xs),
                     ),
                     child: const Icon(
                       Icons.person_outline,
-                      size: 14,
+                      size: AppSizing.iconXs,
                       color: _Palette.textSecondary,
                     ),
                   ),
-                  const SizedBox(width: 6),
+                  const SizedBox(width: AppSpacing.sm),
                   Flexible(
                     child: Text(
                       repName.isNotEmpty ? repName : '—',
                       style: TextStyle(
-                        fontSize: 12.5,
+                        fontSize: 12,
                         fontWeight: FontWeight.w500,
                         color: repName.isNotEmpty
                             ? _Palette.textPrimary
@@ -1487,7 +1472,7 @@ class _SalesTableRowState extends State<_SalesTableRow> {
                 AppFormatters.formatDate(widget.sale.date),
                 textAlign: TextAlign.center,
                 style: const TextStyle(
-                  fontSize: 12.5,
+                  fontSize: 12,
                   color: _Palette.textSecondary,
                   fontWeight: FontWeight.w500,
                 ),
@@ -1505,7 +1490,7 @@ class _SalesTableRowState extends State<_SalesTableRow> {
                     icon: const Icon(
                       Icons.edit_outlined,
                       color: AppColors.primaryBlue,
-                      size: 18,
+                      size: AppSizing.iconMd,
                     ),
                     onPressed: widget.onEdit,
                     tooltip: 'Edit',
@@ -1515,12 +1500,12 @@ class _SalesTableRowState extends State<_SalesTableRow> {
                       minHeight: 28,
                     ),
                   ),
-                  const SizedBox(width: 6),
+                  const SizedBox(width: AppSpacing.sm),
                   IconButton(
                     icon: const Icon(
                       Icons.delete_outline,
-                      color: Colors.red,
-                      size: 18,
+                      color: AppColors.danger,
+                      size: AppSizing.iconMd,
                     ),
                     onPressed: widget.onDelete,
                     tooltip: 'Delete',

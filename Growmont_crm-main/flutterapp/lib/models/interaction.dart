@@ -65,35 +65,40 @@ class Interaction {
   }
 
   factory Interaction.fromFirestore(DocumentSnapshot doc) {
-    return Interaction.fromJson(doc.data() as Map<String, dynamic>? ?? {}, doc.id);
+    return Interaction.fromJson(
+      doc.data() as Map<String, dynamic>? ?? {},
+      doc.id,
+    );
   }
 
   Map<String, dynamic> toFirestore() => {
-        'date': Timestamp.fromDate(DateTime.tryParse(date) ?? DateTime.now()),
-        'client_name': clientName,
-        'client_contact': clientContact,
-        'employee_id': employee,
-        if (employeeName != null) 'employee_name': employeeName,
-        'follow_up_date': followUpDate.isNotEmpty
-            ? Timestamp.fromDate(DateTime.tryParse(followUpDate) ?? DateTime.now())
-            : null,
-        'follow_up_time': followUpTime.length == 5 ? '$followUpTime:00' : followUpTime,
-        'priority': priority,
-        'discussion_notes': discussionNotes,
-        'created_at': FieldValue.serverTimestamp(),
-        'updated_at': FieldValue.serverTimestamp(),
-      };
+    'date': Timestamp.fromDate(DateTime.tryParse(date) ?? DateTime.now()),
+    'client_name': clientName,
+    'client_contact': clientContact,
+    'employee_id': employee,
+    if (employeeName != null) 'employee_name': employeeName,
+    'follow_up_date': followUpDate.isNotEmpty
+        ? Timestamp.fromDate(DateTime.tryParse(followUpDate) ?? DateTime.now())
+        : null,
+    'follow_up_time': followUpTime.length == 5
+        ? '$followUpTime:00'
+        : followUpTime,
+    'priority': priority,
+    'discussion_notes': discussionNotes,
+    'created_at': FieldValue.serverTimestamp(),
+    'updated_at': FieldValue.serverTimestamp(),
+  };
 
   Map<String, dynamic> toPayload() => {
-        'date': date,
-        'client_name': clientName,
-        'client_contact': clientContact,
-        'employee': employee,
-        'follow_up_date': followUpDate,
-        'follow_up_time': followUpTime.length == 5
-            ? '$followUpTime:00'
-            : followUpTime,
-        'priority': priority,
-        'discussion_notes': discussionNotes,
-      };
+    'date': date,
+    'client_name': clientName,
+    'client_contact': clientContact,
+    'employee': employee,
+    'follow_up_date': followUpDate,
+    'follow_up_time': followUpTime.length == 5
+        ? '$followUpTime:00'
+        : followUpTime,
+    'priority': priority,
+    'discussion_notes': discussionNotes,
+  };
 }

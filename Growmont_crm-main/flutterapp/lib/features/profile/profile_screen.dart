@@ -45,7 +45,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   @override
   void didUpdateWidget(covariant ProfileScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.initialTab != oldWidget.initialTab && widget.initialTab != null) {
+    if (widget.initialTab != oldWidget.initialTab &&
+        widget.initialTab != null) {
       if (widget.initialTab == 'reminders') _tab = ProfileTab.reminders;
       if (widget.initialTab == 'interactions') _tab = ProfileTab.interactions;
       if (widget.initialTab == 'productSales') _tab = ProfileTab.sales;
@@ -88,7 +89,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         });
         if (_employee != null) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Refresh failed: $e'), backgroundColor: Colors.red),
+            SnackBar(
+              content: Text('Refresh failed: $e'),
+              backgroundColor: AppColors.danger,
+            ),
           );
         }
       }
@@ -110,8 +114,14 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         title: const Text('Delete Reminder'),
         content: const Text('Are you sure?'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Delete')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Delete'),
+          ),
         ],
       ),
     );
@@ -156,28 +166,28 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         children: [
           if (!isWide) ...[
             const Text('Profile', style: AppTypography.pageTitleMobile),
-            const SizedBox(height: 10),
+            const SizedBox(height: AppSpacing.md),
             Row(
               children: [
                 Expanded(
                   child: OutlinedButton.icon(
-                    onPressed: () => setState(() => _showProfilePanel = !_showProfilePanel),
-                    icon: const Icon(Icons.person_outline, size: 18),
-                    label: Text(_showProfilePanel ? 'Hide Info' : 'My Info'),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 10),
+                    onPressed: () =>
+                        setState(() => _showProfilePanel = !_showProfilePanel),
+                    icon: const Icon(
+                      Icons.person_outline,
+                      size: AppSizing.iconMd,
                     ),
+                    label: Text(_showProfilePanel ? 'Hide Info' : 'My Info'),
+                    style: OutlinedButton.styleFrom(),
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: AppSpacing.sm),
                 Expanded(
                   child: FilledButton.icon(
                     onPressed: () => _showReminderModal(),
-                    icon: const Icon(Icons.add, size: 18),
+                    icon: const Icon(Icons.add, size: AppSizing.iconMd),
                     label: const Text('Add Reminder'),
-                    style: FilledButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 10),
-                    ),
+                    style: FilledButton.styleFrom(),
                   ),
                 ),
               ],
@@ -196,7 +206,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 ),
               ],
             ),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpacing.lg),
           Expanded(
             child: isWide
                 ? Row(
@@ -212,7 +222,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           totalSales: _totalSalesAmount,
                         ),
                       ),
-                      const SizedBox(width: 16),
+                      const SizedBox(width: AppSpacing.lg),
                       Expanded(child: _tabContent()),
                     ],
                   )
@@ -226,7 +236,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           remindersCount: _reminders.length,
                           totalSales: _totalSalesAmount,
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: AppSpacing.lg),
                       ],
                       Expanded(child: _tabContent()),
                     ],
@@ -243,11 +253,15 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         children: [
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(AppSpacing.md),
             child: Row(
               children: [
                 _tabChip('Product Sales', ProfileTab.sales, _sales.length),
-                _tabChip('Interactions', ProfileTab.interactions, _interactions.length),
+                _tabChip(
+                  'Interactions',
+                  ProfileTab.interactions,
+                  _interactions.length,
+                ),
                 _tabChip('Reminders', ProfileTab.reminders, _reminders.length),
               ],
             ),
@@ -280,8 +294,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(icon, size: 36, color: AppColors.textMuted),
-                  const SizedBox(height: 8),
+                  Icon(
+                    icon,
+                    size: AppSizing.iconDisplay,
+                    color: AppColors.textMuted,
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
                   Text(message, style: AppTypography.itemSubtitle),
                 ],
               ),
@@ -295,13 +313,15 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   Widget _tabChip(String label, ProfileTab tab, int count) {
     final selected = _tab == tab;
     return Padding(
-      padding: const EdgeInsets.only(right: 8),
+      padding: const EdgeInsets.only(right: AppSpacing.sm),
       child: FilterChip(
         label: Text('$label ($count)'),
         selected: selected,
         onSelected: (_) => setState(() => _tab = tab),
         selectedColor: AppColors.primaryGreen,
-        labelStyle: TextStyle(color: selected ? Colors.white : Colors.grey.shade700),
+        labelStyle: TextStyle(
+          color: selected ? Colors.white : AppColors.textSecondary,
+        ),
         checkmarkColor: Colors.white,
       ),
     );
@@ -313,47 +333,65 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     }
     return ListView.separated(
       physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(AppSpacing.lg),
       itemCount: _sales.length,
-      separatorBuilder: (context, index) => const Divider(height: 1, color: AppColors.border),
+      separatorBuilder: (context, index) =>
+          const Divider(height: 1, color: AppColors.border),
       itemBuilder: (_, i) {
         final s = _sales[i];
         final prod = (s.productDisplay != null && s.productDisplay!.isNotEmpty)
             ? s.productDisplay!
             : s.product;
         return ListTile(
-          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.lg,
+            vertical: AppSpacing.xs,
+          ),
           title: Row(
             children: [
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                margin: const EdgeInsets.only(right: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.sm,
+                  vertical: AppSpacing.xxs,
+                ),
+                margin: const EdgeInsets.only(right: AppSpacing.sm),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFEFF6FF),
-                  borderRadius: BorderRadius.circular(6),
-                  border: Border.all(color: const Color(0xFFDBEAFE)),
+                  color: AppColors.surfaceSelected,
+                  borderRadius: BorderRadius.circular(AppRadius.sm),
+                  border: Border.all(color: AppAccents.blueTint),
                 ),
                 child: Text(
                   prod,
                   style: const TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
-                    color: Color(0xFF1E40AF),
+                    color: AppAccents.blueLabel,
                   ),
                 ),
               ),
               Expanded(
-                child: Text(s.clientName, style: AppTypography.itemTitle, overflow: TextOverflow.ellipsis),
+                child: Text(
+                  s.clientName,
+                  style: AppTypography.itemTitle,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
             ],
           ),
           subtitle: Padding(
-            padding: const EdgeInsets.only(top: 4),
+            padding: const EdgeInsets.only(top: AppSpacing.xs),
             child: Row(
               children: [
-                const Icon(Icons.calendar_today_outlined, size: 12, color: AppColors.textMuted),
-                const SizedBox(width: 4),
-                Text(AppFormatters.formatDate(s.date), style: AppTypography.caption),
+                const Icon(
+                  Icons.calendar_today_outlined,
+                  size: AppSizing.iconXs,
+                  color: AppColors.textMuted,
+                ),
+                const SizedBox(width: AppSpacing.xs),
+                Text(
+                  AppFormatters.formatDate(s.date),
+                  style: AppTypography.caption,
+                ),
               ],
             ),
           ),
@@ -372,41 +410,63 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     }
     return ListView.separated(
       physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(AppSpacing.lg),
       itemCount: _interactions.length,
-      separatorBuilder: (context, index) => const Divider(height: 1, color: AppColors.border),
+      separatorBuilder: (context, index) =>
+          const Divider(height: 1, color: AppColors.border),
       itemBuilder: (_, i) {
         final item = _interactions[i];
-        final priorityLabel = (item.priorityDisplay != null && item.priorityDisplay!.isNotEmpty)
+        final priorityLabel =
+            (item.priorityDisplay != null && item.priorityDisplay!.isNotEmpty)
             ? item.priorityDisplay!
             : item.priority;
         return ListTile(
-          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.lg,
+            vertical: AppSpacing.xs,
+          ),
           title: Text(item.clientName, style: AppTypography.itemTitle),
           subtitle: Padding(
-            padding: const EdgeInsets.only(top: 4),
+            padding: const EdgeInsets.only(top: AppSpacing.xs),
             child: Row(
               children: [
                 if (item.clientContact.isNotEmpty) ...[
-                  const Icon(Icons.phone_outlined, size: 12, color: AppColors.textMuted),
-                  const SizedBox(width: 3),
+                  const Icon(
+                    Icons.phone_outlined,
+                    size: AppSizing.iconXs,
+                    color: AppColors.textMuted,
+                  ),
+                  const SizedBox(width: AppSpacing.xs),
                   Text(item.clientContact, style: AppTypography.itemSubtitle),
-                  const SizedBox(width: 10),
+                  const SizedBox(width: AppSpacing.md),
                 ],
-                const Icon(Icons.event_outlined, size: 12, color: AppColors.textMuted),
-                const SizedBox(width: 3),
-                Text('Follow-up: ${AppFormatters.formatDate(item.followUpDate)}', style: AppTypography.caption),
+                const Icon(
+                  Icons.event_outlined,
+                  size: AppSizing.iconXs,
+                  color: AppColors.textMuted,
+                ),
+                const SizedBox(width: AppSpacing.xs),
+                Text(
+                  'Follow-up: ${AppFormatters.formatDate(item.followUpDate)}',
+                  style: AppTypography.caption,
+                ),
               ],
             ),
           ),
           trailing: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            width: 72,
+            alignment: Alignment.center,
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.xs,
+              vertical: AppSpacing.xs,
+            ),
             decoration: BoxDecoration(
               color: priorityBackgroundColor(item.priority),
-              borderRadius: BorderRadius.circular(6),
+              borderRadius: BorderRadius.circular(AppRadius.sm),
             ),
             child: Text(
               priorityLabel,
+              textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w600,
@@ -425,33 +485,43 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     }
     return ListView.separated(
       physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(AppSpacing.lg),
       itemCount: _reminders.length,
-      separatorBuilder: (context, index) => const Divider(height: 1, color: AppColors.border),
+      separatorBuilder: (context, index) =>
+          const Divider(height: 1, color: AppColors.border),
       itemBuilder: (_, i) {
         final r = _reminders[i];
         final isCorp = r.type == 'CORPORATE';
         return ListTile(
-          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.lg,
+            vertical: AppSpacing.xs,
+          ),
           leading: CircleAvatar(
             radius: 18,
-            backgroundColor: isCorp ? const Color(0xFFEFF6FF) : const Color(0xFFFAF5FF),
+            backgroundColor: isCorp
+                ? AppColors.surfaceSelected
+                : AppAccents.purpleSoft,
             child: Icon(
               isCorp ? Icons.business : Icons.person,
-              color: isCorp ? const Color(0xFF2563EB) : const Color(0xFF9333EA),
-              size: 18,
+              color: isCorp ? AppColors.info : AppAccents.purpleBase,
+              size: AppSizing.iconMd,
             ),
           ),
           title: Text(r.eventName, style: AppTypography.itemTitle),
           subtitle: Padding(
-            padding: const EdgeInsets.only(top: 4),
+            padding: const EdgeInsets.only(top: AppSpacing.xs),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
                   children: [
-                    const Icon(Icons.schedule_outlined, size: 12, color: AppColors.textMuted),
-                    const SizedBox(width: 4),
+                    const Icon(
+                      Icons.schedule_outlined,
+                      size: AppSizing.iconXs,
+                      color: AppColors.textMuted,
+                    ),
+                    const SizedBox(width: AppSpacing.xs),
                     Text(
                       '${AppFormatters.formatDate(r.date)} at ${AppFormatters.formatTime(r.time)}',
                       style: AppTypography.caption,
@@ -459,8 +529,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   ],
                 ),
                 if (r.description.isNotEmpty) ...[
-                  const SizedBox(height: 2),
-                  Text(r.description, style: AppTypography.caption, maxLines: 1, overflow: TextOverflow.ellipsis),
+                  const SizedBox(height: AppSpacing.xxs),
+                  Text(
+                    r.description,
+                    style: AppTypography.caption,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ],
               ],
             ),
@@ -470,22 +545,32 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
+                      width: 72,
+                      alignment: Alignment.center,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.xs,
+                        vertical: AppSpacing.xxs,
+                      ),
                       decoration: BoxDecoration(
                         color: priorityBackgroundColor(r.priority),
-                        borderRadius: BorderRadius.circular(6),
+                        borderRadius: BorderRadius.circular(AppRadius.sm),
                       ),
                       child: Text(
                         r.priority.replaceAll(' Priority', ''),
+                        textAlign: TextAlign.center,
                         style: TextStyle(
-                          fontSize: 10,
+                          fontSize: 11,
                           fontWeight: FontWeight.w700,
                           color: priorityTextColor(r.priority),
                         ),
                       ),
                     ),
                     PopupMenuButton<String>(
-                      icon: const Icon(Icons.more_vert, size: 18, color: AppColors.textSecondary),
+                      icon: const Icon(
+                        Icons.more_vert,
+                        size: AppSizing.iconMd,
+                        color: AppColors.textSecondary,
+                      ),
                       padding: EdgeInsets.zero,
                       onSelected: (val) {
                         if (val == 'edit') _showReminderModal(existing: r);
@@ -496,8 +581,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           value: 'edit',
                           child: Row(
                             children: [
-                              Icon(Icons.edit_outlined, size: 16, color: Color(0xFF2563EB)),
-                              SizedBox(width: 8),
+                              Icon(
+                                Icons.edit_outlined,
+                                size: AppSizing.iconSm,
+                                color: AppColors.info,
+                              ),
+                              SizedBox(width: AppSpacing.sm),
                               Text('Edit'),
                             ],
                           ),
@@ -506,9 +595,16 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           value: 'delete',
                           child: Row(
                             children: [
-                              Icon(Icons.delete_outline, size: 16, color: Color(0xFFDC2626)),
-                              SizedBox(width: 8),
-                              Text('Delete', style: TextStyle(color: Color(0xFFDC2626))),
+                              Icon(
+                                Icons.delete_outline,
+                                size: AppSizing.iconSm,
+                                color: AppColors.danger,
+                              ),
+                              SizedBox(width: AppSpacing.sm),
+                              Text(
+                                'Delete',
+                                style: TextStyle(color: AppColors.danger),
+                              ),
                             ],
                           ),
                         ),
@@ -520,28 +616,42 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      width: 72,
+                      alignment: Alignment.center,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.xs,
+                        vertical: AppSpacing.xs,
+                      ),
                       decoration: BoxDecoration(
                         color: priorityBackgroundColor(r.priority),
-                        borderRadius: BorderRadius.circular(6),
+                        borderRadius: BorderRadius.circular(AppRadius.sm),
                       ),
                       child: Text(
                         r.priority.replaceAll(' Priority', ''),
+                        textAlign: TextAlign.center,
                         style: TextStyle(
-                          fontSize: 10,
+                          fontSize: 11,
                           fontWeight: FontWeight.w700,
                           color: priorityTextColor(r.priority),
                         ),
                       ),
                     ),
-                    const SizedBox(width: 4),
+                    const SizedBox(width: AppSpacing.xs),
                     IconButton(
-                      icon: const Icon(Icons.edit_outlined, size: 18, color: Color(0xFF2563EB)),
+                      icon: const Icon(
+                        Icons.edit_outlined,
+                        size: AppSizing.iconMd,
+                        color: AppColors.info,
+                      ),
                       tooltip: 'Edit Reminder',
                       onPressed: () => _showReminderModal(existing: r),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.delete_outline, size: 18, color: Color(0xFFDC2626)),
+                      icon: const Icon(
+                        Icons.delete_outline,
+                        size: AppSizing.iconMd,
+                        color: AppColors.danger,
+                      ),
                       tooltip: 'Delete Reminder',
                       onPressed: () => _deleteReminder(r.id),
                     ),
@@ -575,11 +685,11 @@ class _ProfileInfoPanel extends StatelessWidget {
     return Card(
       elevation: 0,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppRadius.lg),
         side: const BorderSide(color: AppColors.border),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(AppSpacing.xl),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -587,43 +697,53 @@ class _ProfileInfoPanel extends StatelessWidget {
               children: [
                 CircleAvatar(
                   radius: 30,
-                  backgroundColor: AppColors.primaryGreen.withValues(alpha: 0.12),
-                  backgroundImage:
-                      avatarUrl.isNotEmpty ? NetworkImage(avatarUrl) : null,
+                  backgroundColor: AppColors.primaryGreen.withValues(
+                    alpha: 0.12,
+                  ),
+                  backgroundImage: avatarUrl.isNotEmpty
+                      ? NetworkImage(avatarUrl)
+                      : null,
                   child: avatarUrl.isEmpty
                       ? Text(
                           employee.initials,
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w700,
+                          style: AppTypography.sectionTitle.copyWith(
                             color: AppColors.primaryGreen,
                           ),
                         )
                       : null,
                 ),
-                const SizedBox(width: 14),
+                const SizedBox(width: AppSpacing.lg),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(employee.name, style: AppTypography.itemTitle),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: AppSpacing.xs),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppSpacing.sm,
+                          vertical: AppSpacing.xxs,
+                        ),
                         decoration: BoxDecoration(
-                          color: isAdmin ? const Color(0xFFEFF6FF) : const Color(0xFFECFDF5),
-                          borderRadius: BorderRadius.circular(4),
+                          color: isAdmin
+                              ? AppColors.surfaceSelected
+                              : AppAccents.greenTint,
+                          borderRadius: BorderRadius.circular(AppRadius.xs),
                           border: Border.all(
-                            color: isAdmin ? const Color(0xFFBFDBFE) : const Color(0xFFA7F3D0),
+                            color: isAdmin
+                                ? AppAccents.blueBorder
+                                : AppAccents.greenBorder,
                           ),
                         ),
                         child: Text(
                           employee.role.toUpperCase(),
                           style: TextStyle(
-                            fontSize: 10,
+                            fontSize: 11,
                             fontWeight: FontWeight.w700,
                             letterSpacing: 0.3,
-                            color: isAdmin ? const Color(0xFF1D4ED8) : const Color(0xFF047857),
+                            color: isAdmin
+                                ? AppAccents.blueStrong
+                                : AppAccents.greenTeal,
                           ),
                         ),
                       ),
@@ -632,35 +752,50 @@ class _ProfileInfoPanel extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: AppSpacing.xl),
             const Text('ACTIVITY', style: AppTypography.overline),
-            const SizedBox(height: 10),
+            const SizedBox(height: AppSpacing.md),
             Row(
               children: [
                 Expanded(
-                  child: _statTile('Sales', '$salesCount',
-                      const Color(0xFF16A34A), const Color(0xFFF0FDF4)),
+                  child: _statTile(
+                    'Sales',
+                    '$salesCount',
+                    AppColors.success,
+                    AppAccents.greenSoft,
+                  ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: AppSpacing.sm),
                 Expanded(
-                  child: _statTile('Interactions', '$interactionsCount',
-                      const Color(0xFF9333EA), const Color(0xFFFAF5FF)),
+                  child: _statTile(
+                    'Interactions',
+                    '$interactionsCount',
+                    AppAccents.purpleBase,
+                    AppAccents.purpleSoft,
+                  ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: AppSpacing.sm),
                 Expanded(
-                  child: _statTile('Reminders', '$remindersCount',
-                      const Color(0xFF2563EB), const Color(0xFFEFF6FF)),
+                  child: _statTile(
+                    'Reminders',
+                    '$remindersCount',
+                    AppColors.info,
+                    AppColors.surfaceSelected,
+                  ),
                 ),
               ],
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: AppSpacing.md),
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.md,
+                vertical: AppSpacing.md,
+              ),
               decoration: BoxDecoration(
-                color: const Color(0xFFF0FDF4),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: const Color(0xFFBBF7D0)),
+                color: AppAccents.greenSoft,
+                borderRadius: BorderRadius.circular(AppRadius.md),
+                border: Border.all(color: AppAccents.greenBorderSoft),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -668,10 +803,10 @@ class _ProfileInfoPanel extends StatelessWidget {
                   const Text(
                     'TOTAL SALES',
                     style: TextStyle(
-                      fontSize: 10,
+                      fontSize: 11,
                       fontWeight: FontWeight.w700,
                       letterSpacing: 0.6,
-                      color: Color(0xFF166534),
+                      color: AppAccents.greenDeep,
                     ),
                   ),
                   Text(
@@ -679,22 +814,25 @@ class _ProfileInfoPanel extends StatelessWidget {
                     style: const TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
-                      color: Color(0xFF15803D),
+                      color: AppAccents.greenStrong,
                     ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: AppSpacing.xl),
             const Text('MAIN INFO', style: AppTypography.overline),
-            const SizedBox(height: 10),
+            const SizedBox(height: AppSpacing.md),
             _infoField('Gender', employee.genderDisplay),
             _infoField('Birthday', AppFormatters.formatDate(employee.dob)),
-            const SizedBox(height: 18),
+            const SizedBox(height: AppSpacing.xl),
             const Text('CONTACT INFO', style: AppTypography.overline),
-            const SizedBox(height: 10),
+            const SizedBox(height: AppSpacing.md),
             _infoField('Email', employee.email),
-            _infoField('Mobile', employee.mobileNo.isNotEmpty ? employee.mobileNo : 'Not provided'),
+            _infoField(
+              'Mobile',
+              employee.mobileNo.isNotEmpty ? employee.mobileNo : 'Not provided',
+            ),
           ],
         ),
       ),
@@ -703,10 +841,13 @@ class _ProfileInfoPanel extends StatelessWidget {
 
   Widget _statTile(String label, String value, Color accent, Color bg) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.sm,
+        vertical: AppSpacing.sm,
+      ),
       decoration: BoxDecoration(
         color: bg,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppRadius.md),
         border: Border.all(color: accent.withValues(alpha: 0.2)),
       ),
       child: Column(
@@ -714,18 +855,13 @@ class _ProfileInfoPanel extends StatelessWidget {
         children: [
           Text(
             value,
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
-              letterSpacing: -0.5,
-              color: accent,
-            ),
+            style: AppTypography.metricMedium.copyWith(color: accent),
           ),
-          const SizedBox(height: 2),
+          const SizedBox(height: AppSpacing.xxs),
           Text(
             label,
             style: TextStyle(
-              fontSize: 9.5,
+              fontSize: 11,
               fontWeight: FontWeight.w700,
               letterSpacing: 0.3,
               color: accent.withValues(alpha: 0.85),
@@ -740,18 +876,21 @@ class _ProfileInfoPanel extends StatelessWidget {
 
   Widget _infoField(String label, String value) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.only(bottom: AppSpacing.md),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(label, style: AppTypography.captionSemibold),
-          const SizedBox(height: 4),
+          const SizedBox(height: AppSpacing.xs),
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.md,
+              vertical: AppSpacing.md,
+            ),
             decoration: BoxDecoration(
-              color: const Color(0xFFF8FAFC),
-              borderRadius: BorderRadius.circular(8),
+              color: AppColors.surfaceHeader,
+              borderRadius: BorderRadius.circular(AppRadius.md),
               border: Border.all(color: AppColors.border),
             ),
             child: Text(

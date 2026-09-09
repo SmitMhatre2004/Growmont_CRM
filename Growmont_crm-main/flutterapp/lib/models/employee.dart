@@ -56,17 +56,17 @@ class Employee {
   }
 
   Map<String, dynamic> toFirestore() => {
-        'name': name,
-        'email': email,
-        'mobile_no': mobileNo,
-        'gender': gender,
-        'dob': dob,
-        'avatar_url': avatar,
-        'role': role,
-        'clients_count': clientsCount,
-        'sales_count': salesCount,
-        'interactions_count': interactionsCount,
-      };
+    'name': name,
+    'email': email,
+    'mobile_no': mobileNo,
+    'gender': gender,
+    'dob': dob,
+    'avatar_url': avatar,
+    'role': role,
+    'clients_count': clientsCount,
+    'sales_count': salesCount,
+    'interactions_count': interactionsCount,
+  };
 
   String get genderDisplay {
     switch (gender) {
@@ -105,7 +105,10 @@ class EmployeeDropdown {
   final String name;
   final String role;
 
-  factory EmployeeDropdown.fromJson(Map<String, dynamic> json, [String? docId]) {
+  factory EmployeeDropdown.fromJson(
+    Map<String, dynamic> json, [
+    String? docId,
+  ]) {
     return EmployeeDropdown(
       id: (docId ?? json['id'] ?? '').toString(),
       name: json['name'] as String? ?? '',
@@ -114,6 +117,9 @@ class EmployeeDropdown {
   }
 
   factory EmployeeDropdown.fromFirestore(DocumentSnapshot doc) {
-    return EmployeeDropdown.fromJson(doc.data() as Map<String, dynamic>? ?? {}, doc.id);
+    return EmployeeDropdown.fromJson(
+      doc.data() as Map<String, dynamic>? ?? {},
+      doc.id,
+    );
   }
 }

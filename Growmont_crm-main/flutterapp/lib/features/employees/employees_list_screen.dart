@@ -27,10 +27,21 @@ class _EmployeesListScreenState extends ConsumerState<EmployeesListScreen> {
   bool _loading = true;
   String? _error;
 
+  final _searchFocusNode = FocusNode();
+  final _searchController = TextEditingController();
+
   @override
   void initState() {
     super.initState();
+    _searchFocusNode.addListener(() => setState(() {}));
     _load();
+  }
+
+  @override
+  void dispose() {
+    _searchFocusNode.dispose();
+    _searchController.dispose();
+    super.dispose();
   }
 
   Future<void> _load() async {
@@ -58,7 +69,7 @@ class _EmployeesListScreenState extends ConsumerState<EmployeesListScreen> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('Refresh failed: $e'),
-              backgroundColor: Colors.red,
+              backgroundColor: AppColors.danger,
             ),
           );
         }
@@ -113,7 +124,7 @@ class _EmployeesListScreenState extends ConsumerState<EmployeesListScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Delete failed: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: AppColors.danger,
           ),
         );
       }
@@ -132,118 +143,203 @@ class _EmployeesListScreenState extends ConsumerState<EmployeesListScreen> {
   @override
   Widget build(BuildContext context) {
     final isAdmin = ref.watch(authProvider).user?.isAdmin == true;
-    final isMobile = MediaQuery.sizeOf(context).width < 600;
+    final isMobile = MediaQuery.sizeOf(context).width < 768;
 
-    return Padding(
-      padding: EdgeInsets.fromLTRB(
-        isMobile ? 16 : 24,
-        isMobile ? 10 : 16,
-        isMobile ? 16 : 24,
-        isMobile ? 14 : 20,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _header(isAdmin, isMobile),
-          const SizedBox(height: 14),
-          _searchField(),
-          const SizedBox(height: 10),
-          _roleFilters(),
-          const SizedBox(height: 14),
-          Expanded(child: _body(isAdmin, isMobile)),
-        ],
-      ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildTitleRow(),
+        _buildTabsRow(isAdmin),
+        _buildSearchRow(),
+        Expanded(
+          child: Padding(
+            padding: EdgeInsets.symmetric(
+              horizontal: isMobile ? AppSpacing.lg : AppSpacing.xxl,
+            ),
+            child: _body(isAdmin, isMobile),
+          ),
+        ),
+        const SizedBox(height: AppSpacing.lg),
+      ],
     );
   }
 
-  Widget _header(bool isAdmin, bool isMobile) {
-    final title = Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
+  // -- Title row: "Employees" ---------------------------------------------
+
+  Widget _buildTitleRow() {
+    final isMobile = MediaQuery.sizeOf(context).width < 768;
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        isMobile ? AppSpacing.lg : AppSpacing.xxl,
+        isMobile ? 10 : 16,
+        isMobile ? AppSpacing.lg : AppSpacing.xxl,
+        isMobile ? 8 : 12,
+      ),
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: Text(
           'Employees',
           style: isMobile
               ? AppTypography.pageTitleMobile
               : AppTypography.pageTitle,
         ),
-        const SizedBox(height: 4),
-        const Text(
-          'Manage team members, roles, permissions and track performance',
-          style: AppTypography.pageSubtitle,
-        ),
-      ],
-    );
-
-    final addButton = FilledButton.icon(
-      style: FilledButton.styleFrom(
-        backgroundColor: AppColors.primaryGreen,
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
-      onPressed: () => _showModal(),
-      icon: const Icon(Icons.add, size: 18),
-      label: const Text(
-        'Add Employee',
-        style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+    );
+  }
+
+  // -- Tabs Row: Filters (UP) + Add Employee --------------------------------
+
+  Widget _buildTabsRow(bool isAdmin) {
+    final isMobile = MediaQuery.sizeOf(context).width < 768;
+    final addButton = SizedBox(
+      height: 40.0,
+      child: FilledButton.icon(
+        style: FilledButton.styleFrom(
+          backgroundColor: AppColors.primaryBlue,
+        ),
+        onPressed: () => _showModal(),
+        icon: const Icon(Icons.add, size: AppSizing.iconMd),
+        label: const Text('Add Employee'),
       ),
     );
 
     if (isMobile) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          title,
-          if (isAdmin) ...[
-            const SizedBox(height: 12),
-            SizedBox(width: double.infinity, child: addButton),
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: _roleFilters(),
+            ),
+            if (isAdmin) ...[
+              const SizedBox(height: AppSpacing.md),
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: addButton,
+              ),
+            ],
           ],
-        ],
+        ),
       );
     }
 
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(child: title),
-        if (isAdmin) addButton,
-      ],
-    );
-  }
-
-  Widget _searchField() {
-    return SizedBox(
-      height: 42,
-      child: TextField(
-        decoration: InputDecoration(
-          hintText: 'Search by name, email, phone or role...',
-          hintStyle: AppTypography.caption,
-          prefixIcon: const Icon(
-            Icons.search,
-            size: 18,
-            color: AppColors.textMuted,
-          ),
-          filled: true,
-          fillColor: Colors.white,
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 14,
-            vertical: 0,
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
-            borderSide: const BorderSide(color: AppColors.border),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
-            borderSide: const BorderSide(
-              color: AppColors.primaryGreen,
-              width: 1.5,
-            ),
-          ),
-        ),
-        onChanged: (v) => setState(() => _search = v),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
+      child: Row(
+        children: [
+          _roleFilters(),
+          const Spacer(),
+          if (isAdmin) addButton,
+        ],
       ),
     );
   }
+
+  // -- Search Row: Search bar (BELOW) + Count Badge -------------------------
+
+  Widget _buildSearchRow() {
+    final isMobile = MediaQuery.sizeOf(context).width < 768;
+    final isSearchFocused = _searchFocusNode.hasFocus;
+
+    final searchBar = Material(
+      color: Colors.white,
+      elevation: isSearchFocused ? 2.0 : 1.5,
+      shadowColor: isSearchFocused
+          ? AppColors.primaryBlue.withValues(alpha: 0.18)
+          : Colors.black.withValues(alpha: 0.08),
+      shape: RoundedRectangleBorder(
+        borderRadius: AppRadius.brMd,
+        side: BorderSide(
+          color: isSearchFocused ? AppColors.primaryBlue : AppColors.border,
+          width: isSearchFocused ? 1.5 : 1.0,
+        ),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: SizedBox(
+        height: 40.0,
+        child: TextField(
+          focusNode: _searchFocusNode,
+          controller: _searchController,
+          textAlignVertical: TextAlignVertical.center,
+          decoration: InputDecoration(
+            isDense: true,
+            hintText: 'Search by name, email, phone or role...',
+            hintStyle: const TextStyle(fontSize: 13, color: AppColors.textMuted),
+            prefixIcon: const Icon(
+              Icons.search,
+              color: AppColors.textMuted,
+              size: AppSizing.iconMd,
+            ),
+            suffixIcon: _search.isNotEmpty
+                ? IconButton(
+                    icon: const Icon(
+                      Icons.clear,
+                      color: AppColors.textMuted,
+                      size: AppSizing.iconMd,
+                    ),
+                    onPressed: () => setState(() {
+                      _search = '';
+                      _searchController.clear();
+                    }),
+                  )
+                : null,
+            border: InputBorder.none,
+            enabledBorder: InputBorder.none,
+            focusedBorder: InputBorder.none,
+            errorBorder: InputBorder.none,
+            focusedErrorBorder: InputBorder.none,
+            disabledBorder: InputBorder.none,
+            filled: false,
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.lg,
+            ),
+          ),
+          style: const TextStyle(fontSize: 13),
+          onChanged: (v) => setState(() {
+            _search = v;
+          }),
+        ),
+      ),
+    );
+
+    final countBadge = Text(
+      '${_filtered.length} ${_filtered.length == 1 ? 'employee' : 'employees'}',
+      style: AppTypography.tableCellStrong.copyWith(fontSize: 14),
+    );
+
+    if (isMobile) {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            searchBar,
+          ],
+        ),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
+      child: Row(
+        children: [
+          Expanded(flex: 1, child: searchBar),
+          const SizedBox(width: AppSpacing.lg),
+          Expanded(
+            flex: 1,
+            child: Align(
+              alignment: Alignment.centerRight,
+              child: countBadge,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // -- Role Filters (Sliding Segment) ---------------------------------------
 
   Widget _roleFilters() {
     final activeIndex = switch (_roleFilter) {
@@ -252,17 +348,17 @@ class _EmployeesListScreenState extends ConsumerState<EmployeesListScreen> {
       RoleFilter.employee => 2,
     };
     const itemWidth = 110.0;
-    const controlHeight = 38.0;
+    const controlHeight = 40.0;
     const radius = 10.0;
 
     final slidingSegment = Container(
       height: controlHeight,
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.surfaceHeader,
         border: Border.all(color: AppColors.border),
         borderRadius: BorderRadius.circular(radius),
       ),
-      padding: const EdgeInsets.all(3),
+      padding: const EdgeInsets.all(AppSpacing.xs),
       child: SizedBox(
         width: itemWidth * 3,
         child: Stack(
@@ -275,10 +371,12 @@ class _EmployeesListScreenState extends ConsumerState<EmployeesListScreen> {
               top: 0,
               bottom: 0,
               width: itemWidth,
-              child: Container(
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 260),
+                curve: Curves.easeOutCubic,
                 decoration: BoxDecoration(
                   color: AppColors.primaryBlue,
-                  borderRadius: BorderRadius.circular(radius - 3),
+                  borderRadius: BorderRadius.circular(AppRadius.sm),
                   boxShadow: [
                     BoxShadow(
                       color: AppColors.primaryBlue.withValues(alpha: 0.25),
@@ -297,24 +395,18 @@ class _EmployeesListScreenState extends ConsumerState<EmployeesListScreen> {
                   label: 'All (${_employees.length})',
                   isSelected: activeIndex == 0,
                   width: itemWidth,
-                  controlHeight: controlHeight,
-                  radius: radius,
                   onTap: () => setState(() => _roleFilter = RoleFilter.all),
                 ),
                 _slidingSegmentItem(
                   label: 'Admins ($_adminCount)',
                   isSelected: activeIndex == 1,
                   width: itemWidth,
-                  controlHeight: controlHeight,
-                  radius: radius,
                   onTap: () => setState(() => _roleFilter = RoleFilter.admin),
                 ),
                 _slidingSegmentItem(
                   label: 'Employees (${_employees.length - _adminCount})',
                   isSelected: activeIndex == 2,
                   width: itemWidth,
-                  controlHeight: controlHeight,
-                  radius: radius,
                   onTap: () =>
                       setState(() => _roleFilter = RoleFilter.employee),
                 ),
@@ -325,26 +417,21 @@ class _EmployeesListScreenState extends ConsumerState<EmployeesListScreen> {
       ),
     );
 
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: slidingSegment,
-    );
+    return slidingSegment;
   }
 
   Widget _slidingSegmentItem({
     required String label,
     required bool isSelected,
     required double width,
-    required double controlHeight,
-    required double radius,
     required VoidCallback onTap,
   }) {
     return SizedBox(
       width: width,
-      height: controlHeight - 6,
+      height: AppSizing.controlSm,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(radius - 3),
+        borderRadius: BorderRadius.circular(AppRadius.sm),
         splashColor: Colors.transparent,
         highlightColor: Colors.transparent,
         hoverColor: Colors.transparent,
@@ -353,7 +440,7 @@ class _EmployeesListScreenState extends ConsumerState<EmployeesListScreen> {
             duration: const Duration(milliseconds: 180),
             curve: Curves.easeInOut,
             style: TextStyle(
-              fontSize: 12,
+              fontSize: 13,
               fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
               color: isSelected ? Colors.white : AppColors.textSecondary,
             ),
@@ -370,7 +457,7 @@ class _EmployeesListScreenState extends ConsumerState<EmployeesListScreen> {
     final card = Card(
       elevation: 0,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppRadius.lg),
         side: const BorderSide(color: AppColors.border),
       ),
       child: _filtered.isEmpty
@@ -387,15 +474,15 @@ class _EmployeesListScreenState extends ConsumerState<EmployeesListScreen> {
                       children: [
                         Icon(
                           Icons.people_outline,
-                          size: 42,
+                          size: AppSizing.iconDisplay,
                           color: AppColors.textMuted,
                         ),
-                        SizedBox(height: 10),
+                        SizedBox(height: AppSpacing.md),
                         Text(
                           'No employees found',
                           style: AppTypography.itemTitle,
                         ),
-                        SizedBox(height: 4),
+                        SizedBox(height: AppSpacing.xs),
                         Text(
                           'Try adjusting your search or filters',
                           style: AppTypography.caption,
@@ -405,7 +492,7 @@ class _EmployeesListScreenState extends ConsumerState<EmployeesListScreen> {
                   ))
           : ListView.separated(
               physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.symmetric(vertical: 4),
+              padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
               itemCount: _filtered.length,
               separatorBuilder: (context, index) =>
                   const Divider(height: 1, color: AppColors.border),
@@ -495,17 +582,17 @@ class _EmployeeRow extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                      const SizedBox(width: 6),
+                      const SizedBox(width: AppSpacing.sm),
                       _roleBadge(isAdminRole),
                     ],
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: AppSpacing.xs),
                   _contactLine(Icons.email_outlined, employee.email),
                   if (employee.mobileNo.isNotEmpty) ...[
-                    const SizedBox(height: 2),
+                    const SizedBox(height: AppSpacing.xxs),
                     _contactLine(Icons.phone_outlined, employee.mobileNo),
                   ],
-                  const SizedBox(height: 8),
+                  const SizedBox(height: AppSpacing.sm),
                   Wrap(
                     spacing: 6,
                     runSpacing: 6,
@@ -514,19 +601,19 @@ class _EmployeeRow extends StatelessWidget {
                         Icons.handshake_outlined,
                         '${employee.clientsCount}',
                         'clients',
-                        const Color(0xFF2563EB),
+                        AppColors.info,
                       ),
                       _miniStat(
                         Icons.trending_up_rounded,
                         '${employee.salesCount}',
                         'sales',
-                        const Color(0xFF16A34A),
+                        AppColors.success,
                       ),
                       _miniStat(
                         Icons.forum_outlined,
                         '${employee.interactionsCount}',
                         'chats',
-                        const Color(0xFF9333EA),
+                        AppAccents.purpleBase,
                       ),
                     ],
                   ),
@@ -537,7 +624,7 @@ class _EmployeeRow extends StatelessWidget {
               PopupMenuButton<String>(
                 icon: const Icon(
                   Icons.more_vert,
-                  size: 18,
+                  size: AppSizing.iconMd,
                   color: AppColors.textMuted,
                 ),
                 padding: EdgeInsets.zero,
@@ -553,10 +640,10 @@ class _EmployeeRow extends StatelessWidget {
                       children: [
                         Icon(
                           Icons.edit_outlined,
-                          size: 16,
-                          color: Color(0xFF2563EB),
+                          size: AppSizing.iconSm,
+                          color: AppColors.info,
                         ),
-                        SizedBox(width: 8),
+                        SizedBox(width: AppSpacing.sm),
                         Text('Edit', style: TextStyle(fontSize: 13)),
                       ],
                     ),
@@ -567,15 +654,15 @@ class _EmployeeRow extends StatelessWidget {
                       children: [
                         Icon(
                           Icons.delete_outline,
-                          size: 16,
-                          color: Color(0xFFDC2626),
+                          size: AppSizing.iconSm,
+                          color: AppColors.danger,
                         ),
-                        SizedBox(width: 8),
+                        SizedBox(width: AppSpacing.sm),
                         Text(
                           'Delete',
                           style: TextStyle(
                             fontSize: 13,
-                            color: Color(0xFFDC2626),
+                            color: AppColors.danger,
                           ),
                         ),
                       ],
@@ -585,10 +672,10 @@ class _EmployeeRow extends StatelessWidget {
               )
             else
               const Padding(
-                padding: EdgeInsets.only(top: 4),
+                padding: EdgeInsets.only(top: AppSpacing.xs),
                 child: Icon(
                   Icons.chevron_right,
-                  size: 18,
+                  size: AppSizing.iconMd,
                   color: AppColors.textMuted,
                 ),
               ),
@@ -600,25 +687,24 @@ class _EmployeeRow extends StatelessWidget {
 
   Widget _roleBadge(bool isAdminRole) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.xs,
+        vertical: AppSpacing.xxs,
+      ),
       decoration: BoxDecoration(
-        color: isAdminRole ? const Color(0xFFEFF6FF) : const Color(0xFFECFDF5),
-        borderRadius: BorderRadius.circular(4),
+        color: isAdminRole ? AppColors.surfaceSelected : AppAccents.greenTint,
+        borderRadius: BorderRadius.circular(AppRadius.xs),
         border: Border.all(
-          color: isAdminRole
-              ? const Color(0xFFBFDBFE)
-              : const Color(0xFFA7F3D0),
+          color: isAdminRole ? AppAccents.blueBorder : AppAccents.greenBorder,
         ),
       ),
       child: Text(
         employee.role.toUpperCase(),
         style: TextStyle(
-          fontSize: 9.5,
+          fontSize: 11,
           fontWeight: FontWeight.w700,
           letterSpacing: 0.3,
-          color: isAdminRole
-              ? const Color(0xFF1D4ED8)
-              : const Color(0xFF047857),
+          color: isAdminRole ? AppAccents.blueStrong : AppAccents.greenTeal,
         ),
       ),
     );
@@ -627,8 +713,8 @@ class _EmployeeRow extends StatelessWidget {
   Widget _contactLine(IconData icon, String text) {
     return Row(
       children: [
-        Icon(icon, size: 12, color: AppColors.textMuted),
-        const SizedBox(width: 4),
+        Icon(icon, size: AppSizing.iconXs, color: AppColors.textMuted),
+        const SizedBox(width: AppSpacing.xs),
         Expanded(
           child: Text(
             text,
@@ -642,17 +728,20 @@ class _EmployeeRow extends StatelessWidget {
 
   Widget _miniStat(IconData icon, String value, String label, Color accent) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.sm,
+        vertical: AppSpacing.xs,
+      ),
       decoration: BoxDecoration(
         color: accent.withValues(alpha: 0.07),
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: BorderRadius.circular(AppRadius.sm),
         border: Border.all(color: accent.withValues(alpha: 0.18)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 12, color: accent),
-          const SizedBox(width: 4),
+          Icon(icon, size: AppSizing.iconXs, color: accent),
+          const SizedBox(width: AppSpacing.xs),
           Text(
             value,
             style: TextStyle(
@@ -661,11 +750,11 @@ class _EmployeeRow extends StatelessWidget {
               color: accent,
             ),
           ),
-          const SizedBox(width: 3),
+          const SizedBox(width: AppSpacing.xs),
           Text(
             label,
             style: const TextStyle(
-              fontSize: 10.5,
+              fontSize: 11,
               fontWeight: FontWeight.w500,
               color: AppColors.textSecondary,
             ),

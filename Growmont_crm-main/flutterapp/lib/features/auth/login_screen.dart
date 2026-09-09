@@ -33,10 +33,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       _error = null;
     });
 
-    final error = await ref.read(authProvider.notifier).login(
-          _usernameController.text.trim(),
-          _passwordController.text,
-        );
+    final error = await ref
+        .read(authProvider.notifier)
+        .login(_usernameController.text.trim(), _passwordController.text);
 
     if (!mounted) return;
 
@@ -80,58 +79,68 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   gradient: LinearGradient(
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
-                    colors: [Color(0xFF2D8A4E), Color(0xFF00337C)],
+                    colors: [AppColors.primaryGreen, AppColors.primaryBlue],
                   ),
                 ),
                 child: const Center(
-                  child: Icon(Icons.business, size: 120, color: Colors.white54),
+                  child: Icon(
+                    Icons.business,
+                    size: AppSizing.iconHero,
+                    color: Colors.white54,
+                  ),
                 ),
               ),
             ),
           Expanded(
             child: Center(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.all(32),
+                padding: const EdgeInsets.all(AppSpacing.xxxl),
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 420),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Text(
+                      Text(
                         'Growmont',
-                        style: TextStyle(
-                          fontSize: 32,
-                          fontWeight: FontWeight.bold,
+                        style: AppTypography.pageTitle.copyWith(
                           color: AppColors.primaryGreen,
                         ),
                       ),
-                      const SizedBox(height: 32),
-                      const Text(
+                      const SizedBox(height: AppSpacing.xxxl),
+                      Text(
                         'Login',
-                        style: TextStyle(
-                          fontSize: 28,
-                          fontWeight: FontWeight.bold,
+                        style: AppTypography.headingLarge.copyWith(
                           color: AppColors.primaryGreen,
                         ),
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: AppSpacing.sm),
                       Container(
                         width: 80,
                         height: 3,
-                        color: AppColors.primaryGreen,
+                        decoration: const BoxDecoration(
+                          color: AppColors.primaryGreen,
+                          borderRadius: AppRadius.brXs,
+                        ),
                       ),
-                      const SizedBox(height: 32),
+                      const SizedBox(height: AppSpacing.xxxl),
                       if (_error != null)
                         Container(
                           width: double.infinity,
-                          padding: const EdgeInsets.all(12),
-                          margin: const EdgeInsets.only(bottom: 16),
+                          padding: const EdgeInsets.all(AppSpacing.md),
+                          margin: const EdgeInsets.only(bottom: AppSpacing.lg),
                           decoration: BoxDecoration(
-                            color: Colors.red.shade50,
-                            border: Border.all(color: Colors.red.shade300),
-                            borderRadius: BorderRadius.circular(12),
+                            color: AppColors.dangerSoft,
+                            border: Border.all(
+                              color: AppColors.danger.withValues(alpha: 0.3),
+                            ),
+                            borderRadius: AppRadius.brMd,
                           ),
-                          child: Text(_error!, style: TextStyle(color: Colors.red.shade700)),
+                          child: Text(
+                            _error!,
+                            style: AppTypography.bodySecondary.copyWith(
+                              color: AppColors.danger,
+                            ),
+                          ),
                         ),
                       TextField(
                         controller: _usernameController,
@@ -141,7 +150,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         ),
                         textInputAction: TextInputAction.next,
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: AppSpacing.lg),
                       TextField(
                         controller: _passwordController,
                         obscureText: _obscurePassword,
@@ -150,76 +159,77 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           prefixIcon: const Icon(Icons.lock_outline),
                           suffixIcon: IconButton(
                             icon: Icon(
-                              _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                              _obscurePassword
+                                  ? Icons.visibility_off
+                                  : Icons.visibility,
                             ),
-                            onPressed: () =>
-                                setState(() => _obscurePassword = !_obscurePassword),
+                            onPressed: () => setState(
+                              () => _obscurePassword = !_obscurePassword,
+                            ),
                           ),
                         ),
                         onSubmitted: (_) => _submit(),
                       ),
-                      const SizedBox(height: 32),
+                      const SizedBox(height: AppSpacing.xxxl),
                       SizedBox(
                         width: double.infinity,
+                        height: AppSizing.controlLg,
                         child: FilledButton(
                           onPressed: _loading ? null : _submit,
-                          style: FilledButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(32),
-                            ),
-                          ),
                           child: Text(_loading ? 'Logging in...' : 'Login'),
                         ),
                       ),
-                      const SizedBox(height: 24),
+                      const SizedBox(height: AppSpacing.xxl),
                       Row(
                         children: [
-                          Expanded(child: Divider(color: Colors.grey.shade300)),
+                          const Expanded(child: Divider()),
                           Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: AppSpacing.md,
+                            ),
                             child: Text(
                               'DEV BYPASS',
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.grey.shade500,
-                                letterSpacing: 1.2,
+                              style: AppTypography.overline.copyWith(
+                                color: AppColors.textMuted,
                               ),
                             ),
                           ),
-                          Expanded(child: Divider(color: Colors.grey.shade300)),
+                          const Expanded(child: Divider()),
                         ],
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: AppSpacing.lg),
                       SizedBox(
                         width: double.infinity,
+                        height: AppSizing.controlLg,
                         child: OutlinedButton.icon(
                           key: const ValueKey('dev_bypass_admin_btn'),
-                          onPressed: _loading ? null : () => _devBypass(UserRole.admin),
-                          icon: const Icon(Icons.bolt, color: Colors.amber, size: 20),
+                          onPressed: _loading
+                              ? null
+                              : () => _devBypass(UserRole.admin),
+                          icon: const Icon(Icons.bolt, size: AppSizing.iconMd),
                           label: const Text('Dev Bypass Login (Admin)'),
                           style: OutlinedButton.styleFrom(
-                            foregroundColor: AppColors.primaryGreen,
-                            side: const BorderSide(color: AppColors.primaryGreen, width: 1.5),
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(32),
+                            foregroundColor: AppColors.primaryBlue,
+                            side: const BorderSide(
+                              color: AppColors.primaryBlue,
                             ),
                           ),
                         ),
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: AppSpacing.sm),
                       SizedBox(
                         width: double.infinity,
+                        height: AppSizing.controlLg,
                         child: TextButton.icon(
                           key: const ValueKey('dev_bypass_employee_btn'),
-                          onPressed: _loading ? null : () => _devBypass(UserRole.employee),
-                          icon: Icon(Icons.person_outline, size: 18, color: Colors.grey.shade700),
-                          label: Text(
-                            'Dev Bypass (Employee Role)',
-                            style: TextStyle(color: Colors.grey.shade700, fontSize: 13),
+                          onPressed: _loading
+                              ? null
+                              : () => _devBypass(UserRole.employee),
+                          icon: const Icon(
+                            Icons.person_outline,
+                            size: AppSizing.iconMd,
                           ),
+                          label: const Text('Dev Bypass (Employee Role)'),
                         ),
                       ),
                     ],

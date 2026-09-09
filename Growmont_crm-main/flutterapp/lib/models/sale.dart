@@ -101,15 +101,15 @@ class Sale {
   }
 
   Map<String, dynamic> toPayload() => {
-        'date': date,
-        'client_name': clientName,
-        'sales_rep': salesRep,
-        'product': product,
-        'company': company,
-        'scheme': scheme,
-        'amount': amount,
-        'amount_paise': amountPaise,
-        'frequency': frequency,
-        'remarks': remarks,
-      };
+    'date': date,
+    'client_name': clientName,
+    'sales_rep': salesRep,
+    'product': product,
+    'company': company,
+    'scheme': scheme,
+    'amount': amount,
+    'amount_paise': amountPaise,
+    'frequency': frequency,
+    'remarks': remarks,
+  };
 }

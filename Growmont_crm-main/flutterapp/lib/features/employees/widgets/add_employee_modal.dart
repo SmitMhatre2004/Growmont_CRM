@@ -39,7 +39,9 @@ class _AddEmployeeModalState extends ConsumerState<AddEmployeeModal> {
     _email = TextEditingController(text: e?.email ?? '');
     _mobile = TextEditingController(text: e?.mobileNo ?? '');
     _password = TextEditingController();
-    _dob = e != null && e.dob.isNotEmpty ? DateTime.parse(e.dob) : DateTime(1990);
+    _dob = e != null && e.dob.isNotEmpty
+        ? DateTime.parse(e.dob)
+        : DateTime(1990);
     _gender = e?.gender ?? 'M';
     _role = e?.role ?? 'EMPLOYEE';
   }
@@ -69,7 +71,10 @@ class _AddEmployeeModalState extends ConsumerState<AddEmployeeModal> {
     if (!_formKey.currentState!.validate()) return;
     if (widget.existing == null && _password.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Password is required for new employees'), backgroundColor: Colors.red),
+        const SnackBar(
+          content: Text('Password is required for new employees'),
+          backgroundColor: AppColors.danger,
+        ),
       );
       return;
     }
@@ -88,8 +93,11 @@ class _AddEmployeeModalState extends ConsumerState<AddEmployeeModal> {
     try {
       if (_avatarBytes != null) {
         try {
-          final fileName = '${DateTime.now().millisecondsSinceEpoch}_${_avatar?.name ?? 'avatar.jpg'}';
-          final storageRef = FirebaseStorage.instance.ref().child('avatars/$fileName');
+          final fileName =
+              '${DateTime.now().millisecondsSinceEpoch}_${_avatar?.name ?? 'avatar.jpg'}';
+          final storageRef = FirebaseStorage.instance.ref().child(
+            'avatars/$fileName',
+          );
           final uploadTask = await storageRef.putData(
             _avatarBytes!,
             SettableMetadata(contentType: 'image/jpeg'),
@@ -111,7 +119,10 @@ class _AddEmployeeModalState extends ConsumerState<AddEmployeeModal> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed: $e'), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text('Failed: $e'),
+            backgroundColor: AppColors.danger,
+          ),
         );
       }
     } finally {
@@ -122,17 +133,14 @@ class _AddEmployeeModalState extends ConsumerState<AddEmployeeModal> {
   @override
   Widget build(BuildContext context) {
     return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
-      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(borderRadius: AppRadius.brXl),
+      backgroundColor: AppColors.surface,
       surfaceTintColor: Colors.transparent,
-      insetPadding: const EdgeInsets.symmetric(
-        horizontal: 24.0,
-        vertical: 24.0,
-      ),
+      insetPadding: const EdgeInsets.all(AppSpacing.xxl),
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 550),
+        constraints: const BoxConstraints(maxWidth: AppSizing.modalMaxWidth),
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24.0),
+          padding: AppLayout.modalPadding,
           child: Form(
             key: _formKey,
             child: Column(
@@ -142,21 +150,22 @@ class _AddEmployeeModalState extends ConsumerState<AddEmployeeModal> {
                 Row(
                   children: [
                     Text(
-                      widget.existing != null ? 'Edit Employee' : 'Add Employee',
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF111827),
-                      ),
+                      widget.existing != null
+                          ? 'Edit Employee'
+                          : 'Add Employee',
+                      style: AppTypography.sectionTitle,
                     ),
                     const Spacer(),
                     IconButton(
                       onPressed: () => Navigator.pop(context),
-                      icon: const Icon(Icons.close, color: Color(0xFF6B7280)),
+                      icon: const Icon(
+                        Icons.close,
+                        color: AppColors.textSecondary,
+                      ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: AppSpacing.lg),
                 Center(
                   child: GestureDetector(
                     onTap: _pickAvatar,
@@ -171,17 +180,21 @@ class _AddEmployeeModalState extends ConsumerState<AddEmployeeModal> {
                                 fit: BoxFit.cover,
                               ),
                             )
-                          : const Icon(Icons.camera_alt, size: 32),
+                          : const Icon(
+                              Icons.camera_alt,
+                              size: AppSizing.iconDisplay,
+                            ),
                     ),
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: AppSpacing.lg),
                 TextFormField(
                   controller: _name,
                   decoration: const InputDecoration(labelText: 'Name *'),
-                  validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
+                  validator: (v) =>
+                      (v == null || v.trim().isEmpty) ? 'Required' : null,
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: AppSpacing.md),
                 TextFormField(
                   controller: _email,
                   decoration: const InputDecoration(labelText: 'Email *'),
@@ -192,19 +205,25 @@ class _AddEmployeeModalState extends ConsumerState<AddEmployeeModal> {
                     return null;
                   },
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: AppSpacing.md),
                 TextFormField(
                   controller: _mobile,
                   decoration: const InputDecoration(labelText: 'Mobile *'),
                   keyboardType: TextInputType.phone,
-                  validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
+                  validator: (v) =>
+                      (v == null || v.trim().isEmpty) ? 'Required' : null,
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: AppSpacing.md),
                 ListTile(
                   contentPadding: EdgeInsets.zero,
                   title: const Text('Date of Birth *'),
-                  subtitle: Text(AppFormatters.formatDate(AppFormatters.toApiDate(_dob))),
-                  trailing: const Icon(Icons.calendar_today, size: 18),
+                  subtitle: Text(
+                    AppFormatters.formatDate(AppFormatters.toApiDate(_dob)),
+                  ),
+                  trailing: const Icon(
+                    Icons.calendar_today,
+                    size: AppSizing.iconMd,
+                  ),
                   onTap: () async {
                     final d = await showDatePicker(
                       context: context,
@@ -215,7 +234,7 @@ class _AddEmployeeModalState extends ConsumerState<AddEmployeeModal> {
                     if (d != null) setState(() => _dob = d);
                   },
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: AppSpacing.sm),
                 DropdownButtonFormField<String>(
                   initialValue: _gender,
                   decoration: const InputDecoration(labelText: 'Gender'),
@@ -226,18 +245,21 @@ class _AddEmployeeModalState extends ConsumerState<AddEmployeeModal> {
                   ],
                   onChanged: (v) => setState(() => _gender = v!),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: AppSpacing.md),
                 DropdownButtonFormField<String>(
                   initialValue: _role,
                   decoration: const InputDecoration(labelText: 'Role'),
                   items: const [
-                    DropdownMenuItem(value: 'EMPLOYEE', child: Text('Employee')),
+                    DropdownMenuItem(
+                      value: 'EMPLOYEE',
+                      child: Text('Employee'),
+                    ),
                     DropdownMenuItem(value: 'ADMIN', child: Text('Admin')),
                   ],
                   onChanged: (v) => setState(() => _role = v!),
                 ),
                 if (widget.existing == null) ...[
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppSpacing.md),
                   TextFormField(
                     controller: _password,
                     obscureText: true,
@@ -246,20 +268,24 @@ class _AddEmployeeModalState extends ConsumerState<AddEmployeeModal> {
                       helperText: 'At least 6 characters',
                     ),
                     validator: (v) {
-                      if (v == null || v.trim().isEmpty) return 'Password is required';
-                      if (v.length < 6) return 'Password must be at least 6 characters';
+                      if (v == null || v.trim().isEmpty) {
+                        return 'Password is required';
+                      }
+                      if (v.length < 6) {
+                        return 'Password must be at least 6 characters';
+                      }
                       return null;
                     },
                   ),
                 ],
-                const SizedBox(height: 24),
+                const SizedBox(height: AppSpacing.xxl),
                 SizedBox(
                   width: double.infinity,
-                  height: 48,
+                  height: AppSizing.controlLg,
                   child: FilledButton(
                     onPressed: _loading ? null : _submit,
                     style: FilledButton.styleFrom(
-                      backgroundColor: AppColors.primaryGreen,
+                      backgroundColor: AppColors.primaryBlue,
                     ),
                     child: Text(_loading ? 'Saving...' : 'Save Employee'),
                   ),
