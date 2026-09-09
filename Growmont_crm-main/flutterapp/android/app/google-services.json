@@ -12,7 +12,20 @@
           "package_name": "com.growmont.growmont_crm"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "925465988303-u1g0v1u0nd35cb2s9567gns64i3muq3p.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.growmont.growmont_crm",
+            "certificate_hash": "6b92b60575b5734153b7998b224ead8582e37826"
+          }
+        },
+        {
+          "client_id": "925465988303-3l1v0lat8c1260tpeaqqtlkn9ri4tc3p.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyDLwvW82PSOM_02vWkZlclQjSWxjVttok4"
@@ -20,7 +33,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "925465988303-3l1v0lat8c1260tpeaqqtlkn9ri4tc3p.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "925465988303-d4thj95bq9ji98tr8khukkfd0cd4u5am.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.growmont.growmontCrm"
+              }
+            }
+          ]
         }
       }
     }

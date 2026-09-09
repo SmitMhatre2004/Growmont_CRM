@@ -55,6 +55,22 @@ class Employee {
     return Employee.fromJson(doc.data() as Map<String, dynamic>? ?? {}, doc.id);
   }
 
+  Employee copyWith({String? name, String? email, String? avatar}) {
+    return Employee(
+      id: id,
+      name: name ?? this.name,
+      email: email ?? this.email,
+      mobileNo: mobileNo,
+      gender: gender,
+      dob: dob,
+      avatar: avatar ?? this.avatar,
+      role: role,
+      clientsCount: clientsCount,
+      salesCount: salesCount,
+      interactionsCount: interactionsCount,
+    );
+  }
+
   Map<String, dynamic> toFirestore() => {
     'name': name,
     'email': email,

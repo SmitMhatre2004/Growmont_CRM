@@ -64,13 +64,17 @@ class DashboardAnalytics extends StatelessWidget {
     final isWide = MediaQuery.sizeOf(context).width >= 900;
 
     if (isWide) {
-      return Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(flex: 3, child: _revenueTrendCard()),
-          const SizedBox(width: AppSpacing.md),
-          Expanded(flex: 2, child: _productMixCard()),
-        ],
+      // IntrinsicHeight + stretch makes both cards match the taller one's
+      // height, regardless of chart size or how many products are listed.
+      return IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(flex: 3, child: _revenueTrendCard()),
+            const SizedBox(width: AppSpacing.md),
+            Expanded(flex: 2, child: _productMixCard()),
+          ],
+        ),
       );
     }
 

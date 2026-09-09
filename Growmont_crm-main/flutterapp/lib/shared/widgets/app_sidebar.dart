@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/config/app_config.dart';
 import '../../core/theme/app_theme.dart';
 import '../../features/auth/auth_provider.dart';
 
@@ -73,6 +74,7 @@ class AppSidebar extends ConsumerWidget {
         final String initials = user?.initials ?? 'U';
         final String userName = user?.name ?? 'User';
         final String userEmail = user?.email ?? '';
+        final String avatarUrl = AppConfig.mediaUrl(user?.avatar);
 
         final items = <_MenuItem>[
           _MenuItem(
@@ -221,14 +223,19 @@ class AppSidebar extends ConsumerWidget {
                                   CircleAvatar(
                                     radius: 15,
                                     backgroundColor: AppAccents.indigoBase,
-                                    child: Text(
-                                      initials,
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    ),
+                                    backgroundImage: avatarUrl.isNotEmpty
+                                        ? NetworkImage(avatarUrl)
+                                        : null,
+                                    child: avatarUrl.isEmpty
+                                        ? Text(
+                                            initials,
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                          )
+                                        : null,
                                   ),
                                   Positioned(
                                     right: 0,

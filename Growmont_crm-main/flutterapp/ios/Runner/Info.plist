@@ -66,5 +66,21 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<!-- TODO: Required for Google Sign-In on iOS.
+	     1. Download GoogleService-Info.plist from Firebase Console (Project
+	        settings > Your apps > iOS app) and add it to ios/Runner in Xcode.
+	     2. Copy the REVERSED_CLIENT_ID value from that file and paste it
+	        below, replacing the placeholder string. -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>REPLACE_WITH_REVERSED_CLIENT_ID_FROM_GOOGLESERVICE_INFO_PLIST</string>
+			</array>
+		</dict>
+	</array>
 </dict>
 </plist>

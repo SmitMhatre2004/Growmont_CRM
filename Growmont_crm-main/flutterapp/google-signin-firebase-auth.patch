@@ -1,0 +1,243 @@
+diff --git a/Growmont_crm-main/flutterapp/ios/Runner/Info.plist b/Growmont_crm-main/flutterapp/ios/Runner/Info.plist
+index 4371c2c..bae07b1 100644
+--- a/Growmont_crm-main/flutterapp/ios/Runner/Info.plist
++++ b/Growmont_crm-main/flutterapp/ios/Runner/Info.plist
+@@ -66,5 +66,21 @@
+ 		<string>UIInterfaceOrientationLandscapeLeft</string>
+ 		<string>UIInterfaceOrientationLandscapeRight</string>
+ 	</array>
++	<!-- TODO: Required for Google Sign-In on iOS.
++	     1. Download GoogleService-Info.plist from Firebase Console (Project
++	        settings > Your apps > iOS app) and add it to ios/Runner in Xcode.
++	     2. Copy the REVERSED_CLIENT_ID value from that file and paste it
++	        below, replacing the placeholder string. -->
++	<key>CFBundleURLTypes</key>
++	<array>
++		<dict>
++			<key>CFBundleTypeRole</key>
++			<string>Editor</string>
++			<key>CFBundleURLSchemes</key>
++			<array>
++				<string>REPLACE_WITH_REVERSED_CLIENT_ID_FROM_GOOGLESERVICE_INFO_PLIST</string>
++			</array>
++		</dict>
++	</array>
+ </dict>
+ </plist>
+diff --git a/Growmont_crm-main/flutterapp/lib/features/auth/auth_provider.dart b/Growmont_crm-main/flutterapp/lib/features/auth/auth_provider.dart
+index 7327b10..7d61172 100644
+--- a/Growmont_crm-main/flutterapp/lib/features/auth/auth_provider.dart
++++ b/Growmont_crm-main/flutterapp/lib/features/auth/auth_provider.dart
+@@ -2,6 +2,7 @@ import 'dart:async';
+ import 'package:cloud_firestore/cloud_firestore.dart';
+ import 'package:firebase_auth/firebase_auth.dart';
+ import 'package:flutter_riverpod/flutter_riverpod.dart';
++import 'package:google_sign_in/google_sign_in.dart';
+ 
+ import '../../models/user.dart';
+ import '../../core/providers.dart';
+@@ -193,9 +194,97 @@ class AuthNotifier extends Notifier<AuthState> {
+     }
+   }
+ 
++  /// Signs in with Google via Firebase Auth. Only Google accounts that
++  /// match an existing `employees` document (by uid or email) are let in —
++  /// this keeps the CRM restricted to provisioned staff instead of any
++  /// Google account. Returns null on success (or user cancellation), or an
++  /// error message to show on the login screen.
++  Future<String?> signInWithGoogle() async {
++    _isBypassed = false;
++    state = state.copyWith(isLoading: true);
++
++    final googleSignIn = GoogleSignIn(scopes: const ['email', 'profile']);
++
++    try {
++      final googleUser = await googleSignIn.signIn();
++      if (googleUser == null) {
++        // User closed the account picker — not an error.
++        state = state.copyWith(isLoading: false);
++        return null;
++      }
++
++      final googleAuth = await googleUser.authentication;
++      final credential = GoogleAuthProvider.credential(
++        accessToken: googleAuth.accessToken,
++        idToken: googleAuth.idToken,
++      );
++
++      final cred = await FirebaseAuth.instance.signInWithCredential(
++        credential,
++      );
++      final firebaseUser = cred.user;
++      if (firebaseUser == null) {
++        state = state.copyWith(isLoading: false);
++        return 'Google sign-in failed. Please try again.';
++      }
++
++      final isRegisteredEmployee = await _isKnownEmployee(firebaseUser);
++      if (!isRegisteredEmployee) {
++        await FirebaseAuth.instance.signOut();
++        await googleSignIn.signOut();
++        state = state.copyWith(isLoading: false);
++        return 'This Google account is not registered as a Growmont '
++            'employee. Contact your administrator.';
++      }
++
++      await _onAuthStateChanged(firebaseUser);
++      return null;
++    } on FirebaseAuthException catch (e) {
++      state = state.copyWith(isLoading: false);
++      switch (e.code) {
++        case 'account-exists-with-different-credential':
++          return 'An account already exists for this email with a '
++              'different sign-in method.';
++        case 'invalid-credential':
++          return 'The Google credential is invalid or has expired. '
++              'Please try again.';
++        case 'user-disabled':
++          return 'This employee account has been disabled.';
++        case 'operation-not-allowed':
++          return 'Google sign-in is not enabled for this project yet.';
++        default:
++          return e.message ?? 'Google sign-in failed.';
++      }
++    } catch (e) {
++      state = state.copyWith(isLoading: false);
++      return 'Google sign-in failed. Please try again.';
++    }
++  }
++
++  Future<bool> _isKnownEmployee(User firebaseUser) async {
++    final byUid = await FirebaseFirestore.instance
++        .collection('employees')
++        .doc(firebaseUser.uid)
++        .get();
++    if (byUid.exists) return true;
++
++    final email = firebaseUser.email;
++    if (email == null) return false;
++
++    final byEmail = await FirebaseFirestore.instance
++        .collection('employees')
++        .where('email', isEqualTo: email)
++        .limit(1)
++        .get();
++    return byEmail.docs.isNotEmpty;
++  }
++
+   Future<void> logout() async {
+     state = const AuthState(isLoading: true);
+     _isBypassed = false;
++    try {
++      await GoogleSignIn().signOut();
++    } catch (_) {}
+     try {
+       await FirebaseAuth.instance.signOut();
+     } catch (_) {}
+diff --git a/Growmont_crm-main/flutterapp/lib/features/auth/login_screen.dart b/Growmont_crm-main/flutterapp/lib/features/auth/login_screen.dart
+index a7afe58..c75f55b 100644
+--- a/Growmont_crm-main/flutterapp/lib/features/auth/login_screen.dart
++++ b/Growmont_crm-main/flutterapp/lib/features/auth/login_screen.dart
+@@ -49,6 +49,32 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
+     }
+   }
+ 
++  Future<void> _signInWithGoogle() async {
++    setState(() {
++      _loading = true;
++      _error = null;
++    });
++
++    final error = await ref.read(authProvider.notifier).signInWithGoogle();
++
++    if (!mounted) return;
++
++    if (error != null) {
++      setState(() {
++        _loading = false;
++        _error = error;
++      });
++      return;
++    }
++
++    setState(() => _loading = false);
++
++    if (ref.read(authProvider).isAuthenticated) {
++      context.go('/dashboard');
++    }
++    // else: user cancelled the Google account picker — stay on this screen.
++  }
++
+   Future<void> _devBypass([UserRole role = UserRole.admin]) async {
+     setState(() {
+       _loading = true;
+@@ -180,6 +206,57 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
+                         ),
+                       ),
+                       const SizedBox(height: AppSpacing.xxl),
++                      Row(
++                        children: [
++                          const Expanded(child: Divider()),
++                          Padding(
++                            padding: const EdgeInsets.symmetric(
++                              horizontal: AppSpacing.md,
++                            ),
++                            child: Text(
++                              'OR',
++                              style: AppTypography.overline.copyWith(
++                                color: AppColors.textMuted,
++                              ),
++                            ),
++                          ),
++                          const Expanded(child: Divider()),
++                        ],
++                      ),
++                      const SizedBox(height: AppSpacing.lg),
++                      SizedBox(
++                        width: double.infinity,
++                        height: AppSizing.controlLg,
++                        child: OutlinedButton.icon(
++                          key: const ValueKey('google_signin_btn'),
++                          onPressed: _loading ? null : _signInWithGoogle,
++                          icon: SizedBox(
++                            width: AppSizing.iconMd,
++                            height: AppSizing.iconMd,
++                            child: DecoratedBox(
++                              decoration: BoxDecoration(
++                                shape: BoxShape.circle,
++                                border: Border.all(
++                                  color: AppColors.textMuted.withValues(
++                                    alpha: 0.5,
++                                  ),
++                                ),
++                              ),
++                              child: const Center(
++                                child: Text(
++                                  'G',
++                                  style: TextStyle(
++                                    fontSize: 11,
++                                    fontWeight: FontWeight.w700,
++                                  ),
++                                ),
++                              ),
++                            ),
++                          ),
++                          label: const Text('Continue with Google'),
++                        ),
++                      ),
++                      const SizedBox(height: AppSpacing.xxl),
+                       Row(
+                         children: [
+                           const Expanded(child: Divider()),
+diff --git a/Growmont_crm-main/flutterapp/pubspec.yaml b/Growmont_crm-main/flutterapp/pubspec.yaml
+index 1e29da1..3a5e43e 100644
+--- a/Growmont_crm-main/flutterapp/pubspec.yaml
++++ b/Growmont_crm-main/flutterapp/pubspec.yaml
+@@ -17,6 +17,7 @@ dependencies:
+   cloud_firestore: ^5.6.5
+   firebase_storage: ^12.4.4
+   cloud_functions: ^5.2.4
++  google_sign_in: ^6.2.1
+   dio: ^5.8.0
+   flutter_secure_storage: ^9.2.4
+   shared_preferences: ^2.5.3

@@ -49,6 +49,32 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
   }
 
+  Future<void> _signInWithGoogle() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+
+    final error = await ref.read(authProvider.notifier).signInWithGoogle();
+
+    if (!mounted) return;
+
+    if (error != null) {
+      setState(() {
+        _loading = false;
+        _error = error;
+      });
+      return;
+    }
+
+    setState(() => _loading = false);
+
+    if (ref.read(authProvider).isAuthenticated) {
+      context.go('/dashboard');
+    }
+    // else: user cancelled the Google account picker — stay on this screen.
+  }
+
   Future<void> _devBypass([UserRole role = UserRole.admin]) async {
     setState(() {
       _loading = true;
@@ -177,6 +203,57 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         child: FilledButton(
                           onPressed: _loading ? null : _submit,
                           child: Text(_loading ? 'Logging in...' : 'Login'),
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.xxl),
+                      Row(
+                        children: [
+                          const Expanded(child: Divider()),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: AppSpacing.md,
+                            ),
+                            child: Text(
+                              'OR',
+                              style: AppTypography.overline.copyWith(
+                                color: AppColors.textMuted,
+                              ),
+                            ),
+                          ),
+                          const Expanded(child: Divider()),
+                        ],
+                      ),
+                      const SizedBox(height: AppSpacing.lg),
+                      SizedBox(
+                        width: double.infinity,
+                        height: AppSizing.controlLg,
+                        child: OutlinedButton.icon(
+                          key: const ValueKey('google_signin_btn'),
+                          onPressed: _loading ? null : _signInWithGoogle,
+                          icon: SizedBox(
+                            width: AppSizing.iconMd,
+                            height: AppSizing.iconMd,
+                            child: DecoratedBox(
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: AppColors.textMuted.withValues(
+                                    alpha: 0.5,
+                                  ),
+                                ),
+                              ),
+                              child: const Center(
+                                child: Text(
+                                  'G',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          label: const Text('Continue with Google'),
                         ),
                       ),
                       const SizedBox(height: AppSpacing.xxl),

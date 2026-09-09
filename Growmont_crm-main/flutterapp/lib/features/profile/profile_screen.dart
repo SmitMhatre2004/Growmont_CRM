@@ -73,8 +73,19 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         api.getReminders(),
       ]);
       if (mounted) {
+        // This screen always shows the signed-in user's own profile, so
+        // prefer their live account name/email/photo (e.g. from Google)
+        // over the employee record, which usually has none of these set.
+        var employee = results[0] as Employee;
+        if (user.avatar != null || user.name.isNotEmpty) {
+          employee = employee.copyWith(
+            name: user.name.isNotEmpty ? user.name : null,
+            email: user.email.isNotEmpty ? user.email : null,
+            avatar: user.avatar,
+          );
+        }
         setState(() {
-          _employee = results[0] as Employee;
+          _employee = employee;
           _sales = results[1] as List<Sale>;
           _interactions = results[2] as List<Interaction>;
           _reminders = results[3] as List<Reminder>;

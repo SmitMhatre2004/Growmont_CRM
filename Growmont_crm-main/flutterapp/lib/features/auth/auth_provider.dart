@@ -1,11 +1,15 @@
 import 'dart:async';
+import 'dart:io' show Platform;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
 import '../../models/user.dart';
 import '../../core/providers.dart';
 import '../../core/storage/token_storage.dart';
+import 'google_oauth_desktop.dart';
 
 class AuthState {
   const AuthState({this.user, this.accessToken, this.isLoading = true});
@@ -76,23 +80,25 @@ class AuthNotifier extends Notifier<AuthState> {
       final tokenResult = await firebaseUser.getIdTokenResult();
       final roleClaim = (tokenResult.claims?['role'] as String?)?.toUpperCase();
 
-      // Read employee document
-      final doc = await FirebaseFirestore.instance
-          .collection('employees')
-          .doc(firebaseUser.uid)
-          .get();
+      // The employee doc's id doesn't always match the Firebase Auth uid
+      // (e.g. a Google sign-in only matched by email) — resolve the actual
+      // doc so downstream lookups (sales, interactions, ...) use the right
+      // employee id instead of a uid that has no matching document.
+      final doc = await _findEmployeeDoc(firebaseUser);
 
-      final docData = doc.data() ?? {};
+      final docData = doc?.data() ?? {};
       final roleStr = roleClaim ?? docData['role'] as String? ?? 'EMPLOYEE';
+      // Prefer the signed-in account's own name/photo (e.g. from Google)
+      // over the employee record, which usually has neither set.
       final name =
-          docData['name'] as String? ??
           firebaseUser.displayName ??
+          docData['name'] as String? ??
           firebaseUser.email?.split('@').first ??
           'User';
-      final avatar = docData['avatar_url'] as String? ?? firebaseUser.photoURL;
+      final avatar = firebaseUser.photoURL ?? docData['avatar_url'] as String?;
 
       final appUser = AppUser(
-        id: firebaseUser.uid,
+        id: doc?.id ?? firebaseUser.uid,
         name: name,
         email: firebaseUser.email ?? '',
         avatar: avatar,
@@ -193,9 +199,128 @@ class AuthNotifier extends Notifier<AuthState> {
     }
   }
 
+  /// Signs in with Google via Firebase Auth. Only Google accounts that
+  /// match an existing `employees` document (by uid or email) are let in —
+  /// this keeps the CRM restricted to provisioned staff instead of any
+  /// Google account. Returns null on success (or user cancellation), or an
+  /// error message to show on the login screen.
+  Future<String?> signInWithGoogle() async {
+    _isBypassed = false;
+    state = state.copyWith(isLoading: true);
+
+    final useDesktopFlow = !kIsWeb && (Platform.isWindows || Platform.isLinux);
+    GoogleSignIn? googleSignIn;
+
+    try {
+      String? idToken;
+      String? accessToken;
+
+      if (useDesktopFlow) {
+        final result = await DesktopGoogleSignIn.instance.signIn();
+        if (result == null) {
+          // User cancelled in the browser — not an error.
+          state = state.copyWith(isLoading: false);
+          return null;
+        }
+        idToken = result.idToken;
+        accessToken = result.accessToken;
+      } else {
+        googleSignIn = GoogleSignIn(scopes: const ['email', 'profile']);
+        final googleUser = await googleSignIn.signIn();
+        if (googleUser == null) {
+          // User closed the account picker — not an error.
+          state = state.copyWith(isLoading: false);
+          return null;
+        }
+        final googleAuth = await googleUser.authentication;
+        idToken = googleAuth.idToken;
+        accessToken = googleAuth.accessToken;
+      }
+
+      final credential = GoogleAuthProvider.credential(
+        accessToken: accessToken,
+        idToken: idToken,
+      );
+
+      final cred = await FirebaseAuth.instance.signInWithCredential(
+        credential,
+      );
+      final firebaseUser = cred.user;
+      if (firebaseUser == null) {
+        state = state.copyWith(isLoading: false);
+        return 'Google sign-in failed. Please try again.';
+      }
+
+      final isRegisteredEmployee = await _isKnownEmployee(firebaseUser);
+      if (!isRegisteredEmployee) {
+        await FirebaseAuth.instance.signOut();
+        await googleSignIn?.signOut();
+        state = state.copyWith(isLoading: false);
+        return 'This Google account is not registered as a Growmont '
+            'employee. Contact your administrator.';
+      }
+
+      await _onAuthStateChanged(firebaseUser);
+      return null;
+    } on FirebaseAuthException catch (e) {
+      state = state.copyWith(isLoading: false);
+      switch (e.code) {
+        case 'account-exists-with-different-credential':
+          return 'An account already exists for this email with a '
+              'different sign-in method.';
+        case 'invalid-credential':
+          return 'The Google credential is invalid or has expired. '
+              'Please try again.';
+        case 'user-disabled':
+          return 'This employee account has been disabled.';
+        case 'operation-not-allowed':
+          return 'Google sign-in is not enabled for this project yet.';
+        default:
+          return e.message ?? 'Google sign-in failed.';
+      }
+    } on DesktopSignInException catch (e) {
+      state = state.copyWith(isLoading: false);
+      return e.message;
+    } catch (e) {
+      state = state.copyWith(isLoading: false);
+      return 'Google sign-in failed. Please try again.';
+    }
+  }
+
+  Future<bool> _isKnownEmployee(User firebaseUser) async {
+    return (await _findEmployeeDoc(firebaseUser)) != null;
+  }
+
+  /// Resolves the `employees` document for [firebaseUser], matching first
+  /// by document id (uid) and falling back to an email match — a Google
+  /// sign-in's uid won't match a pre-existing employee doc created under a
+  /// different id, so callers must use the returned doc's id, not the uid.
+  Future<DocumentSnapshot<Map<String, dynamic>>?> _findEmployeeDoc(
+    User firebaseUser,
+  ) async {
+    final byUid = await FirebaseFirestore.instance
+        .collection('employees')
+        .doc(firebaseUser.uid)
+        .get();
+    if (byUid.exists) return byUid;
+
+    final email = firebaseUser.email;
+    if (email == null) return null;
+
+    final byEmail = await FirebaseFirestore.instance
+        .collection('employees')
+        .where('email', isEqualTo: email)
+        .limit(1)
+        .get();
+    return byEmail.docs.isNotEmpty ? byEmail.docs.first : null;
+  }
+
   Future<void> logout() async {
     state = const AuthState(isLoading: true);
     _isBypassed = false;
+    try {
+      await GoogleSignIn().signOut();
+    } catch (_) {}
     try {
       await FirebaseAuth.instance.signOut();
     } catch (_) {}
