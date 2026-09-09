@@ -55,7 +55,7 @@ class _AppShellState extends ConsumerState<AppShell> {
                 Expanded(
                   child: Padding(
                     padding: const EdgeInsets.only(
-                      top: AppSpacing.xxxl,
+                      top: AppSpacing.xl,
                       right: AppSpacing.lg,
                     ),
                     child: ClipRect(child: widget.navigationShell),

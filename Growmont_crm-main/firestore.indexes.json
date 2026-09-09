@@ -75,6 +75,14 @@
         { "fieldPath": "date", "order": "ASCENDING" },
         { "fieldPath": "time", "order": "ASCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "employees",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "access_expires_at", "order": "ASCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

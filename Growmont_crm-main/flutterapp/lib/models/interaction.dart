@@ -5,6 +5,7 @@ class Interaction {
     required this.id,
     required this.date,
     required this.clientName,
+    this.clientId,
     required this.clientContact,
     required this.employee,
     this.employeeName,
@@ -19,6 +20,7 @@ class Interaction {
   final String id;
   final String date;
   final String clientName;
+  final String? clientId;
   final String clientContact;
   final String employee;
   final String? employeeName;
@@ -52,6 +54,7 @@ class Interaction {
       id: (docId ?? json['id'] ?? '').toString(),
       date: dateStr,
       clientName: json['client_name'] as String? ?? '',
+      clientId: json['client_id'] as String?,
       clientContact: json['client_contact'] as String? ?? '',
       employee: emp,
       employeeName: json['employee_name'] as String?,
@@ -74,6 +77,7 @@ class Interaction {
   Map<String, dynamic> toFirestore() => {
     'date': Timestamp.fromDate(DateTime.tryParse(date) ?? DateTime.now()),
     'client_name': clientName,
+    if (clientId != null) 'client_id': clientId,
     'client_contact': clientContact,
     'employee_id': employee,
     if (employeeName != null) 'employee_name': employeeName,

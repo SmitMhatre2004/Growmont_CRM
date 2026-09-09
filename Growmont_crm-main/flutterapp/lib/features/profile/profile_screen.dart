@@ -1,7 +1,9 @@
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/config/app_config.dart';
+import '../../core/excel/excel_io.dart';
 import '../../core/providers.dart';
 import '../../core/theme/app_theme.dart';
 import '../../models/employee.dart';
@@ -10,6 +12,7 @@ import '../../models/reminder.dart';
 import '../../models/sale.dart';
 import '../../shared/widgets/error_state.dart';
 import '../auth/auth_provider.dart';
+import '../reminders/reminders_excel.dart';
 import '../reminders/widgets/add_reminder_modal.dart';
 
 enum ProfileTab { sales, interactions, reminders }
@@ -151,6 +154,74 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     if (saved == true) _load();
   }
 
+  Future<void> _exportReminders() async {
+    try {
+      final savedPath = await ExcelIO.exportWorkbook(
+        filename: 'reminders_export.xlsx',
+        sheetName: 'Reminders',
+        headers: remindersExcelHeaders,
+        rows: _reminders.map(reminderExportRow).toList(),
+        shareText: 'Reminders Export',
+      );
+      if (savedPath != null && mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Saved to $savedPath')));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Export failed: $e'),
+            backgroundColor: AppColors.danger,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _importReminders() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['xlsx'],
+    );
+    if (result == null || result.files.single.path == null) return;
+
+    try {
+      final rows = await ExcelIO.readDataRows(result.files.single.path!);
+      final currentUserName =
+          ref.read(authProvider).user?.name ?? 'Team Member';
+      final api = ref.read(firestoreServiceProvider);
+      var count = 0;
+      for (final row in rows) {
+        final payload = reminderImportPayload(
+          row,
+          currentUserName: currentUserName,
+        );
+        if (payload == null) continue;
+        try {
+          await api.createReminder(payload);
+          count++;
+        } catch (_) {}
+      }
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Imported $count reminder(s)')),
+        );
+      }
+      _load();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Import failed: $e'),
+            backgroundColor: AppColors.danger,
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_loading) return const Center(child: CircularProgressIndicator());
@@ -258,6 +329,49 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
+  Widget _reminderImportExportRow() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.md,
+        0,
+        AppSpacing.md,
+        AppSpacing.md,
+      ),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            OutlinedButton.icon(
+              onPressed: _exportReminders,
+              icon: const Icon(
+                Icons.download_outlined,
+                size: AppSizing.iconMd,
+              ),
+              label: const Text('Export'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.textPrimary,
+                side: const BorderSide(color: AppColors.border),
+                backgroundColor: AppColors.surface,
+              ),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            OutlinedButton.icon(
+              onPressed: _importReminders,
+              icon: const Icon(Icons.upload_outlined, size: AppSizing.iconMd),
+              label: const Text('Import'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.textPrimary,
+                side: const BorderSide(color: AppColors.border),
+                backgroundColor: AppColors.surface,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _tabContent() {
     return Card(
       child: Column(
@@ -277,6 +391,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               ],
             ),
           ),
+          if (_tab == ProfileTab.reminders) _reminderImportExportRow(),
           const Divider(height: 1),
           Expanded(
             child: RefreshIndicator(

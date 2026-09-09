@@ -87,6 +87,31 @@ class AuthNotifier extends Notifier<AuthState> {
       final doc = await _findEmployeeDoc(firebaseUser);
 
       final docData = doc?.data() ?? {};
+
+      // Belt-and-suspenders status gate: the Cloud Functions side already
+      // disables the Firebase Auth account for RESTRICTED/REJECTED users
+      // (which normally stops sign-in outright), but this also runs on
+      // every app-resume/token-refresh, where a cached session or a
+      // just-expired grace period may not have propagated to Auth yet.
+      final statusStr =
+          (docData['status'] as String?)?.toUpperCase() ?? 'ACTIVE';
+      if (statusStr == 'RESTRICTED' || statusStr == 'REJECTED') {
+        await FirebaseAuth.instance.signOut();
+        await _storage.clear();
+        state = const AuthState(isLoading: false);
+        return;
+      }
+      if (statusStr == 'PENDING') {
+        final expiresAt = (docData['access_expires_at'] as Timestamp?)
+            ?.toDate();
+        if (expiresAt != null && DateTime.now().isAfter(expiresAt)) {
+          await FirebaseAuth.instance.signOut();
+          await _storage.clear();
+          state = const AuthState(isLoading: false);
+          return;
+        }
+      }
+
       final roleStr = roleClaim ?? docData['role'] as String? ?? 'EMPLOYEE';
       // Prefer the signed-in account's own name/photo (e.g. from Google)
       // over the employee record, which usually has neither set.
@@ -199,11 +224,13 @@ class AuthNotifier extends Notifier<AuthState> {
     }
   }
 
-  /// Signs in with Google via Firebase Auth. Only Google accounts that
-  /// match an existing `employees` document (by uid or email) are let in —
-  /// this keeps the CRM restricted to provisioned staff instead of any
-  /// Google account. Returns null on success (or user cancellation), or an
-  /// error message to show on the login screen.
+  /// Signs in with Google via Firebase Auth. A Google account that matches
+  /// an existing `employees` document (by uid or email) signs in per its
+  /// current status; a brand-new account is auto-provisioned as PENDING
+  /// with a 3-day grace period of full employee-level access (see
+  /// `provisionPendingEmployee` in functions/index.js). Returns null on
+  /// success (or user cancellation), or an error message to show on the
+  /// login screen.
   Future<String?> signInWithGoogle() async {
     _isBypassed = false;
     state = state.copyWith(isLoading: true);
@@ -251,13 +278,52 @@ class AuthNotifier extends Notifier<AuthState> {
         return 'Google sign-in failed. Please try again.';
       }
 
-      final isRegisteredEmployee = await _isKnownEmployee(firebaseUser);
-      if (!isRegisteredEmployee) {
+      final doc = await _findEmployeeDoc(firebaseUser);
+
+      if (doc == null) {
+        // Brand-new Google account — auto-provision as PENDING (3-day grace
+        // period) instead of rejecting outright. Runs server-side via a
+        // Cloud Function callable so custom claims and the Firestore doc
+        // are set atomically and the client never needs write access to
+        // employees/*.
+        try {
+          await ref.read(firestoreServiceProvider).provisionPendingEmployee();
+        } catch (e) {
+          await FirebaseAuth.instance.signOut();
+          await googleSignIn?.signOut();
+          state = state.copyWith(isLoading: false);
+          return 'Could not set up your account. Please try again or '
+              'contact your administrator.';
+        }
+        await _onAuthStateChanged(firebaseUser);
+        return null;
+      }
+
+      final data = doc.data() ?? {};
+      final status = (data['status'] as String?)?.toUpperCase() ?? 'ACTIVE';
+
+      if (status == 'RESTRICTED' || status == 'REJECTED') {
         await FirebaseAuth.instance.signOut();
         await googleSignIn?.signOut();
         state = state.copyWith(isLoading: false);
-        return 'This Google account is not registered as a Growmont '
-            'employee. Contact your administrator.';
+        return 'Your account is waiting for admin approval. Contact your '
+            'administrator.';
+      }
+
+      if (status == 'PENDING') {
+        final expiresAt = (data['access_expires_at'] as Timestamp?)
+            ?.toDate();
+        if (expiresAt != null && DateTime.now().isAfter(expiresAt)) {
+          // Grace window lapsed but the scheduled sweep hasn't caught it
+          // yet — block here rather than letting a stale PENDING doc grant
+          // access past the 3 days.
+          await FirebaseAuth.instance.signOut();
+          await googleSignIn?.signOut();
+          state = state.copyWith(isLoading: false);
+          return 'Your access request has expired. Contact your '
+              'administrator.';
+        }
+        // Still within the 3-day window — full employee access.
       }
 
       await _onAuthStateChanged(firebaseUser);
@@ -285,10 +351,6 @@ class AuthNotifier extends Notifier<AuthState> {
       state = state.copyWith(isLoading: false);
       return 'Google sign-in failed. Please try again.';
     }
-  }
-
-  Future<bool> _isKnownEmployee(User firebaseUser) async {
-    return (await _findEmployeeDoc(firebaseUser)) != null;
   }
 
   /// Resolves the `employees` document for [firebaseUser], matching first

@@ -90,6 +90,12 @@ class AppSidebar extends ConsumerWidget {
             Icons.chat_bubble_outline,
             '/interactions',
           ),
+          _MenuItem(
+            'clients',
+            'Clients',
+            Icons.handshake_outlined,
+            '/clients',
+          ),
           if (user?.isAdmin == true)
             _MenuItem(
               'employees',

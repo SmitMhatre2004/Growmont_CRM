@@ -157,6 +157,46 @@ void main() {
       expect(updatedDropdown.value, 'Life Insurance');
     });
 
+    testWidgets('Revenue Trend and Product Mix cards match height when side by side', (tester) async {
+      tester.view.physicalSize = const Size(1400, 1400);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final now = DateTime.now();
+      final sales = [
+        saleOn(now, paise: 500000, productDisplay: 'Mutual Funds'),
+        saleOn(now, paise: 300000, productDisplay: 'Life Insurance'),
+        saleOn(now, paise: 120000, productDisplay: 'General Insurance'),
+      ];
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SingleChildScrollView(
+              child: DashboardAnalytics(
+                sales: sales,
+                interactions: const [],
+                reminders: const [],
+              ),
+            ),
+          ),
+        ),
+      );
+
+      // The equal-height layout uses IntrinsicHeight, which throws if any
+      // descendant is a LayoutBuilder.
+      expect(tester.takeException(), isNull);
+
+      Size cardSize(String title) => tester.getSize(
+        find
+            .ancestor(of: find.text(title), matching: find.byType(Container))
+            .first,
+      );
+
+      expect(cardSize('Revenue Trend').height, cardSize('Product Mix').height);
+    });
+
     testWidgets('Tapping legend item in Product Mix updates selected product', (tester) async {
       tester.view.physicalSize = const Size(1200, 1200);
       tester.view.devicePixelRatio = 1.0;

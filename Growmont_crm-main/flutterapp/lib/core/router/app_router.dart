@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 import '../theme/app_theme.dart';
 import '../../features/auth/auth_provider.dart';
 import '../../features/auth/login_screen.dart';
+import '../../features/clients/client_detail_screen.dart';
+import '../../features/clients/clients_list_screen.dart';
 import '../../features/dashboard/dashboard_screen.dart';
 import '../../features/employees/employee_detail_screen.dart';
 import '../../features/employees/employees_list_screen.dart';
@@ -73,6 +75,26 @@ final routerProvider = Provider<GoRouter>((ref) {
                 path: '/interactions',
                 pageBuilder: (context, state) =>
                     const NoTransitionPage(child: InteractionsScreen()),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/clients',
+                pageBuilder: (context, state) =>
+                    const NoTransitionPage(child: ClientsListScreen()),
+                routes: [
+                  GoRoute(
+                    path: ':id',
+                    pageBuilder: (context, state) {
+                      final id = state.pathParameters['id']!;
+                      return NoTransitionPage(
+                        child: ClientDetailScreen(clientId: id),
+                      );
+                    },
+                  ),
+                ],
               ),
             ],
           ),

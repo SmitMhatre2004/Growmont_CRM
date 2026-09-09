@@ -1,16 +1,14 @@
-import 'dart:convert';
-import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:share_plus/share_plus.dart';
 
+import '../../core/excel/excel_io.dart';
 import '../../core/providers.dart';
 import '../../core/theme/app_theme.dart';
 import '../../models/interaction.dart';
 import '../../models/user.dart';
 import '../auth/auth_provider.dart';
+import 'interactions_excel.dart';
 import 'widgets/add_interaction_modal.dart';
 
 /// Screen palette. Every value aliases the shared design tokens in
@@ -82,7 +80,11 @@ class _InteractionsScreenState extends ConsumerState<InteractionsScreen> {
   Future<void> _load() async {
     setState(() => _loading = true);
     try {
-      final data = await ref.read(apiServiceProvider).getInteractions();
+      final user = ref.read(authProvider).user;
+      final selfId = user?.isAdmin == true ? null : user?.id;
+      final data = await ref.read(apiServiceProvider).getInteractions(
+        employeeId: selfId,
+      );
       if (mounted) {
         setState(() {
           _interactions = data;
@@ -248,20 +250,23 @@ class _InteractionsScreenState extends ConsumerState<InteractionsScreen> {
 
   Future<void> _export() async {
     try {
-      final base64Data = await ref
-          .read(firestoreServiceProvider)
-          .exportInteractionsExcel();
-      final bytes = base64Decode(base64Data);
-      final dir = await getTemporaryDirectory();
-      final file = File('${dir.path}/interactions_export.xlsx');
-      await file.writeAsBytes(bytes);
-      // ignore: deprecated_member_use
-      await Share.shareXFiles([XFile(file.path)], text: 'Interactions Export');
-    } catch (_) {
+      final savedPath = await ExcelIO.exportWorkbook(
+        filename: 'interactions_export.xlsx',
+        sheetName: 'Interactions',
+        headers: interactionsExcelHeaders,
+        rows: _interactions.map(interactionExportRow).toList(),
+        shareText: 'Interactions Export',
+      );
+      if (savedPath != null && mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Saved to $savedPath')));
+      }
+    } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Export failed'),
+          SnackBar(
+            content: Text('Export failed: $e'),
             backgroundColor: AppColors.danger,
           ),
         );
@@ -276,11 +281,38 @@ class _InteractionsScreenState extends ConsumerState<InteractionsScreen> {
     );
     if (result?.files.single.path == null) return;
     try {
-      final bytes = await File(result!.files.single.path!).readAsBytes();
-      final base64 = base64Encode(bytes);
-      await ref.read(firestoreServiceProvider).importInteractions(base64);
+      final rows = await ExcelIO.readDataRows(result!.files.single.path!);
+      final currentUserName =
+          ref.read(authProvider).user?.name ?? 'Team Member';
+      final api = ref.read(apiServiceProvider);
+      var count = 0;
+      for (final row in rows) {
+        final payload = interactionImportPayload(
+          row,
+          currentUserName: currentUserName,
+        );
+        if (payload == null) continue;
+        try {
+          await api.createInteraction(payload);
+          count++;
+        } catch (_) {}
+      }
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Imported $count interaction(s)')));
+      }
       _load();
-    } catch (_) {}
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Import failed: $e'),
+            backgroundColor: AppColors.danger,
+          ),
+        );
+      }
+    }
   }
 
   Future<void> _showModal(AppUser? user, {Interaction? existing}) async {
@@ -1093,30 +1125,54 @@ class _InteractionsScreenState extends ConsumerState<InteractionsScreen> {
   }
 
   Widget _buildEmptyState() {
+    final isFiltered = _search.isNotEmpty || _hasActiveFilters;
+
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(AppSpacing.xl),
-            decoration: BoxDecoration(
-              color: _Palette.headerBg,
-              shape: BoxShape.circle,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          vertical: AppSpacing.huge,
+          horizontal: AppSpacing.xxl,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(AppSpacing.xl),
+              decoration: BoxDecoration(
+                color: _Palette.headerBg,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.inbox_outlined,
+                size: AppSizing.iconDisplay,
+                color: _Palette.textMuted,
+              ),
             ),
-            child: const Icon(
-              Icons.inbox_outlined,
-              size: AppSizing.iconDisplay,
-              color: _Palette.textMuted,
+            const SizedBox(height: AppSpacing.lg),
+            Text(
+              isFiltered ? 'No interactions found' : 'No interactions recorded yet',
+              style: AppTypography.itemTitle,
+              textAlign: TextAlign.center,
             ),
-          ),
-          const SizedBox(height: AppSpacing.lg),
-          const Text('No interactions found', style: AppTypography.itemTitle),
-          const SizedBox(height: AppSpacing.sm),
-          const Text(
-            'Try adjusting your search or filters.',
-            style: AppTypography.caption,
-          ),
-        ],
+            const SizedBox(height: AppSpacing.sm),
+            Text(
+              isFiltered
+                  ? 'Try adjusting your search or filters.'
+                  : 'Start logging client conversations by recording your first interaction.',
+              style: AppTypography.caption,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: AppSpacing.xxl),
+            FilledButton.icon(
+              onPressed: () => _showModal(ref.read(authProvider).user),
+              icon: const Icon(Icons.add, size: AppSizing.iconMd),
+              label: const Text('Add First Interaction'),
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.primaryBlue,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

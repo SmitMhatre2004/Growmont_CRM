@@ -1,18 +1,17 @@
-import 'dart:convert';
-import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:share_plus/share_plus.dart';
 
+import '../../core/excel/excel_io.dart';
 import '../../core/providers.dart';
 import '../../core/theme/app_theme.dart';
 import '../../models/interaction.dart';
 import '../../models/sale.dart';
 import '../../models/user.dart';
 import '../auth/auth_provider.dart';
+import '../interactions/interactions_excel.dart';
 import '../interactions/widgets/add_interaction_modal.dart';
+import '../sales/sales_excel.dart';
 import '../sales/widgets/add_sale_modal.dart';
 
 /// Screen palette. Every value aliases the shared design tokens in
@@ -403,26 +402,31 @@ class _InfoPortalScreenState extends ConsumerState<InfoPortalScreen> {
   Future<void> _export() async {
     try {
       final isInteractions = _activeTab == 'interactions';
-      final base64Data = isInteractions
-          ? await ref.read(firestoreServiceProvider).exportInteractionsExcel()
-          : await ref.read(firestoreServiceProvider).exportSalesExcel();
-
-      final bytes = base64Decode(base64Data);
-      final dir = await getTemporaryDirectory();
-      final fileName = isInteractions
-          ? 'interactions_export.xlsx'
-          : 'sales_export.xlsx';
-      final file = File('${dir.path}/$fileName');
-      await file.writeAsBytes(bytes);
-      // ignore: deprecated_member_use
-      await Share.shareXFiles([
-        XFile(file.path),
-      ], text: isInteractions ? 'Interactions Export' : 'Sales Export');
-    } catch (_) {
+      final savedPath = isInteractions
+          ? await ExcelIO.exportWorkbook(
+              filename: 'interactions_export.xlsx',
+              sheetName: 'Interactions',
+              headers: interactionsExcelHeaders,
+              rows: _interactions.map(interactionExportRow).toList(),
+              shareText: 'Interactions Export',
+            )
+          : await ExcelIO.exportWorkbook(
+              filename: 'sales_export.xlsx',
+              sheetName: 'Sales',
+              headers: salesExcelHeaders,
+              rows: _sales.map(saleExportRow).toList(),
+              shareText: 'Sales Export',
+            );
+      if (savedPath != null && mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Saved to $savedPath')));
+      }
+    } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Export failed'),
+          SnackBar(
+            content: Text('Export failed: $e'),
             backgroundColor: AppColors.danger,
           ),
         );
@@ -437,15 +441,55 @@ class _InfoPortalScreenState extends ConsumerState<InfoPortalScreen> {
     );
     if (result?.files.single.path == null) return;
     try {
-      final bytes = await File(result!.files.single.path!).readAsBytes();
-      final base64 = base64Encode(bytes);
-      if (_activeTab == 'interactions') {
-        await ref.read(firestoreServiceProvider).importInteractions(base64);
-      } else {
-        await ref.read(firestoreServiceProvider).importSales(base64);
+      final rows = await ExcelIO.readDataRows(result!.files.single.path!);
+      final currentUserName =
+          ref.read(authProvider).user?.name ?? 'Team Member';
+      final api = ref.read(apiServiceProvider);
+      final isInteractions = _activeTab == 'interactions';
+      var count = 0;
+      for (final row in rows) {
+        if (isInteractions) {
+          final payload = interactionImportPayload(
+            row,
+            currentUserName: currentUserName,
+          );
+          if (payload == null) continue;
+          try {
+            await api.createInteraction(payload);
+            count++;
+          } catch (_) {}
+        } else {
+          final payload = saleImportPayload(
+            row,
+            currentUserName: currentUserName,
+          );
+          if (payload == null) continue;
+          try {
+            await api.createSale(payload);
+            count++;
+          } catch (_) {}
+        }
+      }
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Imported $count ${isInteractions ? 'interaction' : 'sale'}(s)',
+            ),
+          ),
+        );
       }
       _load();
-    } catch (_) {}
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Import failed: $e'),
+            backgroundColor: AppColors.danger,
+          ),
+        );
+      }
+    }
   }
 
   Future<void> _showAddModal(AppUser? user) async {

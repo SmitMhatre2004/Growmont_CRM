@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/providers.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../models/client.dart';
 import '../../../models/employee.dart';
 import '../../../models/sale.dart';
 import '../../../models/user.dart';
@@ -26,7 +27,6 @@ class AddSaleModal extends ConsumerStatefulWidget {
 class _AddSaleModalState extends ConsumerState<AddSaleModal> {
   final _formKey = GlobalKey<FormState>();
   late DateTime _date;
-  late TextEditingController _clientName;
   late TextEditingController _company;
   late TextEditingController _scheme;
   late TextEditingController _amount;
@@ -34,7 +34,10 @@ class _AddSaleModalState extends ConsumerState<AddSaleModal> {
   String _product = 'MF';
   String _frequency = 'M';
   String? _salesRep;
+  String? _clientId;
   List<EmployeeDropdown> _employees = [];
+  List<Client> _clients = [];
+  bool _loadingClients = false;
   bool _loading = false;
   bool _isEmployee = false;
 
@@ -43,7 +46,6 @@ class _AddSaleModalState extends ConsumerState<AddSaleModal> {
     super.initState();
     final e = widget.existing;
     _date = e != null ? DateTime.parse(e.date) : DateTime.now();
-    _clientName = TextEditingController(text: e?.clientName ?? '');
     _company = TextEditingController(text: e?.company ?? '');
     _scheme = TextEditingController(text: e?.scheme ?? '');
     _amount = TextEditingController(text: e?.amount ?? '');
@@ -54,9 +56,11 @@ class _AddSaleModalState extends ConsumerState<AddSaleModal> {
             ? widget.defaultProduct!
             : 'MF');
     _frequency = e?.frequency ?? 'M';
-    _salesRep = e?.salesRep ?? (_isEmployee ? widget.currentUser?.id : null);
     _isEmployee = widget.currentUser?.role == UserRole.employee;
+    _salesRep = e?.salesRep ?? (_isEmployee ? widget.currentUser?.id : null);
+    _clientId = e?.clientId;
     _loadEmployees();
+    if (_isEmployee) _loadClientsFor(_salesRep);
   }
 
   Future<void> _loadEmployees() async {
@@ -82,11 +86,40 @@ class _AddSaleModalState extends ConsumerState<AddSaleModal> {
         });
       }
     } catch (_) {}
+    _loadClientsFor(_salesRep);
+  }
+
+  /// A sale can only be booked against a client owned by the chosen sales
+  /// rep, so the client list is reloaded whenever the rep changes.
+  Future<void> _loadClientsFor(String? employeeId) async {
+    if (employeeId == null) {
+      setState(() {
+        _clients = [];
+        _clientId = null;
+      });
+      return;
+    }
+    setState(() => _loadingClients = true);
+    try {
+      final list = await ref
+          .read(apiServiceProvider)
+          .getClients(employeeId: employeeId);
+      if (mounted) {
+        setState(() {
+          _clients = list;
+          _loadingClients = false;
+          if (_clientId == null || !_clients.any((c) => c.id == _clientId)) {
+            _clientId = null;
+          }
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _loadingClients = false);
+    }
   }
 
   @override
   void dispose() {
-    _clientName.dispose();
     _company.dispose();
     _scheme.dispose();
     _amount.dispose();
@@ -102,12 +135,24 @@ class _AddSaleModalState extends ConsumerState<AddSaleModal> {
       );
       return;
     }
+    if (_clientId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select a client')),
+      );
+      return;
+    }
 
+    final client = _clients.firstWhere((c) => c.id == _clientId);
+    final salesRepName = _isEmployee
+        ? widget.currentUser?.name
+        : _employees.firstWhere((e) => e.id == _salesRep).name;
     setState(() => _loading = true);
     final payload = {
       'date': AppFormatters.toApiDate(_date),
-      'client_name': _clientName.text.trim(),
+      'client_name': client.name,
+      'client_id': client.id,
       'sales_rep': _salesRep,
+      'sales_rep_name': ?salesRepName,
       'product': _product,
       'company': _company.text.trim(),
       'scheme': _scheme.text.trim(),
@@ -204,17 +249,6 @@ class _AddSaleModalState extends ConsumerState<AddSaleModal> {
                         ),
                       ),
                     ),
-                    const SizedBox(width: AppSpacing.md),
-                    Expanded(
-                      child: TextFormField(
-                        controller: _clientName,
-                        decoration: const InputDecoration(
-                          labelText: 'Client Name *',
-                        ),
-                        validator: (v) =>
-                            v == null || v.isEmpty ? 'Required' : null,
-                      ),
-                    ),
                   ],
                 ),
                 const SizedBox(height: AppSpacing.lg),
@@ -245,10 +279,39 @@ class _AddSaleModalState extends ConsumerState<AddSaleModal> {
                           ),
                         )
                         .toList(),
-                    onChanged: (v) => setState(() => _salesRep = v),
+                    onChanged: (v) {
+                      setState(() => _salesRep = v);
+                      _loadClientsFor(v);
+                    },
                     validator: (v) =>
                         v == null || v.isEmpty ? 'Required' : null,
                   ),
+                const SizedBox(height: AppSpacing.lg),
+                DropdownButtonFormField<String>(
+                  key: ValueKey('sale_client_${_clientId}_${_clients.length}'),
+                  initialValue: _clients.any((c) => c.id == _clientId)
+                      ? _clientId
+                      : null,
+                  decoration: InputDecoration(
+                    labelText: 'Client *',
+                    helperText: _loadingClients
+                        ? 'Loading clients...'
+                        : (_salesRep != null && _clients.isEmpty)
+                        ? 'No clients assigned to this employee'
+                        : null,
+                  ),
+                  items: _clients
+                      .map(
+                        (c) => DropdownMenuItem(
+                          value: c.id,
+                          child: Text(c.name),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (v) => setState(() => _clientId = v),
+                  validator: (v) =>
+                      v == null || v.isEmpty ? 'Required' : null,
+                ),
                 const SizedBox(height: AppSpacing.lg),
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,

@@ -71,11 +71,55 @@ class FirestoreService {
   }
 
   Future<List<Client>> getEmployeeClients(dynamic id) async {
-    final snapshot = await _firestore
-        .collection('clients')
-        .where('employee_ids', arrayContains: id.toString())
-        .get();
-    return snapshot.docs.map(Client.fromFirestore).toList();
+    return getClients(employeeId: id.toString());
+  }
+
+  // ----------------------------------------------------
+  // Clients
+  // ----------------------------------------------------
+
+  /// [employeeId] omitted (admin) returns every client; passed, returns only
+  /// that employee's book of business. Ownership is one employee per client.
+  Future<List<Client>> getClients({String? employeeId}) async {
+    Query query = _firestore.collection('clients');
+    if (employeeId != null && employeeId.isNotEmpty) {
+      query = query.where('employee_id', isEqualTo: employeeId);
+    }
+    final snapshot = await query.get();
+    final clients = snapshot.docs.map(Client.fromFirestore).toList();
+    clients.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+    return clients;
+  }
+
+  Future<Client> getClient(dynamic id) async {
+    final doc = await _firestore.collection('clients').doc(id.toString()).get();
+    if (!doc.exists) {
+      throw Exception('Client not found');
+    }
+    return Client.fromFirestore(doc);
+  }
+
+  Future<Client> createClient(Map<String, dynamic> data) async {
+    final docRef = _firestore.collection('clients').doc();
+    final clientData = Map<String, dynamic>.from(data);
+    clientData['created_at'] = FieldValue.serverTimestamp();
+    clientData['updated_at'] = FieldValue.serverTimestamp();
+    await docRef.set(clientData);
+    final saved = await docRef.get();
+    return Client.fromFirestore(saved);
+  }
+
+  Future<Client> updateClient(dynamic id, Map<String, dynamic> data) async {
+    final docRef = _firestore.collection('clients').doc(id.toString());
+    final clientData = Map<String, dynamic>.from(data);
+    clientData['updated_at'] = FieldValue.serverTimestamp();
+    await docRef.update(clientData);
+    final saved = await docRef.get();
+    return Client.fromFirestore(saved);
+  }
+
+  Future<void> deleteClient(dynamic id) async {
+    await _firestore.collection('clients').doc(id.toString()).delete();
   }
 
   Future<List<Sale>> getEmployeeSales(dynamic id) async {
@@ -86,6 +130,57 @@ class FirestoreService {
     final sales = snapshot.docs.map(Sale.fromFirestore).toList();
     sales.sort((a, b) => _byDateDesc(a.date, b.date));
     return sales;
+  }
+
+  /// Live view of every employee doc an admin may still need to act on:
+  /// currently-pending grace-period requests plus previously
+  /// restricted/rejected accounts, so a manual grant stays reachable outside
+  /// the original 3-day window. Sorted newest-request-first client-side to
+  /// avoid needing a composite index beyond the `whereIn`.
+  Stream<List<Employee>> streamPendingReview() {
+    return _firestore
+        .collection('employees')
+        .where('status', whereIn: ['PENDING', 'RESTRICTED', 'REJECTED'])
+        .snapshots()
+        .map((snapshot) {
+          final list = snapshot.docs.map(Employee.fromFirestore).toList();
+          list.sort((a, b) {
+            final ra = a.requestedAt;
+            final rb = b.requestedAt;
+            if (ra == null && rb == null) return 0;
+            if (ra == null) return 1;
+            if (rb == null) return -1;
+            return rb.compareTo(ra);
+          });
+          return list;
+        });
+  }
+
+  /// Self-service: called right after a brand-new Google sign-in to
+  /// provision a PENDING employee doc with a 3-day grace period. Runs
+  /// server-side (Admin SDK) since custom claims can't be set from the
+  /// client and Firestore rules block a direct client write here — there is
+  /// no safe fallback, so a callable failure must surface as a real error.
+  Future<void> provisionPendingEmployee() async {
+    final callable = _functions.httpsCallable('provisionPendingEmployee');
+    await callable.call();
+  }
+
+  /// Admin-only Accept ('ACCEPT') / Reject ('REJECT') decision on a
+  /// PENDING, RESTRICTED, or REJECTED employee. [role] is only used on
+  /// ACCEPT (defaults server-side to the employee's existing role). No
+  /// client-side fallback — see [provisionPendingEmployee].
+  Future<void> reviewEmployee({
+    required String employeeId,
+    required String decision,
+    String? role,
+  }) async {
+    final callable = _functions.httpsCallable('reviewEmployee');
+    await callable.call({
+      'employeeId': employeeId,
+      'decision': decision,
+      'role': ?role,
+    });
   }
 
   Future<List<EmployeeDropdown>> getEmployeesDropdown() async {
@@ -150,6 +245,7 @@ class FirestoreService {
     cleanData['role'] = (cleanData['role']?.toString().toUpperCase() == 'ADMIN')
         ? 'ADMIN'
         : 'EMPLOYEE';
+    cleanData['status'] = 'ACTIVE';
     cleanData['avatar_url'] = cleanData['avatar_url'] ?? '';
     cleanData['clients_count'] = cleanData['clients_count'] ?? 0;
     cleanData['sales_count'] = cleanData['sales_count'] ?? 0;
@@ -188,15 +284,38 @@ class FirestoreService {
   // Sales
   // ----------------------------------------------------
 
-  Future<List<Sale>> getSales({String? salesRepId}) async {
+  Query _salesQuery({String? salesRepId, String? clientId}) {
     Query query = _firestore.collection('sales');
     if (salesRepId != null && salesRepId.isNotEmpty) {
       query = query.where('sales_rep_id', isEqualTo: salesRepId);
     }
-    final snapshot = await query.get();
+    if (clientId != null && clientId.isNotEmpty) {
+      query = query.where('client_id', isEqualTo: clientId);
+    }
+    return query;
+  }
+
+  Future<List<Sale>> getSales({String? salesRepId, String? clientId}) async {
+    final snapshot = await _salesQuery(
+      salesRepId: salesRepId,
+      clientId: clientId,
+    ).get();
     final sales = snapshot.docs.map(Sale.fromFirestore).toList();
     sales.sort((a, b) => _byDateDesc(a.date, b.date));
     return sales;
+  }
+
+  /// Live view of [getSales]; emits a fresh, sorted list on every write to
+  /// any matching sale so listening screens (e.g. the dashboard) update
+  /// instantly without an explicit reload.
+  Stream<List<Sale>> streamSales({String? salesRepId, String? clientId}) {
+    return _salesQuery(salesRepId: salesRepId, clientId: clientId)
+        .snapshots()
+        .map((snapshot) {
+          final sales = snapshot.docs.map(Sale.fromFirestore).toList();
+          sales.sort((a, b) => _byDateDesc(a.date, b.date));
+          return sales;
+        });
   }
 
   Future<Sale> createSale(Map<String, dynamic> data) async {
@@ -267,15 +386,44 @@ class FirestoreService {
   // Interactions
   // ----------------------------------------------------
 
-  Future<List<Interaction>> getInteractions({String? employeeId}) async {
+  Query _interactionsQuery({String? employeeId, String? clientId}) {
     Query query = _firestore.collection('interactions');
     if (employeeId != null && employeeId.isNotEmpty) {
       query = query.where('employee_id', isEqualTo: employeeId);
     }
-    final snapshot = await query.get();
+    if (clientId != null && clientId.isNotEmpty) {
+      query = query.where('client_id', isEqualTo: clientId);
+    }
+    return query;
+  }
+
+  Future<List<Interaction>> getInteractions({
+    String? employeeId,
+    String? clientId,
+  }) async {
+    final snapshot = await _interactionsQuery(
+      employeeId: employeeId,
+      clientId: clientId,
+    ).get();
     final interactions = snapshot.docs.map(Interaction.fromFirestore).toList();
     interactions.sort((a, b) => _byDateDesc(a.date, b.date));
     return interactions;
+  }
+
+  /// Live view of [getInteractions]; see [streamSales].
+  Stream<List<Interaction>> streamInteractions({
+    String? employeeId,
+    String? clientId,
+  }) {
+    return _interactionsQuery(employeeId: employeeId, clientId: clientId)
+        .snapshots()
+        .map((snapshot) {
+          final interactions = snapshot.docs
+              .map(Interaction.fromFirestore)
+              .toList();
+          interactions.sort((a, b) => _byDateDesc(a.date, b.date));
+          return interactions;
+        });
   }
 
   Future<Interaction> createInteraction(Map<String, dynamic> data) async {
@@ -345,18 +493,34 @@ class FirestoreService {
   // Reminders
   // ----------------------------------------------------
 
+  List<Reminder> _sortReminders(List<Reminder> reminders) {
+    reminders.sort((a, b) {
+      final byDate = _byDateDesc(a.date, b.date);
+      return byDate != 0 ? byDate : b.time.compareTo(a.time);
+    });
+    return reminders;
+  }
+
   Future<List<Reminder>> getReminders() async {
     if (currentUid == null) return [];
     final snapshot = await _firestore
         .collection('reminders')
         .where('employee_id', isEqualTo: currentUid)
         .get();
-    final reminders = snapshot.docs.map(Reminder.fromFirestore).toList();
-    reminders.sort((a, b) {
-      final byDate = _byDateDesc(a.date, b.date);
-      return byDate != 0 ? byDate : b.time.compareTo(a.time);
-    });
-    return reminders;
+    return _sortReminders(snapshot.docs.map(Reminder.fromFirestore).toList());
+  }
+
+  /// Live view of [getReminders]; see [streamSales].
+  Stream<List<Reminder>> streamReminders() {
+    if (currentUid == null) return Stream.value(const []);
+    return _firestore
+        .collection('reminders')
+        .where('employee_id', isEqualTo: currentUid)
+        .snapshots()
+        .map(
+          (snapshot) =>
+              _sortReminders(snapshot.docs.map(Reminder.fromFirestore).toList()),
+        );
   }
 
   Future<Reminder> createReminder(Map<String, dynamic> data) async {
@@ -428,31 +592,4 @@ class FirestoreService {
     await user.updatePassword(newPassword);
   }
 
-  // ----------------------------------------------------
-  // Excel Cloud Functions
-  // ----------------------------------------------------
-
-  Future<String> exportSalesExcel({String? salesRepId}) async {
-    final callable = _functions.httpsCallable('exportSalesExcel');
-    final result = await callable.call({'sales_rep_id': salesRepId});
-    return result.data['base64'] as String;
-  }
-
-  Future<String> exportInteractionsExcel({String? employeeId}) async {
-    final callable = _functions.httpsCallable('exportInteractionsExcel');
-    final result = await callable.call({'employee_id': employeeId});
-    return result.data['base64'] as String;
-  }
-
-  Future<int> importSales(String base64) async {
-    final callable = _functions.httpsCallable('importSalesExcel');
-    final result = await callable.call({'base64': base64});
-    return (result.data['count'] as num?)?.toInt() ?? 0;
-  }
-
-  Future<int> importInteractions(String base64) async {
-    final callable = _functions.httpsCallable('importInteractionsExcel');
-    final result = await callable.call({'base64': base64});
-    return (result.data['count'] as num?)?.toInt() ?? 0;
-  }
 }

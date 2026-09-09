@@ -63,28 +63,47 @@ class DashboardAnalytics extends StatelessWidget {
   Widget build(BuildContext context) {
     final isWide = MediaQuery.sizeOf(context).width >= 900;
 
-    if (isWide) {
-      // IntrinsicHeight + stretch makes both cards match the taller one's
-      // height, regardless of chart size or how many products are listed.
-      return IntrinsicHeight(
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Expanded(flex: 3, child: _revenueTrendCard()),
-            const SizedBox(width: AppSpacing.md),
-            Expanded(flex: 2, child: _productMixCard()),
-          ],
-        ),
-      );
-    }
+    // The product mix card's pie/list layout depends on how wide that card
+    // ends up, so it is measured here rather than inside the card: a
+    // LayoutBuilder *under* the IntrinsicHeight below would throw, since
+    // intrinsic dimensions cannot be computed through one.
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (isWide) {
+          // The mix card is flex 2 of 5 once the gap is taken out, and
+          // _chartCard pads its content by AppSpacing.lg on each side.
+          final mixContentWidth =
+              (constraints.maxWidth - AppSpacing.md) * 2 / 5 - AppSpacing.lg * 2;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _revenueTrendCard(),
-        const SizedBox(height: AppSpacing.md),
-        _productMixCard(),
-      ],
+          // IntrinsicHeight + stretch makes both cards match the taller
+          // one's height, regardless of chart size or how many products
+          // are listed.
+          return IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(flex: 3, child: _revenueTrendCard()),
+                const SizedBox(width: AppSpacing.md),
+                Expanded(
+                  flex: 2,
+                  child: _productMixCard(isNarrow: mixContentWidth < 310),
+                ),
+              ],
+            ),
+          );
+        }
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _revenueTrendCard(),
+            const SizedBox(height: AppSpacing.md),
+            _productMixCard(
+              isNarrow: constraints.maxWidth - AppSpacing.lg * 2 < 310,
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -145,8 +164,8 @@ class DashboardAnalytics extends StatelessWidget {
     return _RevenueTrendAreaChart(sales: sales);
   }
 
-  Widget _productMixCard() {
-    return _ProductMixCard(sales: sales);
+  Widget _productMixCard({required bool isNarrow}) {
+    return _ProductMixCard(sales: sales, isNarrow: isNarrow);
   }
 }
 
@@ -507,9 +526,13 @@ class _RevenueTrendAreaChartState extends State<_RevenueTrendAreaChart> {
 }
 
 class _ProductMixCard extends StatefulWidget {
-  const _ProductMixCard({required this.sales});
+  const _ProductMixCard({required this.sales, required this.isNarrow});
 
   final List<Sale> sales;
+
+  /// Stack the pie above the legend instead of side by side. Measured by
+  /// the parent, since this card may sit under an IntrinsicHeight.
+  final bool isNarrow;
 
   @override
   State<_ProductMixCard> createState() => _ProductMixCardState();
@@ -651,9 +674,9 @@ class _ProductMixCardState extends State<_ProductMixCard> {
           ),
         ),
       ),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final isNarrow = constraints.maxWidth < 310;
+      child: Builder(
+        builder: (context) {
+          final isNarrow = widget.isNarrow;
 
           final pieWidget = SizedBox(
             height: 195,

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -33,47 +35,103 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   List<Sale> _sales = [];
   List<Interaction> _interactions = [];
   List<Reminder> _reminders = [];
+  bool _salesLoaded = false;
+  bool _interactionsLoaded = false;
+  bool _remindersLoaded = false;
   bool _loading = true;
   String? _error;
+
+  StreamSubscription<List<Sale>>? _salesSub;
+  StreamSubscription<List<Interaction>>? _interactionsSub;
+  StreamSubscription<List<Reminder>>? _remindersSub;
 
   @override
   void initState() {
     super.initState();
-    _loadData();
+    _subscribe();
   }
 
-  Future<void> _loadData() async {
+  /// Live-listens to sales, interactions and reminders so the dashboard
+  /// reflects any change (a sale added from this screen, the Sales tab,
+  /// another device, an admin, etc.) the instant Firestore pushes it,
+  /// instead of only refreshing after a manual reload.
+  void _subscribe() {
+    _salesSub?.cancel();
+    _interactionsSub?.cancel();
+    _remindersSub?.cancel();
+
     setState(() {
-      // Only blank the screen on the first load; a refresh keeps the
-      // current dashboard visible behind the RefreshIndicator.
-      if (_sales.isEmpty && _interactions.isEmpty && _reminders.isEmpty) {
-        _loading = true;
-      }
+      _salesLoaded = false;
+      _interactionsLoaded = false;
+      _remindersLoaded = false;
       _error = null;
     });
+
     final api = ref.read(apiServiceProvider);
-    try {
-      final results = await Future.wait([
-        api.getSales(),
-        api.getInteractions(),
-        api.getReminders(),
-      ]);
-      if (mounted) {
+    final user = ref.read(authProvider).user;
+    final selfId = user?.isAdmin == true ? null : user?.id;
+
+    _salesSub = api.streamSales(salesRepId: selfId).listen(
+      (sales) {
+        if (!mounted) return;
         setState(() {
-          _sales = results[0] as List<Sale>;
-          _interactions = results[1] as List<Interaction>;
-          _reminders = results[2] as List<Reminder>;
-          _loading = false;
+          _sales = sales;
+          _salesLoaded = true;
+          _loading = !(_salesLoaded && _interactionsLoaded && _remindersLoaded);
         });
-      }
-    } catch (e) {
-      if (mounted) {
+      },
+      onError: (Object e) {
+        if (!mounted) return;
         setState(() {
           _error = e.toString();
           _loading = false;
         });
-      }
-    }
+      },
+    );
+
+    _interactionsSub = api.streamInteractions(employeeId: selfId).listen(
+      (interactions) {
+        if (!mounted) return;
+        setState(() {
+          _interactions = interactions;
+          _interactionsLoaded = true;
+          _loading = !(_salesLoaded && _interactionsLoaded && _remindersLoaded);
+        });
+      },
+      onError: (Object e) {
+        if (!mounted) return;
+        setState(() {
+          _error = e.toString();
+          _loading = false;
+        });
+      },
+    );
+
+    _remindersSub = api.streamReminders().listen(
+      (reminders) {
+        if (!mounted) return;
+        setState(() {
+          _reminders = reminders;
+          _remindersLoaded = true;
+          _loading = !(_salesLoaded && _interactionsLoaded && _remindersLoaded);
+        });
+      },
+      onError: (Object e) {
+        if (!mounted) return;
+        setState(() {
+          _error = e.toString();
+          _loading = false;
+        });
+      },
+    );
+  }
+
+  @override
+  void dispose() {
+    _salesSub?.cancel();
+    _interactionsSub?.cancel();
+    _remindersSub?.cancel();
+    super.dispose();
   }
 
   // --- Sorting Helpers ---
@@ -181,35 +239,35 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   }
 
   // --- Modal Helpers ---
+  // No manual reload after these dialogs close: the live streams in
+  // _subscribe() pick up the created/edited doc as soon as Firestore
+  // pushes it.
   Future<void> _openAddInteraction(
     AppUser? user, {
     Interaction? existing,
   }) async {
-    final ok = await showDialog<bool>(
+    await showDialog<bool>(
       context: context,
       barrierDismissible: true,
       builder: (_) =>
           AddInteractionModal(existing: existing, currentUser: user),
     );
-    if (ok == true) _loadData();
   }
 
   Future<void> _openAddSale(AppUser? user, {Sale? existing}) async {
-    final ok = await showDialog<bool>(
+    await showDialog<bool>(
       context: context,
       barrierDismissible: true,
       builder: (_) => AddSaleModal(existing: existing, currentUser: user),
     );
-    if (ok == true) _loadData();
   }
 
   Future<void> _openAddReminder(AppUser? user, {Reminder? existing}) async {
-    final ok = await showDialog<bool>(
+    await showDialog<bool>(
       context: context,
       barrierDismissible: true,
       builder: (_) => AddReminderModal(existing: existing, currentUser: user),
     );
-    if (ok == true) _loadData();
   }
 
   // --- Delete Helpers ---
@@ -242,7 +300,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         } else {
           await ref.read(firestoreServiceProvider).deleteInteraction(id);
         }
-        _loadData();
         if (mounted) {
           ScaffoldMessenger.of(
             context,
@@ -290,7 +347,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         } else {
           await ref.read(firestoreServiceProvider).deleteSale(id);
         }
-        _loadData();
         if (mounted) {
           ScaffoldMessenger.of(
             context,
@@ -338,7 +394,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         } else {
           await ref.read(firestoreServiceProvider).deleteReminder(id);
         }
-        _loadData();
         if (mounted) {
           ScaffoldMessenger.of(
             context,
@@ -619,12 +674,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         message: _error!,
         title: 'Could not load your dashboard',
         icon: Icons.dashboard_outlined,
-        onRetry: _loadData,
+        onRetry: () async => _subscribe(),
       );
     }
 
     return RefreshIndicator(
-      onRefresh: _loadData,
+      onRefresh: () async => _subscribe(),
       color: AppColors.primaryGreen,
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),

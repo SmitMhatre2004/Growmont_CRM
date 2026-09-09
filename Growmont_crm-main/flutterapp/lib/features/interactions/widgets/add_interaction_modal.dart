@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/providers.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../models/client.dart';
 import '../../../models/employee.dart';
 import '../../../models/interaction.dart';
 import '../../../models/user.dart';
@@ -23,12 +24,13 @@ class _AddInteractionModalState extends ConsumerState<AddInteractionModal> {
   late DateTime _date;
   late DateTime _followUpDate;
   late TimeOfDay _followUpTime;
-  late TextEditingController _clientName;
-  late TextEditingController _clientContact;
   late TextEditingController _notes;
   String _priority = 'MEDIUM';
   String? _employeeId;
+  String? _clientId;
   List<EmployeeDropdown> _employees = [];
+  List<Client> _clients = [];
+  bool _loadingClients = false;
   bool _loading = false;
   bool _isEmployee = false;
 
@@ -43,13 +45,13 @@ class _AddInteractionModalState extends ConsumerState<AddInteractionModal> {
       hour: int.tryParse(timeParts[0]) ?? 10,
       minute: int.tryParse(timeParts[1]) ?? 0,
     );
-    _clientName = TextEditingController(text: e?.clientName ?? '');
-    _clientContact = TextEditingController(text: e?.clientContact ?? '');
     _notes = TextEditingController(text: e?.discussionNotes ?? '');
     _priority = e?.priority ?? 'MEDIUM';
     _isEmployee = widget.currentUser?.role == UserRole.employee;
     _employeeId = e?.employee ?? (_isEmployee ? widget.currentUser?.id : null);
+    _clientId = e?.clientId;
     _loadEmployees();
+    if (_isEmployee) _loadClientsFor(_employeeId);
   }
 
   Future<void> _loadEmployees() async {
@@ -75,12 +77,40 @@ class _AddInteractionModalState extends ConsumerState<AddInteractionModal> {
         });
       }
     } catch (_) {}
+    _loadClientsFor(_employeeId);
+  }
+
+  /// An interaction can only be logged against a client owned by the chosen
+  /// employee, so the client list is reloaded whenever that changes.
+  Future<void> _loadClientsFor(String? employeeId) async {
+    if (employeeId == null) {
+      setState(() {
+        _clients = [];
+        _clientId = null;
+      });
+      return;
+    }
+    setState(() => _loadingClients = true);
+    try {
+      final list = await ref
+          .read(apiServiceProvider)
+          .getClients(employeeId: employeeId);
+      if (mounted) {
+        setState(() {
+          _clients = list;
+          _loadingClients = false;
+          if (_clientId == null || !_clients.any((c) => c.id == _clientId)) {
+            _clientId = null;
+          }
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _loadingClients = false);
+    }
   }
 
   @override
   void dispose() {
-    _clientName.dispose();
-    _clientContact.dispose();
     _notes.dispose();
     super.dispose();
   }
@@ -97,13 +127,25 @@ class _AddInteractionModalState extends ConsumerState<AddInteractionModal> {
       return;
     }
     if (_employeeId == null) return;
+    if (_clientId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select a client')),
+      );
+      return;
+    }
 
+    final client = _clients.firstWhere((c) => c.id == _clientId);
+    final employeeName = _isEmployee
+        ? widget.currentUser?.name
+        : _employees.firstWhere((e) => e.id == _employeeId).name;
     setState(() => _loading = true);
     final payload = {
       'date': AppFormatters.toApiDate(_date),
-      'client_name': _clientName.text.trim(),
-      'client_contact': _clientContact.text.trim(),
+      'client_name': client.name,
+      'client_id': client.id,
+      'client_contact': client.contactNumber,
       'employee': _employeeId,
+      'employee_name': ?employeeName,
       'follow_up_date': AppFormatters.toApiDate(_followUpDate),
       'follow_up_time': AppFormatters.toApiTime(_followUpTime),
       'priority': _priority,
@@ -168,31 +210,36 @@ class _AddInteractionModalState extends ConsumerState<AddInteractionModal> {
                   ],
                 ),
                 const SizedBox(height: AppSpacing.xl),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: TextFormField(
-                        controller: _clientName,
-                        decoration: const InputDecoration(
-                          labelText: 'Client Name *',
+                DropdownButtonFormField<String>(
+                  key: ValueKey(
+                    'interaction_client_${_clientId}_${_clients.length}',
+                  ),
+                  initialValue: _clients.any((c) => c.id == _clientId)
+                      ? _clientId
+                      : null,
+                  decoration: InputDecoration(
+                    labelText: 'Client *',
+                    helperText: _loadingClients
+                        ? 'Loading clients...'
+                        : (_employeeId != null && _clients.isEmpty)
+                        ? 'No clients assigned to this employee'
+                        : null,
+                  ),
+                  items: _clients
+                      .map(
+                        (c) => DropdownMenuItem(
+                          value: c.id,
+                          child: Text(
+                            c.contactNumber.isNotEmpty
+                                ? '${c.name} (${c.contactNumber})'
+                                : c.name,
+                          ),
                         ),
-                        validator: (v) =>
-                            v == null || v.isEmpty ? 'Required' : null,
-                      ),
-                    ),
-                    const SizedBox(width: AppSpacing.md),
-                    Expanded(
-                      child: TextFormField(
-                        controller: _clientContact,
-                        decoration: const InputDecoration(
-                          labelText: 'Client Contact *',
-                        ),
-                        validator: (v) =>
-                            v == null || v.isEmpty ? 'Required' : null,
-                      ),
-                    ),
-                  ],
+                      )
+                      .toList(),
+                  onChanged: (v) => setState(() => _clientId = v),
+                  validator: (v) =>
+                      v == null || v.isEmpty ? 'Required' : null,
                 ),
                 const SizedBox(height: AppSpacing.md),
                 ListTile(
@@ -274,7 +321,10 @@ class _AddInteractionModalState extends ConsumerState<AddInteractionModal> {
                           ),
                         )
                         .toList(),
-                    onChanged: (v) => setState(() => _employeeId = v),
+                    onChanged: (v) {
+                      setState(() => _employeeId = v);
+                      _loadClientsFor(v);
+                    },
                     validator: (v) =>
                         v == null || v.isEmpty ? 'Required' : null,
                   ),

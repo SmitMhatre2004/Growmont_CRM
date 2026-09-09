@@ -1,14 +1,18 @@
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/excel/excel_io.dart';
 import '../../core/providers.dart';
 import '../../core/config/app_config.dart';
 import '../../core/theme/app_theme.dart';
 import '../../models/employee.dart';
 import '../../shared/widgets/error_state.dart';
 import '../auth/auth_provider.dart';
+import 'employees_excel.dart';
 import 'widgets/add_employee_modal.dart';
+import 'widgets/pending_requests_section.dart';
 
 enum RoleFilter { all, admin, employee }
 
@@ -140,6 +144,69 @@ class _EmployeesListScreenState extends ConsumerState<EmployeesListScreen> {
     if (saved == true) _load();
   }
 
+  Future<void> _exportEmployees() async {
+    try {
+      final savedPath = await ExcelIO.exportWorkbook(
+        filename: 'employees_export.xlsx',
+        sheetName: 'Employees',
+        headers: employeesExportHeaders,
+        rows: _employees.map(employeeExportRow).toList(),
+        shareText: 'Employees Export',
+      );
+      if (savedPath != null && mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Saved to $savedPath')));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Export failed: $e'),
+            backgroundColor: AppColors.danger,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _importEmployees() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['xlsx'],
+    );
+    if (result == null || result.files.single.path == null) return;
+
+    try {
+      final rows = await ExcelIO.readDataRows(result.files.single.path!);
+      final api = ref.read(firestoreServiceProvider);
+      var count = 0;
+      for (final row in rows) {
+        final payload = employeeImportPayload(row);
+        if (payload == null) continue;
+        try {
+          await api.createEmployee(payload);
+          count++;
+        } catch (_) {}
+      }
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Imported $count employee(s)')),
+        );
+      }
+      _load();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Import failed: $e'),
+            backgroundColor: AppColors.danger,
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final isAdmin = ref.watch(authProvider).user?.isAdmin == true;
@@ -149,6 +216,7 @@ class _EmployeesListScreenState extends ConsumerState<EmployeesListScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildTitleRow(),
+        if (isAdmin) const PendingRequestsSection(),
         _buildTabsRow(isAdmin),
         _buildSearchRow(),
         Expanded(
@@ -189,6 +257,26 @@ class _EmployeesListScreenState extends ConsumerState<EmployeesListScreen> {
 
   // -- Tabs Row: Filters (UP) + Add Employee --------------------------------
 
+  Widget _outlinedIconButton({
+    required IconData icon,
+    required String label,
+    required VoidCallback onPressed,
+  }) {
+    return SizedBox(
+      height: 40.0,
+      child: OutlinedButton.icon(
+        onPressed: onPressed,
+        icon: Icon(icon, size: AppSizing.iconMd),
+        label: Text(label),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: AppColors.textPrimary,
+          side: const BorderSide(color: AppColors.border),
+          backgroundColor: AppColors.surface,
+        ),
+      ),
+    );
+  }
+
   Widget _buildTabsRow(bool isAdmin) {
     final isMobile = MediaQuery.sizeOf(context).width < 768;
     final addButton = SizedBox(
@@ -201,6 +289,25 @@ class _EmployeesListScreenState extends ConsumerState<EmployeesListScreen> {
         icon: const Icon(Icons.add, size: AppSizing.iconMd),
         label: const Text('Add Employee'),
       ),
+    );
+
+    final actionButtons = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _outlinedIconButton(
+          icon: Icons.download_outlined,
+          label: 'Export',
+          onPressed: _exportEmployees,
+        ),
+        const SizedBox(width: AppSpacing.sm),
+        _outlinedIconButton(
+          icon: Icons.upload_outlined,
+          label: 'Import',
+          onPressed: _importEmployees,
+        ),
+        const SizedBox(width: AppSpacing.sm),
+        addButton,
+      ],
     );
 
     if (isMobile) {
@@ -217,7 +324,7 @@ class _EmployeesListScreenState extends ConsumerState<EmployeesListScreen> {
               const SizedBox(height: AppSpacing.md),
               SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
-                child: addButton,
+                child: actionButtons,
               ),
             ],
           ],
@@ -231,7 +338,7 @@ class _EmployeesListScreenState extends ConsumerState<EmployeesListScreen> {
         children: [
           _roleFilters(),
           const Spacer(),
-          if (isAdmin) addButton,
+          if (isAdmin) actionButtons,
         ],
       ),
     );

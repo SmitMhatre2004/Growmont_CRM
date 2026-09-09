@@ -5,6 +5,7 @@ class Sale {
     required this.id,
     required this.date,
     required this.clientName,
+    this.clientId,
     required this.salesRep,
     this.salesRepName,
     this.salesRepId,
@@ -22,6 +23,7 @@ class Sale {
   final String id;
   final String date;
   final String clientName;
+  final String? clientId;
   final String salesRep;
   final String? salesRepName;
   final String? salesRepId;
@@ -61,6 +63,7 @@ class Sale {
       id: (docId ?? json['id'] ?? '').toString(),
       date: dateStr,
       clientName: json['client_name'] as String? ?? '',
+      clientId: json['client_id'] as String?,
       salesRep: rep,
       salesRepName: json['sales_rep_name'] as String?,
       salesRepId: rep,
@@ -87,6 +90,7 @@ class Sale {
     return {
       'date': Timestamp.fromDate(DateTime.tryParse(date) ?? DateTime.now()),
       'client_name': clientName,
+      if (clientId != null) 'client_id': clientId,
       'sales_rep_id': salesRep,
       if (salesRepName != null) 'sales_rep_name': salesRepName,
       'product': product,

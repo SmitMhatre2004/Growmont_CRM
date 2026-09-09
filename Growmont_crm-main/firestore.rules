@@ -32,9 +32,25 @@ service cloud.firestore {
 
     // ─── Clients ───
     match /clients/{clientId} {
-      allow read: if isAuthenticated();
-      // Only admins can manage clients (client-employee assignment)
-      allow create, update, delete: if isAdmin();
+      // Each client belongs to exactly one employee; admins see all,
+      // employees see only the clients assigned to them.
+      allow read: if isAdmin() ||
+                     resource.data.employee_id == request.auth.uid;
+
+      // Employees can add a client, but only assigned to themselves;
+      // admins can create a client for anyone.
+      allow create: if isAdmin() ||
+                       (isAuthenticated() &&
+                        request.resource.data.employee_id == request.auth.uid);
+
+      // Employees can edit their own client's details but cannot reassign
+      // ownership; only admins can reassign a client to a different employee.
+      allow update: if isAdmin() ||
+                       (isOwnerEmployee(resource.data.employee_id) &&
+                        request.resource.data.employee_id == request.auth.uid);
+
+      // Deleting a client stays admin-only.
+      allow delete: if isAdmin();
     }
 
     // ─── Sales ───

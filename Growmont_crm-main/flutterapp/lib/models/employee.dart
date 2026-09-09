@@ -1,5 +1,43 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+/// Account review status, gating access alongside the 3-day self-signup
+/// grace period. Absent on legacy docs predating this feature — treat a
+/// missing/unrecognized value as [active], matching every reader across
+/// the app (client and Cloud Functions).
+enum EmployeeStatus { pending, active, restricted, rejected }
+
+EmployeeStatus _employeeStatusFromString(String? raw) {
+  switch (raw?.toUpperCase()) {
+    case 'PENDING':
+      return EmployeeStatus.pending;
+    case 'RESTRICTED':
+      return EmployeeStatus.restricted;
+    case 'REJECTED':
+      return EmployeeStatus.rejected;
+    case 'ACTIVE':
+    default:
+      return EmployeeStatus.active;
+  }
+}
+
+String _employeeStatusToString(EmployeeStatus status) {
+  switch (status) {
+    case EmployeeStatus.pending:
+      return 'PENDING';
+    case EmployeeStatus.restricted:
+      return 'RESTRICTED';
+    case EmployeeStatus.rejected:
+      return 'REJECTED';
+    case EmployeeStatus.active:
+      return 'ACTIVE';
+  }
+}
+
+DateTime? _timestampToDate(dynamic raw) {
+  if (raw is Timestamp) return raw.toDate();
+  return null;
+}
+
 class Employee {
   const Employee({
     required this.id,
@@ -13,6 +51,14 @@ class Employee {
     this.clientsCount = 0,
     this.salesCount = 0,
     this.interactionsCount = 0,
+    this.status = EmployeeStatus.active,
+    this.accessExpiresAt,
+    this.requestedAt,
+    this.approvedBy,
+    this.approvedAt,
+    this.rejectedBy,
+    this.rejectedAt,
+    this.restrictedAt,
   });
 
   final String id;
@@ -26,6 +72,27 @@ class Employee {
   final int clientsCount;
   final int salesCount;
   final int interactionsCount;
+  final EmployeeStatus status;
+  final DateTime? accessExpiresAt;
+  final DateTime? requestedAt;
+  final String? approvedBy;
+  final DateTime? approvedAt;
+  final String? rejectedBy;
+  final DateTime? rejectedAt;
+  final DateTime? restrictedAt;
+
+  bool get isPending => status == EmployeeStatus.pending;
+  bool get isRestricted => status == EmployeeStatus.restricted;
+  bool get isRejected => status == EmployeeStatus.rejected;
+  bool get isActive => status == EmployeeStatus.active;
+
+  /// Time left in the 3-day grace period, or null if not [isPending] or no
+  /// expiry is set. Can be negative once the window has lapsed but the
+  /// scheduled sweep hasn't caught up yet.
+  Duration? get timeRemaining {
+    if (accessExpiresAt == null) return null;
+    return accessExpiresAt!.difference(DateTime.now());
+  }
 
   factory Employee.fromJson(Map<String, dynamic> json, [String? docId]) {
     String dobStr = '';
@@ -48,6 +115,14 @@ class Employee {
       clientsCount: json['clients_count'] as int? ?? 0,
       salesCount: json['sales_count'] as int? ?? 0,
       interactionsCount: json['interactions_count'] as int? ?? 0,
+      status: _employeeStatusFromString(json['status'] as String?),
+      accessExpiresAt: _timestampToDate(json['access_expires_at']),
+      requestedAt: _timestampToDate(json['requested_at']),
+      approvedBy: json['approved_by'] as String?,
+      approvedAt: _timestampToDate(json['approved_at']),
+      rejectedBy: json['rejected_by'] as String?,
+      rejectedAt: _timestampToDate(json['rejected_at']),
+      restrictedAt: _timestampToDate(json['restricted_at']),
     );
   }
 
@@ -68,6 +143,14 @@ class Employee {
       clientsCount: clientsCount,
       salesCount: salesCount,
       interactionsCount: interactionsCount,
+      status: status,
+      accessExpiresAt: accessExpiresAt,
+      requestedAt: requestedAt,
+      approvedBy: approvedBy,
+      approvedAt: approvedAt,
+      rejectedBy: rejectedBy,
+      rejectedAt: rejectedAt,
+      restrictedAt: restrictedAt,
     );
   }
 
@@ -79,6 +162,7 @@ class Employee {
     'dob': dob,
     'avatar_url': avatar,
     'role': role,
+    'status': _employeeStatusToString(status),
     'clients_count': clientsCount,
     'sales_count': salesCount,
     'interactions_count': interactionsCount,

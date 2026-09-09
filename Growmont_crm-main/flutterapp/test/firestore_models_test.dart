@@ -85,19 +85,19 @@ void main() {
       expect(named('   ').initials, '?');
     });
 
-    test('Client model parses employee_ids array', () {
+    test('Client model parses single employee_id owner', () {
       final client = Client.fromJson({
         'id': 'client_1',
         'name': 'Sneha',
         'contact_number': '1234567890',
-        'employee_ids': ['user_1', 'user_4'],
+        'employee_id': 'user_1',
       });
 
       expect(client.id, 'client_1');
-      expect(client.employeeIds, ['user_1', 'user_4']);
+      expect(client.employeeId, 'user_1');
 
       final map = client.toFirestore();
-      expect(map['employee_ids'], ['user_1', 'user_4']);
+      expect(map['employee_id'], 'user_1');
     });
 
     test('Interaction model parses and outputs timestamps', () {

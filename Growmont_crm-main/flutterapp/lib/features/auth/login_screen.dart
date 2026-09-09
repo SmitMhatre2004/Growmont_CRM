@@ -64,6 +64,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         _loading = false;
         _error = error;
       });
+      // The inline banner above the form can be easy to miss when it's
+      // triggered from a button near the bottom of a tall form — a SnackBar
+      // guarantees the failure is seen right where the click happened.
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(error),
+          backgroundColor: AppColors.danger,
+          duration: const Duration(seconds: 6),
+        ),
+      );
       return;
     }
 

@@ -1,16 +1,14 @@
-import 'dart:convert';
-import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:share_plus/share_plus.dart';
 
+import '../../core/excel/excel_io.dart';
 import '../../core/providers.dart';
 import '../../core/theme/app_theme.dart';
 import '../../models/sale.dart';
 import '../../models/user.dart';
 import '../auth/auth_provider.dart';
+import 'sales_excel.dart';
 import 'widgets/add_sale_modal.dart';
 
 // -----------------------------------------------------------------------------
@@ -65,7 +63,11 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
   Future<void> _loadSales() async {
     setState(() => _loading = true);
     try {
-      final data = await ref.read(apiServiceProvider).getSales();
+      final user = ref.read(authProvider).user;
+      final selfId = user?.isAdmin == true ? null : user?.id;
+      final data = await ref.read(apiServiceProvider).getSales(
+        salesRepId: selfId,
+      );
       if (mounted) {
         setState(() {
           _sales = data;
@@ -204,17 +206,16 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
 
   Future<void> _exportSales() async {
     try {
-      final base64Data = await ref
-          .read(firestoreServiceProvider)
-          .exportSalesExcel();
-      final bytes = base64Decode(base64Data);
-      final dir = await getTemporaryDirectory();
-      final file = File('${dir.path}/sales_export.xlsx');
-      await file.writeAsBytes(bytes);
-      // ignore: deprecated_member_use
-      await Share.shareXFiles([XFile(file.path)], text: 'Sales Export');
-    } catch (_) {
-      _showError('Export failed');
+      final savedPath = await ExcelIO.exportWorkbook(
+        filename: 'sales_export.xlsx',
+        sheetName: 'Sales',
+        headers: salesExcelHeaders,
+        rows: _sales.map(saleExportRow).toList(),
+        shareText: 'Sales Export',
+      );
+      if (savedPath != null) _showSuccess('Saved to $savedPath');
+    } catch (e) {
+      _showError('Export failed: $e');
     }
   }
 
@@ -226,13 +227,26 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
     if (result == null || result.files.single.path == null) return;
 
     try {
-      final bytes = await File(result.files.single.path!).readAsBytes();
-      final base64 = base64Encode(bytes);
-      await ref.read(firestoreServiceProvider).importSales(base64);
-      _showSuccess('Import successful');
+      final rows = await ExcelIO.readDataRows(result.files.single.path!);
+      final currentUserName =
+          ref.read(authProvider).user?.name ?? 'Team Member';
+      final api = ref.read(firestoreServiceProvider);
+      var count = 0;
+      for (final row in rows) {
+        final payload = saleImportPayload(
+          row,
+          currentUserName: currentUserName,
+        );
+        if (payload == null) continue;
+        try {
+          await api.createSale(payload);
+          count++;
+        } catch (_) {}
+      }
+      _showSuccess('Imported $count sale(s)');
       _loadSales();
-    } catch (_) {
-      _showError('Import failed');
+    } catch (e) {
+      _showError('Import failed: $e');
     }
   }
 

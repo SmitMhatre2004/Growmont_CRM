@@ -3,15 +3,17 @@
  * Replaces all remaining custom Django server functionality:
  * - Admin employee provisioning (Auth + custom claims + Firestore doc)
  * - Scheduled reminder notifications (every 60s)
- * - Excel import & export for Sales and Interactions
  * - Fan-out updates for denormalized employee names
+ *
+ * Excel import/export runs entirely on-device in the Flutter app
+ * (see flutterapp/lib/core/excel/excel_io.dart) — there is no server
+ * component for it.
  */
 
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { onDocumentUpdated } from 'firebase-functions/v2/firestore';
 import admin from 'firebase-admin';
-import ExcelJS from 'exceljs';
 import nodemailer from 'nodemailer';
 
 if (!admin.apps.length) {
@@ -77,6 +79,7 @@ export const createEmployee = onCall(async (request) => {
       dob: dob ? admin.firestore.Timestamp.fromDate(new Date(dob)) : null,
       avatar_url: '',
       role: employeeRole,
+      status: 'ACTIVE',
       clients_count: 0,
       sales_count: 0,
       interactions_count: 0,
@@ -146,6 +149,268 @@ export const updateEmployeeRole = onCall(async (request) => {
   } catch (error) {
     console.error('Error updating role:', error);
     throw new HttpsError('internal', error.message);
+  }
+});
+
+// ==========================================
+// 1b. Self-service provisioning + admin review
+//     (3-day grace-period access for first-time Google sign-ins)
+// ==========================================
+
+const GRACE_PERIOD_MS = 3 * 24 * 60 * 60 * 1000; // 3 days
+
+// Any authenticated Google account with no existing `employees` doc calls
+// this right after Firebase Auth sign-in succeeds, to self-provision a
+// PENDING record with a 3-day grace period. Deliberately NOT admin-gated —
+// this is the self-signup path. Idempotent: re-invoking for an account that
+// already has a doc just returns its current status instead of resetting
+// the clock or clobbering an admin's decision.
+export const provisionPendingEmployee = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'User must be authenticated.');
+  }
+
+  const uid = request.auth.uid;
+  const ref = db.collection('employees').doc(uid);
+
+  try {
+    const existing = await ref.get();
+    if (existing.exists) {
+      const data = existing.data();
+      return { success: true, uid, status: data.status || 'ACTIVE', alreadyExisted: true };
+    }
+
+    const email = request.auth.token.email || '';
+    const name = request.auth.token.name || (email ? email.split('@')[0] : 'New User');
+    const picture = request.auth.token.picture || '';
+    const expiresAt = admin.firestore.Timestamp.fromMillis(Date.now() + GRACE_PERIOD_MS);
+
+    await ref.set({
+      name,
+      email,
+      mobile_no: '',
+      gender: 'O',
+      dob: null,
+      avatar_url: picture,
+      role: 'EMPLOYEE',
+      status: 'PENDING',
+      access_expires_at: expiresAt,
+      requested_at: admin.firestore.FieldValue.serverTimestamp(),
+      approved_by: null,
+      approved_at: null,
+      rejected_by: null,
+      rejected_at: null,
+      restricted_at: null,
+      clients_count: 0,
+      sales_count: 0,
+      interactions_count: 0,
+      created_at: admin.firestore.FieldValue.serverTimestamp(),
+      updated_at: admin.firestore.FieldValue.serverTimestamp()
+    });
+
+    await auth.setCustomUserClaims(uid, { role: 'EMPLOYEE', status: 'PENDING' });
+
+    console.log(JSON.stringify({
+      event: 'provisionPendingEmployee',
+      employeeId: uid,
+      email,
+      accessExpiresAt: expiresAt.toDate().toISOString()
+    }));
+
+    return {
+      success: true,
+      uid,
+      status: 'PENDING',
+      access_expires_at: expiresAt.toDate().toISOString()
+    };
+  } catch (error) {
+    console.error('Error provisioning pending employee:', error);
+    throw new HttpsError('internal', error.message);
+  }
+});
+
+// Valid admin decisions per current status. Anything not listed here is
+// rejected with 'failed-precondition' rather than silently applied — this
+// is what keeps two admins racing an Accept/Reject on the same request from
+// producing an inconsistent outcome: whichever request's read wins the race
+// transitions the doc, and the loser's re-read no longer matches a listed
+// transition, so it fails closed instead of clobbering the result.
+const ALLOWED_TRANSITIONS = {
+  PENDING: ['ACCEPT', 'REJECT'],
+  RESTRICTED: ['ACCEPT', 'REJECT'],
+  REJECTED: ['ACCEPT'] // re-rejecting an already-rejected account is a no-op, handled below
+};
+
+// Admin-only. One callable for Accept / Reject / Restore, since they share
+// identical auth-gate + fetch + claims/disable shape and differ only in
+// which branch runs — this also means "grant access to a RESTRICTED or
+// REJECTED account after the fact" needs no special-casing, it's just
+// another ACCEPT.
+export const reviewEmployee = onCall(async (request) => {
+  if (!request.auth || request.auth.token.role !== 'ADMIN') {
+    throw new HttpsError('permission-denied', 'Only administrators can review employees.');
+  }
+
+  const { employeeId, decision, role } = request.data;
+  if (!employeeId || !['ACCEPT', 'REJECT'].includes(decision)) {
+    throw new HttpsError('invalid-argument', 'Valid employeeId and decision are required.');
+  }
+
+  const adminId = request.auth.uid;
+  const ref = db.collection('employees').doc(employeeId);
+
+  // Re-read the current state fresh from Firestore rather than trusting
+  // anything the client believes about it — this is the source of truth
+  // the transition table below is validated against.
+  const snap = await ref.get();
+  if (!snap.exists) {
+    throw new HttpsError('not-found', 'Employee not found.');
+  }
+  const current = snap.data();
+  const previousStatus = current.status || 'ACTIVE';
+
+  if (previousStatus === 'REJECTED' && decision === 'REJECT') {
+    // Already rejected — no-op, return current state instead of erroring
+    // on a harmless repeat click.
+    return { success: true, uid: employeeId, status: previousStatus, noop: true };
+  }
+
+  const allowed = ALLOWED_TRANSITIONS[previousStatus] || [];
+  if (!allowed.includes(decision)) {
+    throw new HttpsError(
+      'failed-precondition',
+      `Cannot ${decision} employee ${employeeId}: current status is ${previousStatus}, ` +
+        `which does not accept this decision (it may already have been reviewed).`
+    );
+  }
+
+  const logBase = { event: 'reviewEmployee', employeeId, decision, previousStatus, adminId };
+  let authUpdateResult = 'not-attempted';
+  let claimsUpdateResult = 'not-attempted';
+  let firestoreUpdateResult = 'not-attempted';
+
+  try {
+    if (decision === 'ACCEPT') {
+      const newRole = ['ADMIN', 'EMPLOYEE'].includes(role) ? role : (current.role || 'EMPLOYEE');
+
+      await auth.updateUser(employeeId, { disabled: false });
+      authUpdateResult = 'ok';
+
+      await auth.setCustomUserClaims(employeeId, { role: newRole, status: 'ACTIVE' });
+      claimsUpdateResult = 'ok';
+
+      await ref.update({
+        status: 'ACTIVE',
+        role: newRole,
+        approved_by: adminId,
+        approved_at: admin.firestore.FieldValue.serverTimestamp(),
+        updated_at: admin.firestore.FieldValue.serverTimestamp()
+      });
+      firestoreUpdateResult = 'ok';
+
+      console.log(JSON.stringify({ ...logBase, newStatus: 'ACTIVE', authUpdateResult, claimsUpdateResult, firestoreUpdateResult }));
+      return { success: true, uid: employeeId, status: 'ACTIVE' };
+    }
+
+    // REJECT (including RESTRICTED -> REJECT re-reject)
+    await auth.updateUser(employeeId, { disabled: true });
+    authUpdateResult = 'ok';
+
+    // Forces any already-cached client session to re-authenticate and hit
+    // the disabled check immediately, instead of waiting for its short-lived
+    // ID token to naturally expire.
+    await auth.revokeRefreshTokens(employeeId);
+
+    await auth.setCustomUserClaims(employeeId, { role: current.role || 'EMPLOYEE', status: 'REJECTED' });
+    claimsUpdateResult = 'ok';
+
+    await ref.update({
+      status: 'REJECTED',
+      rejected_by: adminId,
+      rejected_at: admin.firestore.FieldValue.serverTimestamp(),
+      updated_at: admin.firestore.FieldValue.serverTimestamp()
+    });
+    firestoreUpdateResult = 'ok';
+
+    console.log(JSON.stringify({ ...logBase, newStatus: 'REJECTED', authUpdateResult, claimsUpdateResult, firestoreUpdateResult }));
+    return { success: true, uid: employeeId, status: 'REJECTED' };
+  } catch (error) {
+    // Auth/claims/Firestore are three separate systems and can't be wrapped
+    // in one transaction. The fixed write order above (Auth disabled-flag
+    // -> claims -> Firestore) means a failure here always leaves the
+    // account on the *safer* side of the intended outcome: an ACCEPT that
+    // fails after enabling Auth leaves the account already able to sign in
+    // (matches the admin's intent, Firestore just needs to catch up); a
+    // REJECT that fails after disabling Auth leaves the account already
+    // locked out. The Auth step itself is idempotent, so retrying this
+    // callable after a failure is always safe.
+    console.error(JSON.stringify({
+      ...logBase,
+      error: error.message,
+      authUpdateResult,
+      claimsUpdateResult,
+      firestoreUpdateResult
+    }));
+    throw new HttpsError('internal', `Review failed partway through (auth:${authUpdateResult}, claims:${claimsUpdateResult}, firestore:${firestoreUpdateResult}): ${error.message}`);
+  }
+});
+
+// Scheduled sweep: any PENDING employee whose 3-day grace period has
+// lapsed with no admin decision gets locked out (RESTRICTED) the same way
+// an explicit REJECT does, just recorded separately for audit clarity.
+// 30-minute cadence is intentionally coarser than sendReminderEmails' 1
+// minute — a 3-day window doesn't need second-granularity sweeping, and the
+// residual race (expired but not yet swept) is closed client-side in
+// auth_provider.dart, which also checks access_expires_at directly.
+export const expirePendingEmployees = onSchedule('every 30 minutes', async () => {
+  const now = admin.firestore.Timestamp.now();
+
+  let snapshot;
+  try {
+    snapshot = await db.collection('employees')
+      .where('status', '==', 'PENDING')
+      .where('access_expires_at', '<=', now)
+      .limit(100)
+      .get();
+  } catch (error) {
+    console.error('Error querying expired pending employees:', error);
+    return;
+  }
+
+  if (snapshot.empty) {
+    return;
+  }
+
+  const batch = db.batch();
+  let batchHasWrites = false;
+
+  for (const doc of snapshot.docs) {
+    const employeeId = doc.id;
+    const data = doc.data();
+    const logBase = { event: 'expirePendingEmployees', employeeId, previousStatus: 'PENDING', adminId: 'system:scheduled-sweep' };
+
+    try {
+      await auth.updateUser(employeeId, { disabled: true });
+      await auth.revokeRefreshTokens(employeeId);
+      await auth.setCustomUserClaims(employeeId, { role: data.role || 'EMPLOYEE', status: 'RESTRICTED' });
+    } catch (error) {
+      // Don't flip Firestore status if we couldn't actually lock the
+      // account out — leaves it PENDING for the next sweep to retry.
+      console.error(JSON.stringify({ ...logBase, error: error.message, authUpdateResult: 'failed' }));
+      continue;
+    }
+
+    batch.update(doc.ref, {
+      status: 'RESTRICTED',
+      restricted_at: admin.firestore.FieldValue.serverTimestamp(),
+      updated_at: admin.firestore.FieldValue.serverTimestamp()
+    });
+    batchHasWrites = true;
+    console.log(JSON.stringify({ ...logBase, newStatus: 'RESTRICTED', authUpdateResult: 'ok', claimsUpdateResult: 'ok' }));
+  }
+
+  if (batchHasWrites) {
+    await batch.commit();
   }
 });
 
@@ -225,249 +490,7 @@ export const sendReminderEmails = onSchedule('every 1 minutes', async () => {
 });
 
 // ==========================================
-// 3. Excel Export Functions
-// ==========================================
-
-export const exportSalesExcel = onCall(async (request) => {
-  if (!request.auth) {
-    throw new HttpsError('unauthenticated', 'User must be authenticated.');
-  }
-
-  const isAdmin = request.auth.token.role === 'ADMIN';
-  const filterEmployeeId = request.data?.sales_rep_id;
-
-  let query = db.collection('sales').orderBy('date', 'desc');
-
-  if (!isAdmin) {
-    // Employees can only export their own sales
-    query = query.where('sales_rep_id', '==', request.auth.uid);
-  } else if (filterEmployeeId) {
-    query = query.where('sales_rep_id', '==', filterEmployeeId);
-  }
-
-  const snapshot = await query.get();
-
-  const workbook = new ExcelJS.Workbook();
-  const worksheet = workbook.addWorksheet('Sales');
-
-  worksheet.columns = [
-    { header: 'Date', key: 'date', width: 15 },
-    { header: 'Client Name', key: 'client_name', width: 25 },
-    { header: 'Sales Representative', key: 'sales_rep_name', width: 25 },
-    { header: 'Product', key: 'product', width: 15 },
-    { header: 'Company', key: 'company', width: 20 },
-    { header: 'Scheme', key: 'scheme', width: 20 },
-    { header: 'Amount (₹)', key: 'amount', width: 15 },
-    { header: 'Frequency', key: 'frequency', width: 15 },
-    { header: 'Remarks', key: 'remarks', width: 30 }
-  ];
-
-  snapshot.forEach(doc => {
-    const s = doc.data();
-    const dateStr = s.date?.toDate ? s.date.toDate().toLocaleDateString('en-IN') : '';
-    worksheet.addRow({
-      date: dateStr,
-      client_name: s.client_name || '',
-      sales_rep_name: s.sales_rep_name || '',
-      product: s.product || '',
-      company: s.company || '',
-      scheme: s.scheme || '',
-      amount: ((s.amount_paise || 0) / 100).toFixed(2),
-      frequency: s.frequency || '',
-      remarks: s.remarks || ''
-    });
-  });
-
-  const buffer = await workbook.xlsx.writeBuffer();
-  return {
-    base64: Buffer.from(buffer).toString('base64'),
-    filename: `sales_export_${Date.now()}.xlsx`
-  };
-});
-
-export const exportInteractionsExcel = onCall(async (request) => {
-  if (!request.auth) {
-    throw new HttpsError('unauthenticated', 'User must be authenticated.');
-  }
-
-  const isAdmin = request.auth.token.role === 'ADMIN';
-  const filterEmployeeId = request.data?.employee_id;
-
-  let query = db.collection('interactions').orderBy('date', 'desc');
-
-  if (!isAdmin) {
-    query = query.where('employee_id', '==', request.auth.uid);
-  } else if (filterEmployeeId) {
-    query = query.where('employee_id', '==', filterEmployeeId);
-  }
-
-  const snapshot = await query.get();
-
-  const workbook = new ExcelJS.Workbook();
-  const worksheet = workbook.addWorksheet('Interactions');
-
-  worksheet.columns = [
-    { header: 'Date', key: 'date', width: 15 },
-    { header: 'Client Name', key: 'client_name', width: 25 },
-    { header: 'Client Contact', key: 'client_contact', width: 18 },
-    { header: 'Employee', key: 'employee_name', width: 25 },
-    { header: 'Follow-up Date', key: 'follow_up_date', width: 15 },
-    { header: 'Follow-up Time', key: 'follow_up_time', width: 15 },
-    { header: 'Priority', key: 'priority', width: 12 },
-    { header: 'Discussion Notes', key: 'discussion_notes', width: 35 }
-  ];
-
-  snapshot.forEach(doc => {
-    const i = doc.data();
-    const dateStr = i.date?.toDate ? i.date.toDate().toLocaleDateString('en-IN') : '';
-    const followUpStr = i.follow_up_date?.toDate ? i.follow_up_date.toDate().toLocaleDateString('en-IN') : '';
-    worksheet.addRow({
-      date: dateStr,
-      client_name: i.client_name || '',
-      client_contact: i.client_contact || '',
-      employee_name: i.employee_name || '',
-      follow_up_date: followUpStr,
-      follow_up_time: i.follow_up_time || '',
-      priority: i.priority || '',
-      discussion_notes: i.discussion_notes || ''
-    });
-  });
-
-  const buffer = await workbook.xlsx.writeBuffer();
-  return {
-    base64: Buffer.from(buffer).toString('base64'),
-    filename: `interactions_export_${Date.now()}.xlsx`
-  };
-});
-
-// ==========================================
-// 4. Excel Import Functions
-// ==========================================
-
-export const importSalesExcel = onCall(async (request) => {
-  if (!request.auth) {
-    throw new HttpsError('unauthenticated', 'User must be authenticated.');
-  }
-
-  const { base64 } = request.data;
-  if (!base64) {
-    throw new HttpsError('invalid-argument', 'Excel file base64 data is required.');
-  }
-
-  const buffer = Buffer.from(base64, 'base64');
-  const workbook = new ExcelJS.Workbook();
-  await workbook.xlsx.load(buffer);
-
-  const worksheet = workbook.worksheets[0];
-  if (!worksheet) {
-    throw new HttpsError('invalid-argument', 'No worksheet found in Excel file.');
-  }
-
-  // Fetch current user details
-  const empDoc = await db.collection('employees').doc(request.auth.uid).get();
-  const currentEmpName = empDoc.exists ? empDoc.data().name : 'Team Member';
-  const isAdmin = request.auth.token.role === 'ADMIN';
-
-  let batch = db.batch();
-  let count = 0;
-
-  worksheet.eachRow((row, rowNumber) => {
-    if (rowNumber === 1) return; // Skip header
-
-    const dateVal = row.getCell(1).value;
-    const clientName = row.getCell(2).value?.toString() || 'Unknown Client';
-    const repName = row.getCell(3).value?.toString() || currentEmpName;
-    const product = row.getCell(4).value?.toString() || 'MF';
-    const company = row.getCell(5).value?.toString() || '';
-    const scheme = row.getCell(6).value?.toString() || '';
-    const amountVal = parseFloat(row.getCell(7).value || 0);
-    const frequency = row.getCell(8).value?.toString() || 'O';
-    const remarks = row.getCell(9).value?.toString() || '';
-
-    const amountPaise = Math.round(amountVal * 100);
-    if (isNaN(amountPaise) || amountPaise <= 0) return;
-
-    const saleRef = db.collection('sales').doc();
-    batch.set(saleRef, {
-      date: dateVal ? admin.firestore.Timestamp.fromDate(new Date(dateVal)) : admin.firestore.FieldValue.serverTimestamp(),
-      client_name: clientName,
-      sales_rep_id: request.auth.uid,
-      sales_rep_name: isAdmin ? repName : currentEmpName,
-      product,
-      company,
-      scheme,
-      amount_paise: amountPaise,
-      frequency,
-      remarks,
-      created_at: admin.firestore.FieldValue.serverTimestamp(),
-      updated_at: admin.firestore.FieldValue.serverTimestamp()
-    });
-    count++;
-  });
-
-  await batch.commit();
-  return { success: true, count, message: `Successfully imported ${count} sales.` };
-});
-
-export const importInteractionsExcel = onCall(async (request) => {
-  if (!request.auth) {
-    throw new HttpsError('unauthenticated', 'User must be authenticated.');
-  }
-
-  const { base64 } = request.data;
-  if (!base64) {
-    throw new HttpsError('invalid-argument', 'Excel file base64 data is required.');
-  }
-
-  const buffer = Buffer.from(base64, 'base64');
-  const workbook = new ExcelJS.Workbook();
-  await workbook.xlsx.load(buffer);
-
-  const worksheet = workbook.worksheets[0];
-  if (!worksheet) {
-    throw new HttpsError('invalid-argument', 'No worksheet found in Excel file.');
-  }
-
-  const empDoc = await db.collection('employees').doc(request.auth.uid).get();
-  const currentEmpName = empDoc.exists ? empDoc.data().name : 'Team Member';
-
-  let batch = db.batch();
-  let count = 0;
-
-  worksheet.eachRow((row, rowNumber) => {
-    if (rowNumber === 1) return;
-
-    const dateVal = row.getCell(1).value;
-    const clientName = row.getCell(2).value?.toString() || 'Unknown Client';
-    const clientContact = row.getCell(3).value?.toString() || '';
-    const followUpDate = row.getCell(5).value;
-    const followUpTime = row.getCell(6).value?.toString() || '';
-    const priority = row.getCell(7).value?.toString() || 'MEDIUM';
-    const discussionNotes = row.getCell(8).value?.toString() || '';
-
-    const interRef = db.collection('interactions').doc();
-    batch.set(interRef, {
-      date: dateVal ? admin.firestore.Timestamp.fromDate(new Date(dateVal)) : admin.firestore.FieldValue.serverTimestamp(),
-      client_name: clientName,
-      client_contact: clientContact,
-      employee_id: request.auth.uid,
-      employee_name: currentEmpName,
-      follow_up_date: followUpDate ? admin.firestore.Timestamp.fromDate(new Date(followUpDate)) : null,
-      follow_up_time: followUpTime,
-      priority,
-      discussion_notes: discussionNotes,
-      created_at: admin.firestore.FieldValue.serverTimestamp(),
-      updated_at: admin.firestore.FieldValue.serverTimestamp()
-    });
-    count++;
-  });
-
-  await batch.commit();
-  return { success: true, count, message: `Successfully imported ${count} interactions.` };
-});
-
-// ==========================================
-// 5. Fan-out Triggers for Denormalized Data
+// 3. Fan-out Triggers for Denormalized Data
 // ==========================================
 
 export const onEmployeeUpdate = onDocumentUpdated('employees/{employeeId}', async (event) => {
