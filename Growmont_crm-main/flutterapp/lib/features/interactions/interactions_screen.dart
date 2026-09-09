@@ -275,7 +275,7 @@ class _InteractionsScreenState extends ConsumerState<InteractionsScreen> {
   }
 
   Future<void> _import() async {
-    final result = await FilePicker.platform.pickFiles(
+    final result = await FilePicker.pickFiles(
       type: FileType.custom,
       allowedExtensions: ['xlsx'],
     );

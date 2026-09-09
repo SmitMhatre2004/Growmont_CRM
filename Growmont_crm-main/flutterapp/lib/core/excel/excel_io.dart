@@ -75,7 +75,7 @@ class ExcelIO {
     final isDesktop =
         !kIsWeb && (Platform.isWindows || Platform.isMacOS || Platform.isLinux);
     if (isDesktop) {
-      return FilePicker.platform.saveFile(
+      return FilePicker.saveFile(
         dialogTitle: 'Save $filename',
         fileName: filename,
         type: FileType.custom,

@@ -220,7 +220,7 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
   }
 
   Future<void> _importSales() async {
-    final result = await FilePicker.platform.pickFiles(
+    final result = await FilePicker.pickFiles(
       type: FileType.custom,
       allowedExtensions: ['xlsx'],
     );
