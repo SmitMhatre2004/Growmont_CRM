@@ -6,13 +6,8 @@
 /// needs to talk to GitHub about releases (update checks, download URLs,
 /// release page links) should derive from these two constants instead of
 /// hardcoding the path again elsewhere.
-///
-/// TODO(release-repo): replace with the real public release repo once it
-/// exists (see LOCAL_FIRST_AND_UPDATER_PLAN.md Phase 7.1 / Phase 10). Until
-/// then, checkForUpdate() gracefully reports "no update information
-/// available" against this placeholder rather than erroring.
-const String kGitHubRepoOwner = 'REPLACE_ME_OWNER';
-const String kGitHubRepoName = 'REPLACE_ME_REPO';
+const String kGitHubRepoOwner = 'CruciaTos';
+const String kGitHubRepoName = 'GrowmontCRM_Release';
 
 /// GitHub REST API endpoint that returns the most recently published
 /// (non-draft, non-prerelease) release for the repo above.

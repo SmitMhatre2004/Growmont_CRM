@@ -147,18 +147,19 @@ showing an error.
 
 ## Publishing a release
 
-1. Confirm `kGitHubRepoOwner` / `kGitHubRepoName` in
-   `lib/core/updater/version_constants.dart` point at the real public
-   release repository (they ship as `REPLACE_ME_OWNER` / `REPLACE_ME_REPO`
-   placeholders until that repo exists — see
-   `LOCAL_FIRST_AND_UPDATER_PLAN.md` Phase 10).
-2. Run `installer/build_release.ps1` from the repo root.
-3. Create a GitHub release on that repo tagged `v<version>` (matching
-   `pubspec.yaml`'s version exactly).
-4. Upload both `Growmont-Setup-<version>.exe` and
+Releases are published to the dedicated release repo,
+[CruciaTos/GrowmontCRM_Release](https://github.com/CruciaTos/GrowmontCRM_Release)
+— not the source repo — matching `kGitHubRepoOwner`/`kGitHubRepoName` in
+`lib/core/updater/version_constants.dart`.
+
+1. Run `installer/build_release.ps1` from the repo root.
+2. Create a GitHub release on
+   [CruciaTos/GrowmontCRM_Release](https://github.com/CruciaTos/GrowmontCRM_Release)
+   tagged `v<version>` (matching `pubspec.yaml`'s version exactly).
+3. Upload both `Growmont-Setup-<version>.exe` and
    `Growmont-Setup-<version>.exe.sha256` from `installer/Output/` as
    release assets.
-5. Publish the release. The in-app updater picks it up automatically on
+4. Publish the release. The in-app updater picks it up automatically on
    the next check — no other step required.
 
 ## Data safety

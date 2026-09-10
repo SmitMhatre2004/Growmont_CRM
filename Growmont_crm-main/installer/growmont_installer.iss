@@ -29,9 +29,7 @@
 
 #define MyAppName "Growmont CRM"
 #define MyAppPublisher "Growmont"
-; TODO(release-repo): point this at the real public release repo once it
-; exists (see LOCAL_FIRST_AND_UPDATER_PLAN.md Phase 7.1 / Phase 10).
-#define MyAppURL "https://github.com/REPLACE_ME_OWNER/REPLACE_ME_REPO"
+#define MyAppURL "https://github.com/CruciaTos/GrowmontCRM_Release"
 #define MyAppExeName "growmont_crm.exe"
 ; Permanent — do not change once the first release ships. See [Setup] below.
 #define MyAppId "{7B3F1A62-9C48-4E1D-BF06-2A5D8C4E9F13}"
