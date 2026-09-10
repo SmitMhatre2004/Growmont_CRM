@@ -5,6 +5,7 @@ import '../../../core/providers.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../models/reminder.dart';
 import '../../../models/user.dart';
+import '../../../shared/widgets/app_modal_shell.dart';
 
 class AddReminderModal extends ConsumerStatefulWidget {
   const AddReminderModal({super.key, this.existing, this.currentUser});
@@ -110,199 +111,173 @@ class _AddReminderModalState extends ConsumerState<AddReminderModal> {
 
   @override
   Widget build(BuildContext context) {
-    return Dialog(
-      shape: const RoundedRectangleBorder(borderRadius: AppRadius.brXl),
-      backgroundColor: AppColors.surface,
-      surfaceTintColor: Colors.transparent,
-      insetPadding: const EdgeInsets.all(AppSpacing.xxl),
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: AppSizing.modalMaxWidth),
-        child: SingleChildScrollView(
-          padding: AppLayout.modalPadding,
-          child: Form(
-            key: _formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Text(
-                      widget.existing != null
-                          ? 'Edit Reminder'
-                          : 'Add Reminder',
-                      style: AppTypography.sectionTitle,
+    return AppModalShell(
+      title: widget.existing != null ? 'Edit Reminder' : 'Add Reminder',
+      child: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            TextFormField(
+              controller: _eventName,
+              decoration: const InputDecoration(labelText: 'Event Name *'),
+              validator: (v) => v == null || v.isEmpty ? 'Required' : null,
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            DropdownButtonFormField<String>(
+              initialValue: _type,
+              isExpanded: true,
+              decoration: const InputDecoration(labelText: 'Type'),
+              items: reminderTypeChoices
+                  .map(
+                    (c) => DropdownMenuItem(
+                      value: c.$1,
+                      child: Text(c.$2, overflow: TextOverflow.ellipsis),
                     ),
-                    const Spacer(),
-                    IconButton(
-                      onPressed: () => Navigator.pop(context),
-                      icon: const Icon(
-                        Icons.close,
-                        color: AppColors.textSecondary,
+                  )
+                  .toList(),
+              onChanged: (v) => setState(() => _type = v!),
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            DropdownButtonFormField<String>(
+              initialValue: _priority,
+              isExpanded: true,
+              decoration: const InputDecoration(labelText: 'Priority'),
+              items: const [
+                DropdownMenuItem(value: 'HIGH', child: Text('High Priority')),
+                DropdownMenuItem(
+                  value: 'MEDIUM',
+                  child: Text('Medium Priority'),
+                ),
+                DropdownMenuItem(value: 'LOW', child: Text('Low Priority')),
+              ],
+              onChanged: (v) => setState(() => _priority = v!),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Date *'),
+              subtitle: Text(
+                AppFormatters.formatDate(AppFormatters.toApiDate(_date)),
+              ),
+              trailing: const Icon(
+                Icons.calendar_today,
+                size: AppSizing.iconMd,
+              ),
+              onTap: () async {
+                final d = await showDatePicker(
+                  context: context,
+                  initialDate: _date,
+                  firstDate: DateTime.now(),
+                  lastDate: DateTime(2100),
+                );
+                if (d != null) setState(() => _date = d);
+              },
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Time *'),
+              subtitle: Text(_time.format(context)),
+              trailing: const Icon(Icons.access_time, size: AppSizing.iconMd),
+              onTap: () async {
+                final t = await showTimePicker(
+                  context: context,
+                  initialTime: _time,
+                );
+                if (t != null) setState(() => _time = t);
+              },
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('End Time (optional)'),
+              subtitle: Text(_endTime?.format(context) ?? 'Not set'),
+              trailing: const Icon(Icons.schedule, size: AppSizing.iconMd),
+              onTap: () async {
+                final t = await showTimePicker(
+                  context: context,
+                  initialTime: _endTime ?? _time,
+                );
+                if (t != null) setState(() => _endTime = t);
+              },
+            ),
+            const SizedBox(height: AppSpacing.md),
+            TextFormField(
+              controller: _description,
+              maxLines: 3,
+              decoration: const InputDecoration(labelText: 'Description'),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Repeat Reminder'),
+              value: _repeatReminder,
+              onChanged: (v) {
+                setState(() {
+                  _repeatReminder = v;
+                  if (v && _repeatType == 'NONE') {
+                    _repeatType = 'DAILY';
+                  }
+                });
+              },
+            ),
+            if (_repeatReminder) ...[
+              const SizedBox(height: AppSpacing.md),
+              DropdownButtonFormField<String>(
+                key: ValueKey('repeat_type_$_repeatType'),
+                isExpanded: true,
+                initialValue: _repeatType == 'NONE' ? 'DAILY' : _repeatType,
+                decoration: const InputDecoration(labelText: 'Repeat Type'),
+                items: repeatTypeChoices
+                    .where((c) => c.$1 != 'NONE')
+                    .map(
+                      (c) => DropdownMenuItem(
+                        value: c.$1,
+                        child: Text(c.$2, overflow: TextOverflow.ellipsis),
                       ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: AppSpacing.lg),
-                TextFormField(
-                  controller: _eventName,
-                  decoration: const InputDecoration(labelText: 'Event Name *'),
-                  validator: (v) => v == null || v.isEmpty ? 'Required' : null,
-                ),
-                const SizedBox(height: AppSpacing.lg),
-                DropdownButtonFormField<String>(
-                  initialValue: _type,
-                  decoration: const InputDecoration(labelText: 'Type'),
-                  items: reminderTypeChoices
-                      .map(
-                        (c) => DropdownMenuItem(value: c.$1, child: Text(c.$2)),
-                      )
-                      .toList(),
-                  onChanged: (v) => setState(() => _type = v!),
-                ),
-                const SizedBox(height: AppSpacing.lg),
-                DropdownButtonFormField<String>(
-                  initialValue: _priority,
-                  decoration: const InputDecoration(labelText: 'Priority'),
-                  items: const [
-                    DropdownMenuItem(
-                      value: 'HIGH',
-                      child: Text('High Priority'),
-                    ),
-                    DropdownMenuItem(
-                      value: 'MEDIUM',
-                      child: Text('Medium Priority'),
-                    ),
-                    DropdownMenuItem(value: 'LOW', child: Text('Low Priority')),
-                  ],
-                  onChanged: (v) => setState(() => _priority = v!),
-                ),
+                    )
+                    .toList(),
+                onChanged: (v) => setState(() => _repeatType = v!),
+              ),
+              if (_repeatType == 'WEEKLY') ...[
                 const SizedBox(height: AppSpacing.md),
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text('Date *'),
-                  subtitle: Text(
-                    AppFormatters.formatDate(AppFormatters.toApiDate(_date)),
-                  ),
-                  trailing: const Icon(
-                    Icons.calendar_today,
-                    size: AppSizing.iconMd,
-                  ),
-                  onTap: () async {
-                    final d = await showDatePicker(
-                      context: context,
-                      initialDate: _date,
-                      firstDate: DateTime.now(),
-                      lastDate: DateTime(2100),
+                Wrap(
+                  spacing: 8,
+                  children: weekDays.map((day) {
+                    final selected = _repeatDays.contains(day);
+                    return FilterChip(
+                      label: Text(day),
+                      selected: selected,
+                      onSelected: (v) {
+                        setState(() {
+                          if (v) {
+                            _repeatDays.add(day);
+                          } else {
+                            _repeatDays.remove(day);
+                          }
+                        });
+                      },
                     );
-                    if (d != null) setState(() => _date = d);
-                  },
-                ),
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text('Time *'),
-                  subtitle: Text(_time.format(context)),
-                  trailing: const Icon(
-                    Icons.access_time,
-                    size: AppSizing.iconMd,
-                  ),
-                  onTap: () async {
-                    final t = await showTimePicker(
-                      context: context,
-                      initialTime: _time,
-                    );
-                    if (t != null) setState(() => _time = t);
-                  },
-                ),
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text('End Time (optional)'),
-                  subtitle: Text(_endTime?.format(context) ?? 'Not set'),
-                  trailing: const Icon(Icons.schedule, size: AppSizing.iconMd),
-                  onTap: () async {
-                    final t = await showTimePicker(
-                      context: context,
-                      initialTime: _endTime ?? _time,
-                    );
-                    if (t != null) setState(() => _endTime = t);
-                  },
-                ),
-                const SizedBox(height: AppSpacing.md),
-                TextFormField(
-                  controller: _description,
-                  maxLines: 3,
-                  decoration: const InputDecoration(labelText: 'Description'),
-                ),
-                const SizedBox(height: AppSpacing.md),
-                SwitchListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text('Repeat Reminder'),
-                  value: _repeatReminder,
-                  onChanged: (v) {
-                    setState(() {
-                      _repeatReminder = v;
-                      if (v && _repeatType == 'NONE') {
-                        _repeatType = 'DAILY';
-                      }
-                    });
-                  },
-                ),
-                if (_repeatReminder) ...[
-                  const SizedBox(height: AppSpacing.md),
-                  DropdownButtonFormField<String>(
-                    key: ValueKey('repeat_type_$_repeatType'),
-                    initialValue: _repeatType == 'NONE' ? 'DAILY' : _repeatType,
-                    decoration: const InputDecoration(labelText: 'Repeat Type'),
-                    items: repeatTypeChoices
-                        .where((c) => c.$1 != 'NONE')
-                        .map(
-                          (c) =>
-                              DropdownMenuItem(value: c.$1, child: Text(c.$2)),
-                        )
-                        .toList(),
-                    onChanged: (v) => setState(() => _repeatType = v!),
-                  ),
-                  if (_repeatType == 'WEEKLY') ...[
-                    const SizedBox(height: AppSpacing.md),
-                    Wrap(
-                      spacing: 8,
-                      children: weekDays.map((day) {
-                        final selected = _repeatDays.contains(day);
-                        return FilterChip(
-                          label: Text(day),
-                          selected: selected,
-                          onSelected: (v) {
-                            setState(() {
-                              if (v) {
-                                _repeatDays.add(day);
-                              } else {
-                                _repeatDays.remove(day);
-                              }
-                            });
-                          },
-                        );
-                      }).toList(),
-                    ),
-                  ],
-                  SwitchListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: const Text('Repeat Every Day'),
-                    value: _repeatEveryDay,
-                    onChanged: (v) => setState(() => _repeatEveryDay = v),
-                  ),
-                ],
-                const SizedBox(height: AppSpacing.xxl),
-                SizedBox(
-                  width: double.infinity,
-                  height: AppSizing.controlLg,
-                  child: FilledButton(
-                    onPressed: _loading ? null : _submit,
-                    child: Text(_loading ? 'Saving...' : 'Save Reminder'),
-                  ),
+                  }).toList(),
                 ),
               ],
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Repeat Every Day'),
+                value: _repeatEveryDay,
+                onChanged: (v) => setState(() => _repeatEveryDay = v),
+              ),
+            ],
+            const SizedBox(height: AppSpacing.xxl),
+            SizedBox(
+              width: double.infinity,
+              height: AppSizing.controlLg,
+              child: FilledButton(
+                onPressed: _loading ? null : _submit,
+                child: Text(_loading ? 'Saving...' : 'Save Reminder'),
+              ),
             ),
-          ),
+          ],
         ),
       ),
     );

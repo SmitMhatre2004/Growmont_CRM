@@ -7,6 +7,7 @@ import '../../../models/client.dart';
 import '../../../models/employee.dart';
 import '../../../models/sale.dart';
 import '../../../models/user.dart';
+import '../../../shared/widgets/app_modal_shell.dart';
 
 class AddSaleModal extends ConsumerStatefulWidget {
   const AddSaleModal({
@@ -136,9 +137,9 @@ class _AddSaleModalState extends ConsumerState<AddSaleModal> {
       return;
     }
     if (_clientId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select a client')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Please select a client')));
       return;
     }
 
@@ -185,227 +186,171 @@ class _AddSaleModalState extends ConsumerState<AddSaleModal> {
 
   @override
   Widget build(BuildContext context) {
-    return Dialog(
-      shape: const RoundedRectangleBorder(borderRadius: AppRadius.brXl),
-      backgroundColor: AppColors.surface,
-      surfaceTintColor: Colors.transparent,
-      insetPadding: const EdgeInsets.all(AppSpacing.xxl),
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: AppSizing.modalMaxWidth),
-        child: SingleChildScrollView(
-          padding: AppLayout.modalPadding,
-          child: Form(
-            key: _formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Text(
-                      widget.existing != null ? 'Edit Sale' : 'Add New Sale',
-                      style: AppTypography.sectionTitle,
-                    ),
-                    const Spacer(),
-                    IconButton(
-                      onPressed: () => Navigator.pop(context),
-                      icon: const Icon(
-                        Icons.close,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                  ],
+    return AppModalShell(
+      title: widget.existing != null ? 'Edit Sale' : 'Add New Sale',
+      child: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            InkWell(
+              onTap: () async {
+                final picked = await showDatePicker(
+                  context: context,
+                  initialDate: _date,
+                  firstDate: DateTime(2000),
+                  lastDate: DateTime(2100),
+                );
+                if (picked != null) setState(() => _date = picked);
+              },
+              borderRadius: BorderRadius.circular(AppRadius.md),
+              child: InputDecorator(
+                decoration: const InputDecoration(
+                  labelText: 'Date *',
+                  suffixIcon: Icon(
+                    Icons.calendar_today,
+                    size: AppSizing.iconMd,
+                  ),
                 ),
-                const SizedBox(height: AppSpacing.xl),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: InkWell(
-                        onTap: () async {
-                          final picked = await showDatePicker(
-                            context: context,
-                            initialDate: _date,
-                            firstDate: DateTime(2000),
-                            lastDate: DateTime(2100),
-                          );
-                          if (picked != null) setState(() => _date = picked);
-                        },
-                        borderRadius: BorderRadius.circular(AppRadius.md),
-                        child: InputDecorator(
-                          decoration: const InputDecoration(
-                            labelText: 'Date *',
-                            suffixIcon: Icon(
-                              Icons.calendar_today,
-                              size: AppSizing.iconMd,
-                            ),
-                          ),
-                          child: Text(
-                            AppFormatters.formatDate(
-                              AppFormatters.toApiDate(_date),
-                            ),
-                            style: AppTypography.input,
-                          ),
+                child: Text(
+                  AppFormatters.formatDate(AppFormatters.toApiDate(_date)),
+                  style: AppTypography.input,
+                ),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            if (_isEmployee)
+              TextFormField(
+                initialValue: widget.currentUser?.name,
+                readOnly: true,
+                decoration: const InputDecoration(
+                  labelText: 'Sales Representative *',
+                ),
+              )
+            else
+              DropdownButtonFormField<String>(
+                key: ValueKey('sales_rep_${_salesRep}_${_employees.length}'),
+                isExpanded: true,
+                initialValue: _employees.any((e) => e.id == _salesRep)
+                    ? _salesRep
+                    : null,
+                decoration: const InputDecoration(
+                  labelText: 'Sales Representative *',
+                ),
+                items: _employees
+                    .map(
+                      (e) => DropdownMenuItem(
+                        value: e.id,
+                        child: Text(
+                          '${e.name} (${e.role})',
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: AppSpacing.lg),
-                if (_isEmployee)
-                  TextFormField(
-                    initialValue: widget.currentUser?.name,
-                    readOnly: true,
-                    decoration: const InputDecoration(
-                      labelText: 'Sales Representative *',
+                    )
+                    .toList(),
+                onChanged: (v) {
+                  setState(() => _salesRep = v);
+                  _loadClientsFor(v);
+                },
+                validator: (v) => v == null || v.isEmpty ? 'Required' : null,
+              ),
+            const SizedBox(height: AppSpacing.lg),
+            DropdownButtonFormField<String>(
+              key: ValueKey('sale_client_${_clientId}_${_clients.length}'),
+              isExpanded: true,
+              initialValue: _clients.any((c) => c.id == _clientId)
+                  ? _clientId
+                  : null,
+              decoration: InputDecoration(
+                labelText: 'Client *',
+                helperText: _loadingClients
+                    ? 'Loading clients...'
+                    : (_salesRep != null && _clients.isEmpty)
+                    ? 'No clients assigned to this employee'
+                    : null,
+              ),
+              items: _clients
+                  .map(
+                    (c) => DropdownMenuItem(
+                      value: c.id,
+                      child: Text(c.name, overflow: TextOverflow.ellipsis),
                     ),
                   )
-                else
-                  DropdownButtonFormField<String>(
-                    key: ValueKey(
-                      'sales_rep_${_salesRep}_${_employees.length}',
-                    ),
-                    initialValue: _employees.any((e) => e.id == _salesRep)
-                        ? _salesRep
-                        : null,
-                    decoration: const InputDecoration(
-                      labelText: 'Sales Representative *',
-                    ),
-                    items: _employees
-                        .map(
-                          (e) => DropdownMenuItem(
-                            value: e.id,
-                            child: Text('${e.name} (${e.role})'),
-                          ),
-                        )
-                        .toList(),
-                    onChanged: (v) {
-                      setState(() => _salesRep = v);
-                      _loadClientsFor(v);
-                    },
-                    validator: (v) =>
-                        v == null || v.isEmpty ? 'Required' : null,
-                  ),
-                const SizedBox(height: AppSpacing.lg),
-                DropdownButtonFormField<String>(
-                  key: ValueKey('sale_client_${_clientId}_${_clients.length}'),
-                  initialValue: _clients.any((c) => c.id == _clientId)
-                      ? _clientId
-                      : null,
-                  decoration: InputDecoration(
-                    labelText: 'Client *',
-                    helperText: _loadingClients
-                        ? 'Loading clients...'
-                        : (_salesRep != null && _clients.isEmpty)
-                        ? 'No clients assigned to this employee'
-                        : null,
-                  ),
-                  items: _clients
-                      .map(
-                        (c) => DropdownMenuItem(
-                          value: c.id,
-                          child: Text(c.name),
-                        ),
-                      )
-                      .toList(),
-                  onChanged: (v) => setState(() => _clientId = v),
-                  validator: (v) =>
-                      v == null || v.isEmpty ? 'Required' : null,
-                ),
-                const SizedBox(height: AppSpacing.lg),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: DropdownButtonFormField<String>(
-                        initialValue: _product,
-                        decoration: const InputDecoration(
-                          labelText: 'Product *',
-                        ),
-                        items: productCategories
-                            .where((c) => c.$1 != 'ALL')
-                            .map(
-                              (c) => DropdownMenuItem(
-                                value: c.$1,
-                                child: Text(c.$2),
-                              ),
-                            )
-                            .toList(),
-                        onChanged: (v) => setState(() => _product = v!),
-                      ),
-                    ),
-                    const SizedBox(width: AppSpacing.md),
-                    Expanded(
-                      child: TextFormField(
-                        controller: _company,
-                        decoration: const InputDecoration(
-                          labelText: 'Company *',
-                        ),
-                        validator: (v) =>
-                            v == null || v.isEmpty ? 'Required' : null,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: AppSpacing.lg),
-                TextFormField(
-                  controller: _scheme,
-                  decoration: const InputDecoration(labelText: 'Scheme *'),
-                  validator: (v) => v == null || v.isEmpty ? 'Required' : null,
-                ),
-                const SizedBox(height: AppSpacing.lg),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: TextFormField(
-                        controller: _amount,
-                        keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(
-                          labelText: 'Amount *',
-                        ),
-                        validator: (v) =>
-                            v == null || v.isEmpty ? 'Required' : null,
-                      ),
-                    ),
-                    const SizedBox(width: AppSpacing.md),
-                    Expanded(
-                      child: DropdownButtonFormField<String>(
-                        initialValue: _frequency,
-                        decoration: const InputDecoration(
-                          labelText: 'Frequency *',
-                        ),
-                        items: frequencyChoices
-                            .map(
-                              (c) => DropdownMenuItem(
-                                value: c.$1,
-                                child: Text(c.$2),
-                              ),
-                            )
-                            .toList(),
-                        onChanged: (v) => setState(() => _frequency = v!),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: AppSpacing.lg),
-                TextFormField(
-                  controller: _remarks,
-                  maxLines: 3,
-                  decoration: const InputDecoration(labelText: 'Remarks'),
-                ),
-                const SizedBox(height: AppSpacing.xxl),
-                SizedBox(
-                  width: double.infinity,
-                  height: AppSizing.controlLg,
-                  child: FilledButton(
-                    onPressed: _loading ? null : _submit,
-                    child: Text(_loading ? 'Saving...' : 'Save Sale'),
-                  ),
-                ),
-              ],
+                  .toList(),
+              onChanged: (v) => setState(() => _clientId = v),
+              validator: (v) => v == null || v.isEmpty ? 'Required' : null,
             ),
-          ),
+            const SizedBox(height: AppSpacing.lg),
+            modalFieldPair(
+              context,
+              DropdownButtonFormField<String>(
+                initialValue: _product,
+                isExpanded: true,
+                decoration: const InputDecoration(labelText: 'Product *'),
+                items: productCategories
+                    .where((c) => c.$1 != 'ALL')
+                    .map(
+                      (c) => DropdownMenuItem(
+                        value: c.$1,
+                        child: Text(c.$2, overflow: TextOverflow.ellipsis),
+                      ),
+                    )
+                    .toList(),
+                onChanged: (v) => setState(() => _product = v!),
+              ),
+              TextFormField(
+                controller: _company,
+                decoration: const InputDecoration(labelText: 'Company *'),
+                validator: (v) => v == null || v.isEmpty ? 'Required' : null,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            TextFormField(
+              controller: _scheme,
+              decoration: const InputDecoration(labelText: 'Scheme *'),
+              validator: (v) => v == null || v.isEmpty ? 'Required' : null,
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            modalFieldPair(
+              context,
+              TextFormField(
+                controller: _amount,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(labelText: 'Amount *'),
+                validator: (v) => v == null || v.isEmpty ? 'Required' : null,
+              ),
+              DropdownButtonFormField<String>(
+                initialValue: _frequency,
+                isExpanded: true,
+                decoration: const InputDecoration(labelText: 'Frequency *'),
+                items: frequencyChoices
+                    .map(
+                      (c) => DropdownMenuItem(
+                        value: c.$1,
+                        child: Text(c.$2, overflow: TextOverflow.ellipsis),
+                      ),
+                    )
+                    .toList(),
+                onChanged: (v) => setState(() => _frequency = v!),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            TextFormField(
+              controller: _remarks,
+              maxLines: 3,
+              decoration: const InputDecoration(labelText: 'Remarks'),
+            ),
+            const SizedBox(height: AppSpacing.xxl),
+            SizedBox(
+              width: double.infinity,
+              height: AppSizing.controlLg,
+              child: FilledButton(
+                onPressed: _loading ? null : _submit,
+                child: Text(_loading ? 'Saving...' : 'Save Sale'),
+              ),
+            ),
+          ],
         ),
       ),
     );

@@ -7,6 +7,7 @@ import '../../../core/config/app_config.dart';
 import '../../../core/providers.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../models/employee.dart';
+import '../../../shared/widgets/app_modal_shell.dart';
 
 enum _ReviewFilter { pending, restricted, rejected }
 
@@ -34,12 +35,11 @@ class _PendingRequestsSectionState
   @override
   void initState() {
     super.initState();
-    _sub = ref
-        .read(firestoreServiceProvider)
-        .streamPendingReview()
-        .listen((items) {
-          if (mounted) setState(() => _items = items);
-        });
+    _sub = ref.read(firestoreServiceProvider).streamPendingReview().listen((
+      items,
+    ) {
+      if (mounted) setState(() => _items = items);
+    });
     // Purely re-renders the countdown text each second; no refetch.
     _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted) setState(() {});
@@ -476,57 +476,50 @@ class _AcceptDialogState extends State<_AcceptDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return Dialog(
-      shape: const RoundedRectangleBorder(borderRadius: AppRadius.brXl),
-      backgroundColor: AppColors.surface,
-      surfaceTintColor: Colors.transparent,
-      insetPadding: const EdgeInsets.all(AppSpacing.xxl),
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: AppSizing.modalMaxWidth),
-        child: Padding(
-          padding: AppLayout.modalPadding,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
+    return AppModalShell(
+      title: 'Accept Employee',
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Grant ${widget.employee.name} (${widget.employee.email}) '
+            'permanent access.',
+            style: AppTypography.itemSubtitle,
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          DropdownButtonFormField<String>(
+            initialValue: _role,
+            isExpanded: true,
+            decoration: const InputDecoration(labelText: 'Role'),
+            items: const [
+              DropdownMenuItem(value: 'EMPLOYEE', child: Text('Employee')),
+              DropdownMenuItem(value: 'ADMIN', child: Text('Admin')),
+            ],
+            onChanged: (v) => setState(() => _role = v!),
+          ),
+          const SizedBox(height: AppSpacing.xl),
+          // Wrap, not Row: at large text scale two buttons no longer fit
+          // side by side on a narrow phone.
+          Wrap(
+            alignment: WrapAlignment.end,
+            spacing: AppSpacing.sm,
+            runSpacing: AppSpacing.sm,
             children: [
-              Text('Accept Employee', style: AppTypography.sectionTitle),
-              const SizedBox(height: AppSpacing.sm),
-              Text(
-                'Grant ${widget.employee.name} (${widget.employee.email}) '
-                'permanent access.',
-                style: AppTypography.itemSubtitle,
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cancel'),
               ),
-              const SizedBox(height: AppSpacing.lg),
-              DropdownButtonFormField<String>(
-                initialValue: _role,
-                decoration: const InputDecoration(labelText: 'Role'),
-                items: const [
-                  DropdownMenuItem(value: 'EMPLOYEE', child: Text('Employee')),
-                  DropdownMenuItem(value: 'ADMIN', child: Text('Admin')),
-                ],
-                onChanged: (v) => setState(() => _role = v!),
-              ),
-              const SizedBox(height: AppSpacing.xl),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: const Text('Cancel'),
-                  ),
-                  const SizedBox(width: AppSpacing.sm),
-                  FilledButton(
-                    style: FilledButton.styleFrom(
-                      backgroundColor: AppColors.primaryBlue,
-                    ),
-                    onPressed: () => Navigator.pop(context, _role),
-                    child: const Text('Accept'),
-                  ),
-                ],
+              FilledButton(
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.primaryBlue,
+                ),
+                onPressed: () => Navigator.pop(context, _role),
+                child: const Text('Accept'),
               ),
             ],
           ),
-        ),
+        ],
       ),
     );
   }

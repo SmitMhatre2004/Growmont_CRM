@@ -6,6 +6,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../models/client.dart';
 import '../../../models/employee.dart';
 import '../../../models/user.dart';
+import '../../../shared/widgets/app_modal_shell.dart';
 
 class AddClientModal extends ConsumerStatefulWidget {
   const AddClientModal({super.key, this.existing, this.currentUser});
@@ -112,103 +113,77 @@ class _AddClientModalState extends ConsumerState<AddClientModal> {
 
   @override
   Widget build(BuildContext context) {
-    return Dialog(
-      shape: const RoundedRectangleBorder(borderRadius: AppRadius.brXl),
-      backgroundColor: AppColors.surface,
-      surfaceTintColor: Colors.transparent,
-      insetPadding: const EdgeInsets.all(AppSpacing.xxl),
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: AppSizing.modalMaxWidth),
-        child: SingleChildScrollView(
-          padding: AppLayout.modalPadding,
-          child: Form(
-            key: _formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Text(
-                      widget.existing != null ? 'Edit Client' : 'Add Client',
-                      style: AppTypography.sectionTitle,
-                    ),
-                    const Spacer(),
-                    IconButton(
-                      onPressed: () => Navigator.pop(context),
-                      icon: const Icon(
-                        Icons.close,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: AppSpacing.lg),
-                TextFormField(
-                  controller: _name,
-                  decoration: const InputDecoration(labelText: 'Client Name *'),
-                  validator: (v) =>
-                      (v == null || v.trim().isEmpty) ? 'Required' : null,
-                ),
-                const SizedBox(height: AppSpacing.md),
-                TextFormField(
-                  controller: _contactNumber,
-                  decoration: const InputDecoration(
-                    labelText: 'Contact Number *',
-                  ),
-                  keyboardType: TextInputType.phone,
-                  validator: (v) =>
-                      (v == null || v.trim().isEmpty) ? 'Required' : null,
-                ),
-                const SizedBox(height: AppSpacing.md),
-                if (_isEmployee)
-                  TextFormField(
-                    initialValue: widget.currentUser?.name,
-                    readOnly: true,
-                    decoration: const InputDecoration(
-                      labelText: 'Assigned Employee',
-                      helperText: 'Clients you add are assigned to you',
-                    ),
-                  )
-                else
-                  DropdownButtonFormField<String>(
-                    key: ValueKey('client_owner_${_employeeId}_${_employees.length}'),
-                    initialValue: _employees.any((e) => e.id == _employeeId)
-                        ? _employeeId
-                        : null,
-                    decoration: InputDecoration(
-                      labelText: 'Assigned Employee *',
-                      helperText: _loadingEmployees
-                          ? 'Loading employees...'
-                          : 'Each client can only be assigned to one employee',
-                    ),
-                    items: _employees
-                        .map(
-                          (e) => DropdownMenuItem(
-                            value: e.id,
-                            child: Text(e.name),
-                          ),
-                        )
-                        .toList(),
-                    onChanged: (v) => setState(() => _employeeId = v),
-                    validator: (v) =>
-                        v == null || v.isEmpty ? 'Required' : null,
-                  ),
-                const SizedBox(height: AppSpacing.xxl),
-                SizedBox(
-                  width: double.infinity,
-                  height: AppSizing.controlLg,
-                  child: FilledButton(
-                    onPressed: _loading ? null : _submit,
-                    style: FilledButton.styleFrom(
-                      backgroundColor: AppColors.primaryBlue,
-                    ),
-                    child: Text(_loading ? 'Saving...' : 'Save Client'),
-                  ),
-                ),
-              ],
+    return AppModalShell(
+      title: widget.existing != null ? 'Edit Client' : 'Add Client',
+      child: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            TextFormField(
+              controller: _name,
+              decoration: const InputDecoration(labelText: 'Client Name *'),
+              validator: (v) =>
+                  (v == null || v.trim().isEmpty) ? 'Required' : null,
             ),
-          ),
+            const SizedBox(height: AppSpacing.md),
+            TextFormField(
+              controller: _contactNumber,
+              decoration: const InputDecoration(labelText: 'Contact Number *'),
+              keyboardType: TextInputType.phone,
+              validator: (v) =>
+                  (v == null || v.trim().isEmpty) ? 'Required' : null,
+            ),
+            const SizedBox(height: AppSpacing.md),
+            if (_isEmployee)
+              TextFormField(
+                initialValue: widget.currentUser?.name,
+                readOnly: true,
+                decoration: const InputDecoration(
+                  labelText: 'Assigned Employee',
+                  helperText: 'Clients you add are assigned to you',
+                ),
+              )
+            else
+              DropdownButtonFormField<String>(
+                key: ValueKey(
+                  'client_owner_${_employeeId}_${_employees.length}',
+                ),
+                isExpanded: true,
+                initialValue: _employees.any((e) => e.id == _employeeId)
+                    ? _employeeId
+                    : null,
+                decoration: InputDecoration(
+                  labelText: 'Assigned Employee *',
+                  helperText: _loadingEmployees
+                      ? 'Loading employees...'
+                      : 'Each client can only be assigned to one employee',
+                ),
+                items: _employees
+                    .map(
+                      (e) => DropdownMenuItem(
+                        value: e.id,
+                        child: Text(e.name, overflow: TextOverflow.ellipsis),
+                      ),
+                    )
+                    .toList(),
+                onChanged: (v) => setState(() => _employeeId = v),
+                validator: (v) => v == null || v.isEmpty ? 'Required' : null,
+              ),
+            const SizedBox(height: AppSpacing.xxl),
+            SizedBox(
+              width: double.infinity,
+              height: AppSizing.controlLg,
+              child: FilledButton(
+                onPressed: _loading ? null : _submit,
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.primaryBlue,
+                ),
+                child: Text(_loading ? 'Saving...' : 'Save Client'),
+              ),
+            ),
+          ],
         ),
       ),
     );

@@ -8,6 +8,7 @@ import '../../core/theme/app_theme.dart';
 import '../../models/interaction.dart';
 import '../../models/sale.dart';
 import '../../models/user.dart';
+import '../../shared/widgets/toolbar_action_button.dart';
 import '../auth/auth_provider.dart';
 import '../interactions/interactions_excel.dart';
 import '../interactions/widgets/add_interaction_modal.dart';
@@ -656,16 +657,14 @@ class _InfoPortalScreenState extends ConsumerState<InfoPortalScreen> {
         onPressed: _import,
       ),
       const SizedBox(width: AppSpacing.sm),
-      SizedBox(
-        height: _controlHeight,
-        child: FilledButton.icon(
-          onPressed: () => _showAddModal(user),
-          icon: const Icon(Icons.add, size: AppSizing.iconMd),
-          label: Text(isSales ? 'Add Sale' : 'Add Interaction'),
-          style: FilledButton.styleFrom(
-            backgroundColor: AppColors.primaryBlue,
-          ),
-        ),
+      AppToolbarButton(
+        icon: Icons.add,
+        // Shorter on phones so the group never needs to scroll.
+        label: isMobile
+            ? 'Add'
+            : (isSales ? 'Add Sale' : 'Add Interaction'),
+        isPrimary: true,
+        onPressed: () => _showAddModal(user),
       ),
     ];
 
@@ -680,13 +679,8 @@ class _InfoPortalScreenState extends ConsumerState<InfoPortalScreen> {
               child: slidingSegment,
             ),
             const SizedBox(height: AppSpacing.md),
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: actionButtons,
-              ),
-            ),
+            // Compact actions fit on one line — no scrolling, no clipping.
+            Row(mainAxisSize: MainAxisSize.min, children: actionButtons),
           ],
         ),
       );
@@ -734,19 +728,7 @@ class _InfoPortalScreenState extends ConsumerState<InfoPortalScreen> {
     required String label,
     required VoidCallback onPressed,
   }) {
-    return SizedBox(
-      height: _controlHeight,
-      child: OutlinedButton.icon(
-        onPressed: onPressed,
-        icon: Icon(icon, size: AppSizing.iconMd),
-        label: Text(label),
-        style: OutlinedButton.styleFrom(
-          foregroundColor: _Palette.textPrimary,
-          side: const BorderSide(color: _Palette.border),
-          backgroundColor: AppColors.surface,
-        ),
-      ),
-    );
+    return AppToolbarButton(icon: icon, label: label, onPressed: onPressed);
   }
 
   // -- Search Row & Selection Action Bar ---------------------------------

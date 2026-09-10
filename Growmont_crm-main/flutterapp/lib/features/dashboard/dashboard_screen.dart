@@ -746,35 +746,41 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             ),
             if (!isWide) ...[
               const SizedBox(height: AppSpacing.md),
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: [
-                    _quickActionButton(
+              // One horizontal row of three equal-width buttons that span the
+              // full gutter. Each shrinks its own label to fit, so the group
+              // never scrolls, never wraps and never clips.
+              Row(
+                children: [
+                  Expanded(
+                    child: _quickActionButton(
                       icon: Icons.add,
-                      label: 'Add Sale',
+                      label: 'Sale',
                       isPrimary: true,
                       color: AppColors.primaryBlue,
                       onPressed: () => _openAddSale(user),
                     ),
-                    const SizedBox(width: AppSpacing.sm),
-                    _quickActionButton(
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: _quickActionButton(
                       icon: Icons.add,
-                      label: 'Add Follow-up',
+                      label: 'Follow-up',
                       isPrimary: true,
                       color: AppColors.primaryBlue,
                       onPressed: () => _openAddInteraction(user),
                     ),
-                    const SizedBox(width: AppSpacing.sm),
-                    _quickActionButton(
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: _quickActionButton(
                       icon: Icons.add,
-                      label: 'Add Reminder',
+                      label: 'Reminder',
                       isPrimary: true,
                       color: AppColors.primaryBlue,
                       onPressed: () => _openAddReminder(user),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ],
             const SizedBox(height: AppSpacing.lg),
@@ -958,9 +964,17 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   size: AppSizing.iconMd,
                 ),
                 const SizedBox(width: AppSpacing.sm),
-                Text(title, style: AppTypography.sectionTitle),
+                // Expanded rather than a bare Text + Spacer: at a large system
+                // font scale the title and subtitle would otherwise overflow.
+                Expanded(
+                  child: Text(
+                    title,
+                    style: AppTypography.sectionTitle,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
                 if (subtitle != null) ...[
-                  const Spacer(),
+                  const SizedBox(width: AppSpacing.sm),
                   Text(subtitle, style: AppTypography.caption),
                 ],
               ],
@@ -986,14 +1000,24 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         child: FilledButton.icon(
           onPressed: onPressed,
           icon: Icon(icon, size: AppSizing.iconMd),
-          label: Text(
-            label,
-            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+          // These three sit in equal-width Expanded slots on a phone, so the
+          // label scales itself down rather than overflowing its button.
+          label: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              label,
+              maxLines: 1,
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ),
           style: FilledButton.styleFrom(
             backgroundColor: color,
             foregroundColor: Colors.white,
             elevation: 0,
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
           ),
         ),
       );

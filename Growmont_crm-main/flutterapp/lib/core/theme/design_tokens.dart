@@ -191,6 +191,20 @@ class AppLayout {
 
   /// Padding inside a modal body.
   static const EdgeInsets modalPadding = EdgeInsets.all(AppSpacing.xxl);
+
+  /// Outer inset for a [Dialog]. Tighter horizontally on phones: a flat 24pt
+  /// inset plus 24pt of body padding leaves only ~264pt of content on a 360pt
+  /// screen, which is not enough for two fields side by side.
+  static EdgeInsets modalInset(BuildContext context) => isMobile(context)
+      ? const EdgeInsets.symmetric(
+          horizontal: AppSpacing.md,
+          vertical: AppSpacing.xxl,
+        )
+      : const EdgeInsets.all(AppSpacing.xxl);
+
+  /// Padding inside a modal body, adaptive. Prefer this over [modalPadding].
+  static EdgeInsets modalPaddingFor(BuildContext context) =>
+      EdgeInsets.all(isMobile(context) ? AppSpacing.lg : AppSpacing.xxl);
 }
 
 /// The single shadow vocabulary. Cards are flat + bordered by default; shadows

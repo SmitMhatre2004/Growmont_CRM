@@ -7,6 +7,7 @@ import '../../core/providers.dart';
 import '../../core/theme/app_theme.dart';
 import '../../models/interaction.dart';
 import '../../models/user.dart';
+import '../../shared/widgets/toolbar_action_button.dart';
 import '../auth/auth_provider.dart';
 import 'interactions_excel.dart';
 import 'widgets/add_interaction_modal.dart';
@@ -378,19 +379,7 @@ class _InteractionsScreenState extends ConsumerState<InteractionsScreen> {
     required String label,
     required VoidCallback onPressed,
   }) {
-    return SizedBox(
-      height: _controlHeight,
-      child: OutlinedButton.icon(
-        onPressed: onPressed,
-        icon: Icon(icon, size: AppSizing.iconMd),
-        label: Text(label),
-        style: OutlinedButton.styleFrom(
-          foregroundColor: _Palette.textPrimary,
-          side: const BorderSide(color: _Palette.border),
-          backgroundColor: AppColors.surface,
-        ),
-      ),
-    );
+    return AppToolbarButton(icon: icon, label: label, onPressed: onPressed);
   }
 
   // -- Tabs row: physical sliding priority filter + Export/Import + Add Interaction
@@ -498,16 +487,12 @@ class _InteractionsScreenState extends ConsumerState<InteractionsScreen> {
           onPressed: _import,
         ),
         const SizedBox(width: AppSpacing.sm),
-        SizedBox(
-          height: _controlHeight,
-          child: FilledButton.icon(
-            onPressed: () => _showModal(user),
-            icon: const Icon(Icons.add, size: AppSizing.iconMd),
-            label: const Text('Add Interaction'),
-            style: FilledButton.styleFrom(
-              backgroundColor: AppColors.primaryBlue,
-            ),
-          ),
+        AppToolbarButton(
+          icon: Icons.add,
+          // Shorter on phones so the group never needs to scroll.
+          label: isMobile ? 'Add' : 'Add Interaction',
+          isPrimary: true,
+          onPressed: () => _showModal(user),
         ),
       ],
     );
@@ -518,15 +503,16 @@ class _InteractionsScreenState extends ConsumerState<InteractionsScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // The priority segments genuinely can exceed the width, so they
+            // keep a scroll view — but it is given a bounded width by the
+            // Column rather than sitting unconstrained inside a Row.
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: segmentWidget,
             ),
             const SizedBox(height: AppSpacing.md),
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: actionButtons,
-            ),
+            // Compact actions fit on one line, so no scrolling and no clipping.
+            actionButtons,
           ],
         ),
       );

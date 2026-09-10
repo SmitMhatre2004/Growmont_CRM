@@ -7,6 +7,7 @@ import '../../core/providers.dart';
 import '../../core/theme/app_theme.dart';
 import '../../models/sale.dart';
 import '../../models/user.dart';
+import '../../shared/widgets/toolbar_action_button.dart';
 import '../auth/auth_provider.dart';
 import 'sales_excel.dart';
 import 'widgets/add_sale_modal.dart';
@@ -40,7 +41,6 @@ class SalesScreen extends ConsumerStatefulWidget {
 class _SalesScreenState extends ConsumerState<SalesScreen> {
   // Control metrics come from the shared design tokens so every screen's
   // toolbar sits on the same baseline with the same corner treatment.
-  static const double _controlHeight = AppSizing.controlMd; // 40
 
   List<Sale> _sales = [];
   String _selectedProduct = 'ALL';
@@ -272,19 +272,7 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
     required String label,
     required VoidCallback onPressed,
   }) {
-    return SizedBox(
-      height: _controlHeight,
-      child: OutlinedButton.icon(
-        onPressed: onPressed,
-        icon: Icon(icon, size: AppSizing.iconMd),
-        label: Text(label),
-        style: OutlinedButton.styleFrom(
-          foregroundColor: _Palette.textPrimary,
-          side: const BorderSide(color: _Palette.border),
-          backgroundColor: AppColors.surface,
-        ),
-      ),
-    );
+    return AppToolbarButton(icon: icon, label: label, onPressed: onPressed);
   }
 
   @override
@@ -380,16 +368,11 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
           onPressed: _importSales,
         ),
         const SizedBox(width: AppSpacing.sm),
-        SizedBox(
-          height: _controlHeight,
-          child: FilledButton.icon(
-            onPressed: () => _showSaleModal(context, user),
-            icon: const Icon(Icons.add, size: AppSizing.iconMd),
-            label: const Text('Add Sale'),
-            style: FilledButton.styleFrom(
-              backgroundColor: AppColors.primaryBlue,
-            ),
-          ),
+        AppToolbarButton(
+          icon: Icons.add,
+          label: 'Add Sale',
+          isPrimary: true,
+          onPressed: () => _showSaleModal(context, user),
         ),
       ],
     );
@@ -542,15 +525,17 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
           ? Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // The action group is compact on phones (icon-only secondary
+                // actions), so it fits outright — no horizontal scroll view,
+                // which previously overflowed this Row by 94px because it
+                // claimed its child's full intrinsic width.
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    _buildSelectionBar(),
-                    SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: actionButtons,
-                    ),
+                    Flexible(child: _buildSelectionBar()),
+                    const SizedBox(width: AppSpacing.sm),
+                    actionButtons,
                   ],
                 ),
                 const SizedBox(height: AppSpacing.md),

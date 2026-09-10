@@ -7,6 +7,7 @@ import '../../../models/client.dart';
 import '../../../models/employee.dart';
 import '../../../models/interaction.dart';
 import '../../../models/user.dart';
+import '../../../shared/widgets/app_modal_shell.dart';
 
 class AddInteractionModal extends ConsumerStatefulWidget {
   const AddInteractionModal({super.key, this.existing, this.currentUser});
@@ -128,9 +129,9 @@ class _AddInteractionModalState extends ConsumerState<AddInteractionModal> {
     }
     if (_employeeId == null) return;
     if (_clientId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select a client')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Please select a client')));
       return;
     }
 
@@ -176,189 +177,158 @@ class _AddInteractionModalState extends ConsumerState<AddInteractionModal> {
 
   @override
   Widget build(BuildContext context) {
-    return Dialog(
-      shape: const RoundedRectangleBorder(borderRadius: AppRadius.brXl),
-      backgroundColor: AppColors.surface,
-      surfaceTintColor: Colors.transparent,
-      insetPadding: const EdgeInsets.all(AppSpacing.xxl),
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: AppSizing.modalMaxWidth),
-        child: SingleChildScrollView(
-          padding: AppLayout.modalPadding,
-          child: Form(
-            key: _formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Text(
-                      widget.existing != null
-                          ? 'Edit Interaction'
-                          : 'Add Interaction',
-                      style: AppTypography.sectionTitle,
-                    ),
-                    const Spacer(),
-                    IconButton(
-                      onPressed: () => Navigator.pop(context),
-                      icon: const Icon(
-                        Icons.close,
-                        color: AppColors.textSecondary,
+    return AppModalShell(
+      title: widget.existing != null ? 'Edit Interaction' : 'Add Interaction',
+      child: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            DropdownButtonFormField<String>(
+              isExpanded: true,
+              key: ValueKey(
+                'interaction_client_${_clientId}_${_clients.length}',
+              ),
+              initialValue: _clients.any((c) => c.id == _clientId)
+                  ? _clientId
+                  : null,
+              decoration: InputDecoration(
+                labelText: 'Client *',
+                helperText: _loadingClients
+                    ? 'Loading clients...'
+                    : (_employeeId != null && _clients.isEmpty)
+                    ? 'No clients assigned to this employee'
+                    : null,
+              ),
+              items: _clients
+                  .map(
+                    (c) => DropdownMenuItem(
+                      value: c.id,
+                      child: Text(
+                        c.contactNumber.isNotEmpty
+                            ? '${c.name} (${c.contactNumber})'
+                            : c.name,
                       ),
                     ),
-                  ],
-                ),
-                const SizedBox(height: AppSpacing.xl),
-                DropdownButtonFormField<String>(
-                  key: ValueKey(
-                    'interaction_client_${_clientId}_${_clients.length}',
-                  ),
-                  initialValue: _clients.any((c) => c.id == _clientId)
-                      ? _clientId
-                      : null,
-                  decoration: InputDecoration(
-                    labelText: 'Client *',
-                    helperText: _loadingClients
-                        ? 'Loading clients...'
-                        : (_employeeId != null && _clients.isEmpty)
-                        ? 'No clients assigned to this employee'
-                        : null,
-                  ),
-                  items: _clients
-                      .map(
-                        (c) => DropdownMenuItem(
-                          value: c.id,
-                          child: Text(
-                            c.contactNumber.isNotEmpty
-                                ? '${c.name} (${c.contactNumber})'
-                                : c.name,
-                          ),
-                        ),
-                      )
-                      .toList(),
-                  onChanged: (v) => setState(() => _clientId = v),
-                  validator: (v) =>
-                      v == null || v.isEmpty ? 'Required' : null,
-                ),
-                const SizedBox(height: AppSpacing.md),
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text('Interaction Date *'),
-                  subtitle: Text(
-                    AppFormatters.formatDate(AppFormatters.toApiDate(_date)),
-                  ),
-                  trailing: const Icon(
-                    Icons.calendar_today,
-                    size: AppSizing.iconMd,
-                  ),
-                  onTap: () async {
-                    final d = await showDatePicker(
-                      context: context,
-                      initialDate: _date,
-                      firstDate: DateTime(2000),
-                      lastDate: DateTime(2100),
-                    );
-                    if (d != null) setState(() => _date = d);
-                  },
-                ),
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text('Follow-up Date *'),
-                  subtitle: Text(
-                    AppFormatters.formatDate(
-                      AppFormatters.toApiDate(_followUpDate),
-                    ),
-                  ),
-                  trailing: const Icon(Icons.event, size: AppSizing.iconMd),
-                  onTap: () async {
-                    final d = await showDatePicker(
-                      context: context,
-                      initialDate: _followUpDate,
-                      firstDate: DateTime(2000),
-                      lastDate: DateTime(2100),
-                    );
-                    if (d != null) setState(() => _followUpDate = d);
-                  },
-                ),
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text('Follow-up Time *'),
-                  subtitle: Text(_followUpTime.format(context)),
-                  trailing: const Icon(
-                    Icons.access_time,
-                    size: AppSizing.iconMd,
-                  ),
-                  onTap: () async {
-                    final t = await showTimePicker(
-                      context: context,
-                      initialTime: _followUpTime,
-                    );
-                    if (t != null) setState(() => _followUpTime = t);
-                  },
-                ),
-                const SizedBox(height: AppSpacing.md),
-                if (_isEmployee)
-                  TextFormField(
-                    initialValue: widget.currentUser?.name,
-                    readOnly: true,
-                    decoration: const InputDecoration(labelText: 'Employee'),
                   )
-                else
-                  DropdownButtonFormField<String>(
-                    key: ValueKey(
-                      'employee_${_employeeId}_${_employees.length}',
-                    ),
-                    initialValue: _employees.any((e) => e.id == _employeeId)
-                        ? _employeeId
-                        : null,
-                    decoration: const InputDecoration(labelText: 'Employee *'),
-                    items: _employees
-                        .map(
-                          (e) => DropdownMenuItem(
-                            value: e.id,
-                            child: Text(e.name),
-                          ),
-                        )
-                        .toList(),
-                    onChanged: (v) {
-                      setState(() => _employeeId = v);
-                      _loadClientsFor(v);
-                    },
-                    validator: (v) =>
-                        v == null || v.isEmpty ? 'Required' : null,
-                  ),
-                const SizedBox(height: AppSpacing.lg),
-                DropdownButtonFormField<String>(
-                  initialValue: _priority,
-                  decoration: const InputDecoration(labelText: 'Priority'),
-                  items: priorityChoices
-                      .map(
-                        (c) => DropdownMenuItem(value: c.$1, child: Text(c.$2)),
-                      )
-                      .toList(),
-                  onChanged: (v) => setState(() => _priority = v!),
-                ),
-                const SizedBox(height: AppSpacing.lg),
-                TextFormField(
-                  controller: _notes,
-                  maxLines: 3,
-                  decoration: const InputDecoration(
-                    labelText: 'Discussion Notes',
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.xxl),
-                SizedBox(
-                  width: double.infinity,
-                  height: AppSizing.controlLg,
-                  child: FilledButton(
-                    onPressed: _loading ? null : _submit,
-                    child: Text(_loading ? 'Saving...' : 'Save Interaction'),
-                  ),
-                ),
-              ],
+                  .toList(),
+              onChanged: (v) => setState(() => _clientId = v),
+              validator: (v) => v == null || v.isEmpty ? 'Required' : null,
             ),
-          ),
+            const SizedBox(height: AppSpacing.md),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Interaction Date *'),
+              subtitle: Text(
+                AppFormatters.formatDate(AppFormatters.toApiDate(_date)),
+              ),
+              trailing: const Icon(
+                Icons.calendar_today,
+                size: AppSizing.iconMd,
+              ),
+              onTap: () async {
+                final d = await showDatePicker(
+                  context: context,
+                  initialDate: _date,
+                  firstDate: DateTime(2000),
+                  lastDate: DateTime(2100),
+                );
+                if (d != null) setState(() => _date = d);
+              },
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Follow-up Date *'),
+              subtitle: Text(
+                AppFormatters.formatDate(
+                  AppFormatters.toApiDate(_followUpDate),
+                ),
+              ),
+              trailing: const Icon(Icons.event, size: AppSizing.iconMd),
+              onTap: () async {
+                final d = await showDatePicker(
+                  context: context,
+                  initialDate: _followUpDate,
+                  firstDate: DateTime(2000),
+                  lastDate: DateTime(2100),
+                );
+                if (d != null) setState(() => _followUpDate = d);
+              },
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Follow-up Time *'),
+              subtitle: Text(_followUpTime.format(context)),
+              trailing: const Icon(Icons.access_time, size: AppSizing.iconMd),
+              onTap: () async {
+                final t = await showTimePicker(
+                  context: context,
+                  initialTime: _followUpTime,
+                );
+                if (t != null) setState(() => _followUpTime = t);
+              },
+            ),
+            const SizedBox(height: AppSpacing.md),
+            if (_isEmployee)
+              TextFormField(
+                initialValue: widget.currentUser?.name,
+                readOnly: true,
+                decoration: const InputDecoration(labelText: 'Employee'),
+              )
+            else
+              DropdownButtonFormField<String>(
+                key: ValueKey('employee_${_employeeId}_${_employees.length}'),
+                isExpanded: true,
+                initialValue: _employees.any((e) => e.id == _employeeId)
+                    ? _employeeId
+                    : null,
+                decoration: const InputDecoration(labelText: 'Employee *'),
+                items: _employees
+                    .map(
+                      (e) => DropdownMenuItem(
+                        value: e.id,
+                        child: Text(e.name, overflow: TextOverflow.ellipsis),
+                      ),
+                    )
+                    .toList(),
+                onChanged: (v) {
+                  setState(() => _employeeId = v);
+                  _loadClientsFor(v);
+                },
+                validator: (v) => v == null || v.isEmpty ? 'Required' : null,
+              ),
+            const SizedBox(height: AppSpacing.lg),
+            DropdownButtonFormField<String>(
+              initialValue: _priority,
+              isExpanded: true,
+              decoration: const InputDecoration(labelText: 'Priority'),
+              items: priorityChoices
+                  .map(
+                    (c) => DropdownMenuItem(
+                      value: c.$1,
+                      child: Text(c.$2, overflow: TextOverflow.ellipsis),
+                    ),
+                  )
+                  .toList(),
+              onChanged: (v) => setState(() => _priority = v!),
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            TextFormField(
+              controller: _notes,
+              maxLines: 3,
+              decoration: const InputDecoration(labelText: 'Discussion Notes'),
+            ),
+            const SizedBox(height: AppSpacing.xxl),
+            SizedBox(
+              width: double.infinity,
+              height: AppSizing.controlLg,
+              child: FilledButton(
+                onPressed: _loading ? null : _submit,
+                child: Text(_loading ? 'Saving...' : 'Save Interaction'),
+              ),
+            ),
+          ],
         ),
       ),
     );

@@ -9,6 +9,7 @@ import '../../core/config/app_config.dart';
 import '../../core/theme/app_theme.dart';
 import '../../models/employee.dart';
 import '../../shared/widgets/error_state.dart';
+import '../../shared/widgets/toolbar_action_button.dart';
 import '../auth/auth_provider.dart';
 import 'employees_excel.dart';
 import 'widgets/add_employee_modal.dart';
@@ -262,33 +263,17 @@ class _EmployeesListScreenState extends ConsumerState<EmployeesListScreen> {
     required String label,
     required VoidCallback onPressed,
   }) {
-    return SizedBox(
-      height: 40.0,
-      child: OutlinedButton.icon(
-        onPressed: onPressed,
-        icon: Icon(icon, size: AppSizing.iconMd),
-        label: Text(label),
-        style: OutlinedButton.styleFrom(
-          foregroundColor: AppColors.textPrimary,
-          side: const BorderSide(color: AppColors.border),
-          backgroundColor: AppColors.surface,
-        ),
-      ),
-    );
+    return AppToolbarButton(icon: icon, label: label, onPressed: onPressed);
   }
 
   Widget _buildTabsRow(bool isAdmin) {
     final isMobile = MediaQuery.sizeOf(context).width < 768;
-    final addButton = SizedBox(
-      height: 40.0,
-      child: FilledButton.icon(
-        style: FilledButton.styleFrom(
-          backgroundColor: AppColors.primaryBlue,
-        ),
-        onPressed: () => _showModal(),
-        icon: const Icon(Icons.add, size: AppSizing.iconMd),
-        label: const Text('Add Employee'),
-      ),
+    final addButton = AppToolbarButton(
+      icon: Icons.add,
+      // Shorter on phones so the group never needs to scroll.
+      label: isMobile ? 'Add' : 'Add Employee',
+      isPrimary: true,
+      onPressed: () => _showModal(),
     );
 
     final actionButtons = Row(
@@ -322,8 +307,9 @@ class _EmployeesListScreenState extends ConsumerState<EmployeesListScreen> {
             ),
             if (isAdmin) ...[
               const SizedBox(height: AppSpacing.md),
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
+              // Compact actions fit on one line — no scrolling, no clipping.
+              Align(
+                alignment: Alignment.centerLeft,
                 child: actionButtons,
               ),
             ],

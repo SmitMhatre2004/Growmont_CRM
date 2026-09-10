@@ -8,6 +8,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../../core/providers.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../models/employee.dart';
+import '../../../shared/widgets/app_modal_shell.dart';
 
 class AddEmployeeModal extends ConsumerStatefulWidget {
   const AddEmployeeModal({super.key, this.existing});
@@ -132,167 +133,138 @@ class _AddEmployeeModalState extends ConsumerState<AddEmployeeModal> {
 
   @override
   Widget build(BuildContext context) {
-    return Dialog(
-      shape: const RoundedRectangleBorder(borderRadius: AppRadius.brXl),
-      backgroundColor: AppColors.surface,
-      surfaceTintColor: Colors.transparent,
-      insetPadding: const EdgeInsets.all(AppSpacing.xxl),
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: AppSizing.modalMaxWidth),
-        child: SingleChildScrollView(
-          padding: AppLayout.modalPadding,
-          child: Form(
-            key: _formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Text(
-                      widget.existing != null
-                          ? 'Edit Employee'
-                          : 'Add Employee',
-                      style: AppTypography.sectionTitle,
-                    ),
-                    const Spacer(),
-                    IconButton(
-                      onPressed: () => Navigator.pop(context),
-                      icon: const Icon(
-                        Icons.close,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                  ],
+    return AppModalShell(
+      title: widget.existing != null ? 'Edit Employee' : 'Add Employee',
+      child: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: GestureDetector(
+                onTap: _pickAvatar,
+                child: CircleAvatar(
+                  radius: 40,
+                  child: _avatarBytes != null
+                      ? ClipOval(
+                          child: Image.memory(
+                            _avatarBytes!,
+                            width: 80,
+                            height: 80,
+                            fit: BoxFit.cover,
+                          ),
+                        )
+                      : const Icon(
+                          Icons.camera_alt,
+                          size: AppSizing.iconDisplay,
+                        ),
                 ),
-                const SizedBox(height: AppSpacing.lg),
-                Center(
-                  child: GestureDetector(
-                    onTap: _pickAvatar,
-                    child: CircleAvatar(
-                      radius: 40,
-                      child: _avatarBytes != null
-                          ? ClipOval(
-                              child: Image.memory(
-                                _avatarBytes!,
-                                width: 80,
-                                height: 80,
-                                fit: BoxFit.cover,
-                              ),
-                            )
-                          : const Icon(
-                              Icons.camera_alt,
-                              size: AppSizing.iconDisplay,
-                            ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.lg),
-                TextFormField(
-                  controller: _name,
-                  decoration: const InputDecoration(labelText: 'Name *'),
-                  validator: (v) =>
-                      (v == null || v.trim().isEmpty) ? 'Required' : null,
-                ),
-                const SizedBox(height: AppSpacing.md),
-                TextFormField(
-                  controller: _email,
-                  decoration: const InputDecoration(labelText: 'Email *'),
-                  keyboardType: TextInputType.emailAddress,
-                  validator: (v) {
-                    if (v == null || v.trim().isEmpty) return 'Required';
-                    if (!v.contains('@')) return 'Enter a valid email address';
-                    return null;
-                  },
-                ),
-                const SizedBox(height: AppSpacing.md),
-                TextFormField(
-                  controller: _mobile,
-                  decoration: const InputDecoration(labelText: 'Mobile *'),
-                  keyboardType: TextInputType.phone,
-                  validator: (v) =>
-                      (v == null || v.trim().isEmpty) ? 'Required' : null,
-                ),
-                const SizedBox(height: AppSpacing.md),
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text('Date of Birth *'),
-                  subtitle: Text(
-                    AppFormatters.formatDate(AppFormatters.toApiDate(_dob)),
-                  ),
-                  trailing: const Icon(
-                    Icons.calendar_today,
-                    size: AppSizing.iconMd,
-                  ),
-                  onTap: () async {
-                    final d = await showDatePicker(
-                      context: context,
-                      initialDate: _dob,
-                      firstDate: DateTime(1950),
-                      lastDate: DateTime.now(),
-                    );
-                    if (d != null) setState(() => _dob = d);
-                  },
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                DropdownButtonFormField<String>(
-                  initialValue: _gender,
-                  decoration: const InputDecoration(labelText: 'Gender'),
-                  items: const [
-                    DropdownMenuItem(value: 'M', child: Text('Male')),
-                    DropdownMenuItem(value: 'F', child: Text('Female')),
-                    DropdownMenuItem(value: 'O', child: Text('Other')),
-                  ],
-                  onChanged: (v) => setState(() => _gender = v!),
-                ),
-                const SizedBox(height: AppSpacing.md),
-                DropdownButtonFormField<String>(
-                  initialValue: _role,
-                  decoration: const InputDecoration(labelText: 'Role'),
-                  items: const [
-                    DropdownMenuItem(
-                      value: 'EMPLOYEE',
-                      child: Text('Employee'),
-                    ),
-                    DropdownMenuItem(value: 'ADMIN', child: Text('Admin')),
-                  ],
-                  onChanged: (v) => setState(() => _role = v!),
-                ),
-                if (widget.existing == null) ...[
-                  const SizedBox(height: AppSpacing.md),
-                  TextFormField(
-                    controller: _password,
-                    obscureText: true,
-                    decoration: const InputDecoration(
-                      labelText: 'Password *',
-                      helperText: 'At least 6 characters',
-                    ),
-                    validator: (v) {
-                      if (v == null || v.trim().isEmpty) {
-                        return 'Password is required';
-                      }
-                      if (v.length < 6) {
-                        return 'Password must be at least 6 characters';
-                      }
-                      return null;
-                    },
-                  ),
-                ],
-                const SizedBox(height: AppSpacing.xxl),
-                SizedBox(
-                  width: double.infinity,
-                  height: AppSizing.controlLg,
-                  child: FilledButton(
-                    onPressed: _loading ? null : _submit,
-                    style: FilledButton.styleFrom(
-                      backgroundColor: AppColors.primaryBlue,
-                    ),
-                    child: Text(_loading ? 'Saving...' : 'Save Employee'),
-                  ),
-                ),
-              ],
+              ),
             ),
-          ),
+            const SizedBox(height: AppSpacing.lg),
+            TextFormField(
+              controller: _name,
+              decoration: const InputDecoration(labelText: 'Name *'),
+              validator: (v) =>
+                  (v == null || v.trim().isEmpty) ? 'Required' : null,
+            ),
+            const SizedBox(height: AppSpacing.md),
+            TextFormField(
+              controller: _email,
+              decoration: const InputDecoration(labelText: 'Email *'),
+              keyboardType: TextInputType.emailAddress,
+              validator: (v) {
+                if (v == null || v.trim().isEmpty) return 'Required';
+                if (!v.contains('@')) return 'Enter a valid email address';
+                return null;
+              },
+            ),
+            const SizedBox(height: AppSpacing.md),
+            TextFormField(
+              controller: _mobile,
+              decoration: const InputDecoration(labelText: 'Mobile *'),
+              keyboardType: TextInputType.phone,
+              validator: (v) =>
+                  (v == null || v.trim().isEmpty) ? 'Required' : null,
+            ),
+            const SizedBox(height: AppSpacing.md),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Date of Birth *'),
+              subtitle: Text(
+                AppFormatters.formatDate(AppFormatters.toApiDate(_dob)),
+              ),
+              trailing: const Icon(
+                Icons.calendar_today,
+                size: AppSizing.iconMd,
+              ),
+              onTap: () async {
+                final d = await showDatePicker(
+                  context: context,
+                  initialDate: _dob,
+                  firstDate: DateTime(1950),
+                  lastDate: DateTime.now(),
+                );
+                if (d != null) setState(() => _dob = d);
+              },
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            DropdownButtonFormField<String>(
+              initialValue: _gender,
+              isExpanded: true,
+              decoration: const InputDecoration(labelText: 'Gender'),
+              items: const [
+                DropdownMenuItem(value: 'M', child: Text('Male')),
+                DropdownMenuItem(value: 'F', child: Text('Female')),
+                DropdownMenuItem(value: 'O', child: Text('Other')),
+              ],
+              onChanged: (v) => setState(() => _gender = v!),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            DropdownButtonFormField<String>(
+              initialValue: _role,
+              isExpanded: true,
+              decoration: const InputDecoration(labelText: 'Role'),
+              items: const [
+                DropdownMenuItem(value: 'EMPLOYEE', child: Text('Employee')),
+                DropdownMenuItem(value: 'ADMIN', child: Text('Admin')),
+              ],
+              onChanged: (v) => setState(() => _role = v!),
+            ),
+            if (widget.existing == null) ...[
+              const SizedBox(height: AppSpacing.md),
+              TextFormField(
+                controller: _password,
+                obscureText: true,
+                decoration: const InputDecoration(
+                  labelText: 'Password *',
+                  helperText: 'At least 6 characters',
+                ),
+                validator: (v) {
+                  if (v == null || v.trim().isEmpty) {
+                    return 'Password is required';
+                  }
+                  if (v.length < 6) {
+                    return 'Password must be at least 6 characters';
+                  }
+                  return null;
+                },
+              ),
+            ],
+            const SizedBox(height: AppSpacing.xxl),
+            SizedBox(
+              width: double.infinity,
+              height: AppSizing.controlLg,
+              child: FilledButton(
+                onPressed: _loading ? null : _submit,
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.primaryBlue,
+                ),
+                child: Text(_loading ? 'Saving...' : 'Save Employee'),
+              ),
+            ),
+          ],
         ),
       ),
     );
