@@ -8,6 +8,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 import 'firebase_options.dart';
+import 'core/providers.dart';
 import 'core/router/app_router.dart';
 import 'core/storage/app_paths.dart';
 import 'core/theme/app_theme.dart';
@@ -56,6 +57,9 @@ class GrowmontApp extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(routerProvider);
     final auth = ref.watch(authProvider);
+    // Keeps syncEngineProvider alive for the app's lifetime so SyncEngine
+    // starts/stops as the signed-in user changes — see providers.dart.
+    ref.watch(syncEngineProvider);
 
     return MaterialApp.router(
       title: 'Growmont Employee Portal',
