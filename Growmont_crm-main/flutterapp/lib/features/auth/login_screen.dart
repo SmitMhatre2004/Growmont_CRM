@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/theme/app_theme.dart';
-import '../../models/user.dart';
 import 'auth_provider.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -49,57 +48,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
   }
 
-  Future<void> _signInWithGoogle() async {
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
-
-    final error = await ref.read(authProvider.notifier).signInWithGoogle();
-
-    if (!mounted) return;
-
-    if (error != null) {
-      setState(() {
-        _loading = false;
-        _error = error;
-      });
-      // The inline banner above the form can be easy to miss when it's
-      // triggered from a button near the bottom of a tall form — a SnackBar
-      // guarantees the failure is seen right where the click happened.
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(error),
-          backgroundColor: AppColors.danger,
-          duration: const Duration(seconds: 6),
-        ),
-      );
-      return;
-    }
-
-    setState(() => _loading = false);
-
-    if (ref.read(authProvider).isAuthenticated) {
-      context.go('/dashboard');
-    }
-    // else: user cancelled the Google account picker — stay on this screen.
-  }
-
-  Future<void> _devBypass([UserRole role = UserRole.admin]) async {
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
-
-    await ref.read(authProvider.notifier).bypassLogin(role: role);
-
-    if (!mounted) return;
-
-    setState(() {
-      _loading = false;
-    });
-    context.go('/dashboard');
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -213,110 +161,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         child: FilledButton(
                           onPressed: _loading ? null : _submit,
                           child: Text(_loading ? 'Logging in...' : 'Login'),
-                        ),
-                      ),
-                      const SizedBox(height: AppSpacing.xxl),
-                      Row(
-                        children: [
-                          const Expanded(child: Divider()),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: AppSpacing.md,
-                            ),
-                            child: Text(
-                              'OR',
-                              style: AppTypography.overline.copyWith(
-                                color: AppColors.textMuted,
-                              ),
-                            ),
-                          ),
-                          const Expanded(child: Divider()),
-                        ],
-                      ),
-                      const SizedBox(height: AppSpacing.lg),
-                      SizedBox(
-                        width: double.infinity,
-                        height: AppSizing.controlLg,
-                        child: OutlinedButton.icon(
-                          key: const ValueKey('google_signin_btn'),
-                          onPressed: _loading ? null : _signInWithGoogle,
-                          icon: SizedBox(
-                            width: AppSizing.iconMd,
-                            height: AppSizing.iconMd,
-                            child: DecoratedBox(
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: AppColors.textMuted.withValues(
-                                    alpha: 0.5,
-                                  ),
-                                ),
-                              ),
-                              child: const Center(
-                                child: Text(
-                                  'G',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                          label: const Text('Continue with Google'),
-                        ),
-                      ),
-                      const SizedBox(height: AppSpacing.xxl),
-                      Row(
-                        children: [
-                          const Expanded(child: Divider()),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: AppSpacing.md,
-                            ),
-                            child: Text(
-                              'DEV BYPASS',
-                              style: AppTypography.overline.copyWith(
-                                color: AppColors.textMuted,
-                              ),
-                            ),
-                          ),
-                          const Expanded(child: Divider()),
-                        ],
-                      ),
-                      const SizedBox(height: AppSpacing.lg),
-                      SizedBox(
-                        width: double.infinity,
-                        height: AppSizing.controlLg,
-                        child: OutlinedButton.icon(
-                          key: const ValueKey('dev_bypass_admin_btn'),
-                          onPressed: _loading
-                              ? null
-                              : () => _devBypass(UserRole.admin),
-                          icon: const Icon(Icons.bolt, size: AppSizing.iconMd),
-                          label: const Text('Dev Bypass Login (Admin)'),
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: AppColors.primaryBlue,
-                            side: const BorderSide(
-                              color: AppColors.primaryBlue,
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: AppSpacing.sm),
-                      SizedBox(
-                        width: double.infinity,
-                        height: AppSizing.controlLg,
-                        child: TextButton.icon(
-                          key: const ValueKey('dev_bypass_employee_btn'),
-                          onPressed: _loading
-                              ? null
-                              : () => _devBypass(UserRole.employee),
-                          icon: const Icon(
-                            Icons.person_outline,
-                            size: AppSizing.iconMd,
-                          ),
-                          label: const Text('Dev Bypass (Employee Role)'),
                         ),
                       ),
                     ],

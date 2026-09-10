@@ -56,6 +56,9 @@ export const createEmployee = onCall(async (request) => {
   if (!name || !email || !password) {
     throw new HttpsError('invalid-argument', 'Name, email, and password are required.');
   }
+  if (!email.toLowerCase().endsWith('@growmont.com')) {
+    throw new HttpsError('invalid-argument', 'Employee emails must end in @growmont.com.');
+  }
 
   const employeeRole = role === 'ADMIN' ? 'ADMIN' : 'EMPLOYEE';
 
@@ -68,7 +71,7 @@ export const createEmployee = onCall(async (request) => {
     });
 
     // 2. Set custom claim for RBAC
-    await auth.setCustomUserClaims(userRecord.uid, { role: employeeRole });
+    await auth.setCustomUserClaims(userRecord.uid, { role: employeeRole, status: 'ACTIVE' });
 
     // 3. Create employee document in Firestore
     const employeeData = {
@@ -170,6 +173,11 @@ export const provisionPendingEmployee = onCall(async (request) => {
     throw new HttpsError('unauthenticated', 'User must be authenticated.');
   }
 
+  const emailClaim = request.auth.token.email || '';
+  if (!emailClaim.toLowerCase().endsWith('@growmont.com')) {
+    throw new HttpsError('invalid-argument', 'Only @growmont.com accounts can be provisioned.');
+  }
+
   const uid = request.auth.uid;
   const ref = db.collection('employees').doc(uid);
 
@@ -180,7 +188,7 @@ export const provisionPendingEmployee = onCall(async (request) => {
       return { success: true, uid, status: data.status || 'ACTIVE', alreadyExisted: true };
     }
 
-    const email = request.auth.token.email || '';
+    const email = emailClaim;
     const name = request.auth.token.name || (email ? email.split('@')[0] : 'New User');
     const picture = request.auth.token.picture || '';
     const expiresAt = admin.firestore.Timestamp.fromMillis(Date.now() + GRACE_PERIOD_MS);

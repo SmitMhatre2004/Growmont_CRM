@@ -38,17 +38,33 @@ final apiServiceProvider = Provider<FirestoreService>((ref) {
   return ref.watch(firestoreServiceProvider);
 });
 
+final firestoreProvider = Provider<FirebaseFirestore?>((ref) {
+  try {
+    return FirebaseFirestore.instance;
+  } catch (_) {
+    return null;
+  }
+});
+
 /// Starts/stops SyncEngine as the signed-in user changes. Must be watched
 /// somewhere alive for the app's lifetime (see GrowmontApp.build in
 /// main.dart) for the engine to actually run — a Provider is only built
 /// while something is watching it.
-final syncEngineProvider = ChangeNotifierProvider<SyncEngine>((ref) {
-  final uid = ref.watch(authProvider).user?.id;
+///
+/// Declared as [Provider], not [ChangeNotifierProvider]: [SyncEngine.instance]
+/// is a process-lifetime singleton. [ChangeNotifierProvider] automatically
+/// calls dispose() when recomputed or torn down, which permanently breaks
+/// a singleton ChangeNotifier.
+final syncEngineProvider = Provider<SyncEngine>((ref) {
+  final uid = ref.watch(authProvider.select((s) => s.user?.id));
   final engine = SyncEngine.instance;
   if (uid == null) {
     unawaited(engine.stop());
   } else {
-    StartupSync.runInBackground(FirebaseFirestore.instance, uid);
+    final fs = ref.watch(firestoreProvider);
+    if (fs != null) {
+      StartupSync.runInBackground(fs, uid);
+    }
   }
   return engine;
 });

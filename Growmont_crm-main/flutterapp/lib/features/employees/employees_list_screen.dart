@@ -12,7 +12,6 @@ import '../../shared/widgets/error_state.dart';
 import '../auth/auth_provider.dart';
 import 'employees_excel.dart';
 import 'widgets/add_employee_modal.dart';
-import 'widgets/pending_requests_section.dart';
 
 enum RoleFilter { all, admin, employee }
 
@@ -101,6 +100,68 @@ class _EmployeesListScreenState extends ConsumerState<EmployeesListScreen> {
   int get _adminCount =>
       _employees.where((e) => e.role.toLowerCase() == 'admin').length;
 
+  /// Suspends or reinstates an employee without touching their data, so a
+  /// temporary block doesn't mean deleting and re-creating the account (which
+  /// would orphan their clients, sales and interactions).
+  Future<void> _toggleRestrict(Employee emp) async {
+    final restricting = !emp.isRestricted;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(restricting ? 'Restrict Employee' : 'Restore Access'),
+        content: Text(
+          restricting
+              ? '${emp.name} will be signed out and blocked from logging in. '
+                    'Their records are kept and you can restore access at any '
+                    'time.'
+              : 'Restore access for ${emp.name}? They will be able to log '
+                    'in again immediately.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: restricting
+                ? FilledButton.styleFrom(backgroundColor: AppColors.danger)
+                : null,
+            child: Text(restricting ? 'Restrict' : 'Restore'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    try {
+      await ref
+          .read(apiServiceProvider)
+          .setEmployeeRestricted(emp.id, restricted: restricting);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              restricting
+                  ? '${emp.name} has been restricted'
+                  : '${emp.name} can log in again',
+            ),
+          ),
+        );
+      }
+      _load();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Could not update access: $e'),
+            backgroundColor: AppColors.danger,
+          ),
+        );
+      }
+    }
+  }
+
   Future<void> _delete(Employee emp) async {
     final ok = await showDialog<bool>(
       context: context,
@@ -181,18 +242,27 @@ class _EmployeesListScreenState extends ConsumerState<EmployeesListScreen> {
       final rows = await ExcelIO.readDataRows(result.files.single.path!);
       final api = ref.read(firestoreServiceProvider);
       var count = 0;
+      var skipped = 0;
       for (final row in rows) {
         final payload = employeeImportPayload(row);
-        if (payload == null) continue;
+        if (payload == null) {
+          skipped++;
+          continue;
+        }
         try {
           await api.createEmployee(payload);
           count++;
-        } catch (_) {}
+        } catch (_) {
+          skipped++;
+        }
       }
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Imported $count employee(s)')),
-        );
+        final summary = skipped > 0
+            ? 'Imported $count employee(s) ($skipped skipped)'
+            : 'Imported $count employee(s)';
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(summary)));
       }
       _load();
     } catch (e) {
@@ -216,7 +286,6 @@ class _EmployeesListScreenState extends ConsumerState<EmployeesListScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildTitleRow(),
-        if (isAdmin) const PendingRequestsSection(),
         _buildTabsRow(isAdmin),
         _buildSearchRow(),
         Expanded(
@@ -282,9 +351,7 @@ class _EmployeesListScreenState extends ConsumerState<EmployeesListScreen> {
     final addButton = SizedBox(
       height: 40.0,
       child: FilledButton.icon(
-        style: FilledButton.styleFrom(
-          backgroundColor: AppColors.primaryBlue,
-        ),
+        style: FilledButton.styleFrom(backgroundColor: AppColors.primaryBlue),
         onPressed: () => _showModal(),
         icon: const Icon(Icons.add, size: AppSizing.iconMd),
         label: const Text('Add Employee'),
@@ -335,11 +402,7 @@ class _EmployeesListScreenState extends ConsumerState<EmployeesListScreen> {
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
       child: Row(
-        children: [
-          _roleFilters(),
-          const Spacer(),
-          if (isAdmin) actionButtons,
-        ],
+        children: [_roleFilters(), const Spacer(), if (isAdmin) actionButtons],
       ),
     );
   }
@@ -373,7 +436,10 @@ class _EmployeesListScreenState extends ConsumerState<EmployeesListScreen> {
           decoration: InputDecoration(
             isDense: true,
             hintText: 'Search by name, email, phone or role...',
-            hintStyle: const TextStyle(fontSize: 13, color: AppColors.textMuted),
+            hintStyle: const TextStyle(
+              fontSize: 13,
+              color: AppColors.textMuted,
+            ),
             prefixIcon: const Icon(
               Icons.search,
               color: AppColors.textMuted,
@@ -421,9 +487,7 @@ class _EmployeesListScreenState extends ConsumerState<EmployeesListScreen> {
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            searchBar,
-          ],
+          children: [searchBar],
         ),
       );
     }
@@ -436,10 +500,7 @@ class _EmployeesListScreenState extends ConsumerState<EmployeesListScreen> {
           const SizedBox(width: AppSpacing.lg),
           Expanded(
             flex: 1,
-            child: Align(
-              alignment: Alignment.centerRight,
-              child: countBadge,
-            ),
+            child: Align(alignment: Alignment.centerRight, child: countBadge),
           ),
         ],
       ),
@@ -612,6 +673,7 @@ class _EmployeesListScreenState extends ConsumerState<EmployeesListScreen> {
                   onOpen: () => context.push('/employees/${emp.id}'),
                   onEdit: () => _showModal(employee: emp),
                   onDelete: () => _delete(emp),
+                  onToggleRestrict: () => _toggleRestrict(emp),
                 );
               },
             ),
@@ -634,6 +696,7 @@ class _EmployeeRow extends StatelessWidget {
     required this.onOpen,
     required this.onEdit,
     required this.onDelete,
+    required this.onToggleRestrict,
   });
 
   final Employee employee;
@@ -642,6 +705,7 @@ class _EmployeeRow extends StatelessWidget {
   final VoidCallback onOpen;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
+  final VoidCallback onToggleRestrict;
 
   @override
   Widget build(BuildContext context) {
@@ -738,6 +802,7 @@ class _EmployeeRow extends StatelessWidget {
                 tooltip: 'Manage employee',
                 onSelected: (val) {
                   if (val == 'edit') onEdit();
+                  if (val == 'restrict') onToggleRestrict();
                   if (val == 'delete') onDelete();
                 },
                 itemBuilder: (ctx) => [
@@ -752,6 +817,29 @@ class _EmployeeRow extends StatelessWidget {
                         ),
                         SizedBox(width: AppSpacing.sm),
                         Text('Edit', style: TextStyle(fontSize: 13)),
+                      ],
+                    ),
+                  ),
+                  PopupMenuItem(
+                    value: 'restrict',
+                    child: Row(
+                      children: [
+                        Icon(
+                          employee.isRestricted
+                              ? Icons.lock_open_outlined
+                              : Icons.block_outlined,
+                          size: AppSizing.iconSm,
+                          color: employee.isRestricted
+                              ? AppColors.primaryGreen
+                              : AppColors.warning,
+                        ),
+                        const SizedBox(width: AppSpacing.sm),
+                        Text(
+                          employee.isRestricted
+                              ? 'Restore access'
+                              : 'Restrict access',
+                          style: const TextStyle(fontSize: 13),
+                        ),
                       ],
                     ),
                   ),

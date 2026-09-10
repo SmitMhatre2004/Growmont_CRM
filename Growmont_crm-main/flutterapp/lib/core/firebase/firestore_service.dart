@@ -4,6 +4,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 
+import '../config/app_config.dart';
+import 'backend_capability.dart';
 import '../../models/client.dart';
 import '../../models/employee.dart';
 import '../../models/interaction.dart';
@@ -95,7 +97,9 @@ class FirestoreService {
     }
     final snapshot = await query.get();
     final clients = snapshot.docs.map(Client.fromFirestore).toList();
-    clients.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+    clients.sort(
+      (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()),
+    );
     return clients;
   }
 
@@ -200,68 +204,11 @@ class FirestoreService {
   }
 
   Future<void> createEmployee(Map<String, dynamic> data) async {
-    // 1. Try Cloud Functions first (standard provisioning with custom role claims)
-    try {
-      final callable = _functions.httpsCallable('createEmployee');
-      final res = await callable.call(data);
-      if (res.data != null) return;
-    } catch (_) {
-      // Functions not deployed, unauthenticated, or network error. Fall through to direct provisioning.
-    }
-
-    // 2. Direct Auth & Firestore provisioning fallback
-    String? newUid;
-    final email = data['email']?.toString().trim();
-    final password = data['password']?.toString();
-
-    if (email != null &&
-        email.isNotEmpty &&
-        password != null &&
-        password.isNotEmpty) {
-      try {
-        final tempAppName =
-            'EmployeeProvisioning_${DateTime.now().millisecondsSinceEpoch}';
-        final tempApp = await Firebase.initializeApp(
-          name: tempAppName,
-          options: Firebase.app().options,
-        );
-        try {
-          final tempAuth = FirebaseAuth.instanceFor(app: tempApp);
-          final cred = await tempAuth.createUserWithEmailAndPassword(
-            email: email,
-            password: password,
-          );
-          newUid = cred.user?.uid;
-        } finally {
-          await tempApp.delete();
-        }
-      } catch (_) {
-        // e.g. email already exists or auth offline; proceed to write doc in Firestore
-      }
-    }
-
-    final docRef = newUid != null
-        ? _firestore.collection('employees').doc(newUid)
-        : _firestore.collection('employees').doc();
-
-    final cleanData = Map<String, dynamic>.from(data);
-    cleanData.remove('password');
-    if (cleanData['dob'] is String && (cleanData['dob'] as String).isNotEmpty) {
-      final parsed = DateTime.tryParse(cleanData['dob'] as String);
-      if (parsed != null) cleanData['dob'] = Timestamp.fromDate(parsed);
-    }
-    cleanData['role'] = (cleanData['role']?.toString().toUpperCase() == 'ADMIN')
-        ? 'ADMIN'
-        : 'EMPLOYEE';
-    cleanData['status'] = 'ACTIVE';
-    cleanData['avatar_url'] = cleanData['avatar_url'] ?? '';
-    cleanData['clients_count'] = cleanData['clients_count'] ?? 0;
-    cleanData['sales_count'] = cleanData['sales_count'] ?? 0;
-    cleanData['interactions_count'] = cleanData['interactions_count'] ?? 0;
-    cleanData['created_at'] = FieldValue.serverTimestamp();
-    cleanData['updated_at'] = FieldValue.serverTimestamp();
-
-    await docRef.set(cleanData, SetOptions(merge: true));
+    await _privileged(
+      callableName: 'createEmployee',
+      payload: data,
+      direct: () => _createEmployeeDirect(data),
+    );
   }
 
   Future<void> updateEmployee(dynamic id, Map<String, dynamic> data) async {
@@ -279,13 +226,169 @@ class FirestoreService {
   }
 
   Future<void> deleteEmployee(dynamic id) async {
-    try {
-      final callable = _functions.httpsCallable('deleteEmployee');
-      await callable.call({'employeeId': id.toString()});
-    } catch (_) {
-      // Fallback: delete doc directly from Firestore
-      await _firestore.collection('employees').doc(id.toString()).delete();
+    await _privileged(
+      callableName: 'deleteEmployee',
+      payload: {'employeeId': id.toString()},
+      direct: () => _deleteEmployeeDirect(id.toString()),
+    );
+  }
+
+  /// Suspends or reinstates an employee by flipping their status between
+  /// ACTIVE and RESTRICTED.
+  ///
+  /// This is a plain document write, gated by the admin-only rule on
+  /// employees/*, so it works with or without Cloud Functions. Because the
+  /// security rules read this document on every request, the change bites on
+  /// the employee's very next operation — no claim rewrite, no sign-out
+  /// needed. Their data is left untouched, so restoring them brings back an
+  /// intact account.
+  ///
+  /// Note the Auth credential itself stays enabled: a restricted employee is
+  /// refused at the login gate and denied by every rule, but fully revoking
+  /// the credential needs the Admin SDK.
+  Future<void> setEmployeeRestricted(dynamic id, {required bool restricted}) {
+    return _firestore.collection('employees').doc(id.toString()).update({
+      'status': restricted ? 'RESTRICTED' : 'ACTIVE',
+      'restricted_at': restricted ? FieldValue.serverTimestamp() : null,
+      'updated_at': FieldValue.serverTimestamp(),
+    });
+  }
+
+  /// Runs a privileged employee operation through the Cloud Functions
+  /// callable when one is reachable, and through [direct] when it isn't.
+  ///
+  /// Only "this function isn't deployed" sends us down the direct path — see
+  /// [BackendCapability.indicatesAbsent]. Every other callable failure is
+  /// rethrown, so a real server-side rejection (an admin gate, a duplicate
+  /// email) is never quietly retried as an unprivileged client write.
+  Future<void> _privileged({
+    required String callableName,
+    required Map<String, dynamic> payload,
+    required Future<void> Function() direct,
+  }) async {
+    if (await BackendCapability.instance.shouldUseCallables()) {
+      try {
+        await _functions.httpsCallable(callableName).call(payload);
+        await BackendCapability.instance.markPresent();
+        return;
+      } catch (e) {
+        if (!BackendCapability.indicatesAbsent(e)) rethrow;
+        BackendCapability.instance.markAbsent();
+      }
     }
+    await direct();
+  }
+
+  /// The direct path has no Admin SDK behind it, so the admin check the
+  /// callable would have done server-side has to happen here. The Firestore
+  /// rules enforce it again on the document write — this is the early, clear
+  /// failure, not the security boundary.
+  Future<void> _requireAdmin() async {
+    final user = _auth.currentUser;
+    if (user == null) {
+      throw const BackendException(
+        'You must be signed in to manage employee accounts.',
+      );
+    }
+    try {
+      final token = await user.getIdTokenResult();
+      if ((token.claims?['role'] as String?)?.toUpperCase() == 'ADMIN') return;
+    } catch (_) {
+      // No usable claims — fall through to the document check below.
+    }
+    final snap = await _firestore.collection('employees').doc(user.uid).get();
+    final data = snap.data();
+    if ((data?['role'] as String?)?.toUpperCase() == 'ADMIN' &&
+        (data?['status'] as String?)?.toUpperCase() == 'ACTIVE') {
+      return;
+    }
+    throw const BackendException(
+      'Only administrators can manage employee accounts.',
+    );
+  }
+
+  /// Creates the Auth account and employee document from the admin's own
+  /// client, for deployments with no Cloud Functions.
+  ///
+  /// The account is created on a throwaway secondary [FirebaseApp] so the
+  /// admin's own session isn't swapped out for the new user's. Claims can't
+  /// be set from a client, so the new employee has none — the Firestore
+  /// rules accept the employee document as proof of status instead.
+  Future<void> _createEmployeeDirect(Map<String, dynamic> data) async {
+    await _requireAdmin();
+
+    final name = data['name']?.toString().trim() ?? '';
+    final email = data['email']?.toString().trim() ?? '';
+    final password = data['password']?.toString() ?? '';
+
+    if (name.isEmpty || email.isEmpty || password.isEmpty) {
+      throw const BackendException('Name, email, and password are required.');
+    }
+    if (!email.toLowerCase().endsWith(kAllowedEmailDomain)) {
+      throw const BackendException(
+        'Employee emails must end in $kAllowedEmailDomain.',
+      );
+    }
+
+    String? newUid;
+    final tempApp = await Firebase.initializeApp(
+      name: 'EmployeeProvisioning_${DateTime.now().microsecondsSinceEpoch}',
+      options: Firebase.app().options,
+    );
+    try {
+      final tempAuth = FirebaseAuth.instanceFor(app: tempApp);
+      final cred = await tempAuth.createUserWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+      newUid = cred.user?.uid;
+      await tempAuth.signOut();
+    } on FirebaseAuthException catch (e) {
+      throw BackendException(switch (e.code) {
+        'email-already-in-use' => 'An account already exists for $email.',
+        'invalid-email' => 'The email address format is invalid.',
+        'weak-password' => 'Password must be at least 6 characters.',
+        _ => e.message ?? 'Could not create the employee account.',
+      });
+    } finally {
+      await tempApp.delete();
+    }
+
+    if (newUid == null) {
+      throw const BackendException(
+        'Could not create the employee account. Please try again.',
+      );
+    }
+
+    // The document id must be the Auth uid: the security rules resolve a
+    // caller's status by reading employees/{uid}, so a mismatched id would
+    // leave the new employee unable to read anything.
+    final doc = Map<String, dynamic>.from(data)..remove('password');
+    if (doc['dob'] is String && (doc['dob'] as String).isNotEmpty) {
+      final parsed = DateTime.tryParse(doc['dob'] as String);
+      if (parsed != null) doc['dob'] = Timestamp.fromDate(parsed);
+    }
+    doc['role'] = (doc['role']?.toString().toUpperCase() == 'ADMIN')
+        ? 'ADMIN'
+        : 'EMPLOYEE';
+    doc['status'] = 'ACTIVE';
+    doc['avatar_url'] = doc['avatar_url'] ?? '';
+    doc['clients_count'] = doc['clients_count'] ?? 0;
+    doc['sales_count'] = doc['sales_count'] ?? 0;
+    doc['interactions_count'] = doc['interactions_count'] ?? 0;
+    doc['created_at'] = FieldValue.serverTimestamp();
+    doc['updated_at'] = FieldValue.serverTimestamp();
+
+    await _firestore.collection('employees').doc(newUid).set(doc);
+  }
+
+  /// Removes the employee document, which is what the status gate and every
+  /// rule reads. Deleting the underlying Auth account needs the Admin SDK;
+  /// until a Functions-backed delete runs, the credential still exists but
+  /// can no longer sign in, since there's no document to prove it ACTIVE.
+  Future<void> _deleteEmployeeDirect(String id) async {
+    await _requireAdmin();
+    await _firestore.collection('employees').doc(id).delete();
   }
 
   // ----------------------------------------------------
@@ -317,13 +420,14 @@ class FirestoreService {
   /// any matching sale so listening screens (e.g. the dashboard) update
   /// instantly without an explicit reload.
   Stream<List<Sale>> streamSales({String? salesRepId, String? clientId}) {
-    return _salesQuery(salesRepId: salesRepId, clientId: clientId)
-        .snapshots()
-        .map((snapshot) {
-          final sales = snapshot.docs.map(Sale.fromFirestore).toList();
-          sales.sort((a, b) => _byDateDesc(a.date, b.date));
-          return sales;
-        });
+    return _salesQuery(
+      salesRepId: salesRepId,
+      clientId: clientId,
+    ).snapshots().map((snapshot) {
+      final sales = snapshot.docs.map(Sale.fromFirestore).toList();
+      sales.sort((a, b) => _byDateDesc(a.date, b.date));
+      return sales;
+    });
   }
 
   Future<Sale> createSale(Map<String, dynamic> data) async {
@@ -423,15 +527,16 @@ class FirestoreService {
     String? employeeId,
     String? clientId,
   }) {
-    return _interactionsQuery(employeeId: employeeId, clientId: clientId)
-        .snapshots()
-        .map((snapshot) {
-          final interactions = snapshot.docs
-              .map(Interaction.fromFirestore)
-              .toList();
-          interactions.sort((a, b) => _byDateDesc(a.date, b.date));
-          return interactions;
-        });
+    return _interactionsQuery(
+      employeeId: employeeId,
+      clientId: clientId,
+    ).snapshots().map((snapshot) {
+      final interactions = snapshot.docs
+          .map(Interaction.fromFirestore)
+          .toList();
+      interactions.sort((a, b) => _byDateDesc(a.date, b.date));
+      return interactions;
+    });
   }
 
   Future<Interaction> createInteraction(Map<String, dynamic> data) async {
@@ -526,8 +631,9 @@ class FirestoreService {
         .where('employee_id', isEqualTo: currentUid)
         .snapshots()
         .map(
-          (snapshot) =>
-              _sortReminders(snapshot.docs.map(Reminder.fromFirestore).toList()),
+          (snapshot) => _sortReminders(
+            snapshot.docs.map(Reminder.fromFirestore).toList(),
+          ),
         );
   }
 
@@ -599,5 +705,4 @@ class FirestoreService {
     await user.reauthenticateWithCredential(cred);
     await user.updatePassword(newPassword);
   }
-
 }

@@ -53,6 +53,7 @@ Map<String, dynamic>? employeeImportPayload(List<Object?> row) {
   final name = ExcelIO.text(row, 0);
   final email = ExcelIO.text(row, 1);
   if (name.isEmpty || email.isEmpty) return null;
+  if (!email.toLowerCase().endsWith('@growmont.com')) return null;
 
   final genderRaw = ExcelIO.text(row, 3).toUpperCase();
   final gender = ['M', 'F', 'O'].contains(genderRaw)

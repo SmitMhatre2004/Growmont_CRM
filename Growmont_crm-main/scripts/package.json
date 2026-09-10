@@ -1,0 +1,15 @@
+{
+  "name": "growmont-crm-scripts",
+  "version": "1.0.0",
+  "description": "Migration and utility scripts for Growmont CRM",
+  "type": "module",
+  "main": "migrate.js",
+  "scripts": {
+    "migrate": "node migrate.js",
+    "bootstrap-admin": "node bootstrap-admin.js",
+    "reset": "node reset-firebase.js"
+  },
+  "dependencies": {
+    "firebase-admin": "^13.1.0"
+  }
+}

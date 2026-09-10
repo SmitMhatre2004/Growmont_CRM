@@ -2,14 +2,17 @@ import 'dart:async';
 import 'dart:io' show Platform;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show kDebugMode, kIsWeb;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
 import '../../models/user.dart';
+import '../../core/config/app_config.dart';
 import '../../core/providers.dart';
 import '../../core/storage/token_storage.dart';
 import 'google_oauth_desktop.dart';
+
+export '../../core/config/app_config.dart' show kAllowedEmailDomain;
 
 class AuthState {
   const AuthState({this.user, this.accessToken, this.isLoading = true});
@@ -60,16 +63,18 @@ class AuthNotifier extends Notifier<AuthState> {
     if (_isBypassed) return;
 
     if (firebaseUser == null) {
-      final cachedUser = await _storage.getUser();
-      final cachedToken = await _storage.getAccessToken();
-      if (cachedToken == 'dev-bypass-token' && cachedUser != null) {
-        _isBypassed = true;
-        state = AuthState(
-          user: cachedUser,
-          accessToken: cachedToken,
-          isLoading: false,
-        );
-        return;
+      if (kDebugMode) {
+        final cachedUser = await _storage.getUser();
+        final cachedToken = await _storage.getAccessToken();
+        if (cachedToken == 'dev-bypass-token' && cachedUser != null) {
+          _isBypassed = true;
+          state = AuthState(
+            user: cachedUser,
+            accessToken: cachedToken,
+            isLoading: false,
+          );
+          return;
+        }
       }
       await _storage.clear();
       state = const AuthState(isLoading: false);
@@ -88,28 +93,16 @@ class AuthNotifier extends Notifier<AuthState> {
 
       final docData = doc?.data() ?? {};
 
-      // Belt-and-suspenders status gate: the Cloud Functions side already
-      // disables the Firebase Auth account for RESTRICTED/REJECTED users
-      // (which normally stops sign-in outright), but this also runs on
-      // every app-resume/token-refresh, where a cached session or a
-      // just-expired grace period may not have propagated to Auth yet.
-      final statusStr =
-          (docData['status'] as String?)?.toUpperCase() ?? 'ACTIVE';
-      if (statusStr == 'RESTRICTED' || statusStr == 'REJECTED') {
+      final eligibilityError = _eligibilityError(
+        firebaseUser,
+        docData,
+        doc != null && doc.exists,
+      );
+      if (eligibilityError != null) {
         await FirebaseAuth.instance.signOut();
         await _storage.clear();
         state = const AuthState(isLoading: false);
         return;
-      }
-      if (statusStr == 'PENDING') {
-        final expiresAt = (docData['access_expires_at'] as Timestamp?)
-            ?.toDate();
-        if (expiresAt != null && DateTime.now().isAfter(expiresAt)) {
-          await FirebaseAuth.instance.signOut();
-          await _storage.clear();
-          state = const AuthState(isLoading: false);
-          return;
-        }
       }
 
       final roleStr = roleClaim ?? docData['role'] as String? ?? 'EMPLOYEE';
@@ -152,7 +145,27 @@ class AuthNotifier extends Notifier<AuthState> {
     }
   }
 
+  String? _eligibilityError(
+    User user,
+    Map<String, dynamic> docData,
+    bool docExists,
+  ) {
+    final email = user.email?.trim().toLowerCase() ?? '';
+    if (!email.endsWith(kAllowedEmailDomain)) {
+      return 'Only $kAllowedEmailDomain accounts can sign in to Growmont CRM.';
+    }
+    if (!docExists) {
+      return 'This account has not been set up by an administrator yet.';
+    }
+    final status = (docData['status'] as String?)?.toUpperCase();
+    if (status != 'ACTIVE') {
+      return 'Your account is waiting for administrator approval.';
+    }
+    return null;
+  }
+
   Future<void> bypassLogin({UserRole role = UserRole.admin}) async {
+    if (!kDebugMode) return;
     _isBypassed = true;
     state = state.copyWith(isLoading: true);
 
@@ -191,7 +204,12 @@ class AuthNotifier extends Notifier<AuthState> {
     try {
       String email = usernameOrEmail.trim();
       if (!email.contains('@')) {
-        email = '$email@growmont.com';
+        email = '$email$kAllowedEmailDomain';
+      }
+
+      if (!email.toLowerCase().endsWith(kAllowedEmailDomain)) {
+        state = state.copyWith(isLoading: false);
+        return 'Only $kAllowedEmailDomain accounts can sign in to Growmont CRM.';
       }
 
       final cred = await FirebaseAuth.instance.signInWithEmailAndPassword(
@@ -199,8 +217,22 @@ class AuthNotifier extends Notifier<AuthState> {
         password: password,
       );
 
-      if (cred.user != null) {
-        await _onAuthStateChanged(cred.user);
+      final user = cred.user;
+      if (user != null) {
+        final doc = await _findEmployeeDoc(user);
+        final docData = doc?.data() ?? {};
+        final eligibilityError = _eligibilityError(
+          user,
+          docData,
+          doc != null && doc.exists,
+        );
+        if (eligibilityError != null) {
+          await FirebaseAuth.instance.signOut();
+          await _storage.clear();
+          state = const AuthState(isLoading: false);
+          return eligibilityError;
+        }
+        await _onAuthStateChanged(user);
       }
       return null;
     } on FirebaseAuthException catch (e) {
@@ -227,10 +259,9 @@ class AuthNotifier extends Notifier<AuthState> {
   /// Signs in with Google via Firebase Auth. A Google account that matches
   /// an existing `employees` document (by uid or email) signs in per its
   /// current status; a brand-new account is auto-provisioned as PENDING
-  /// with a 3-day grace period of full employee-level access (see
-  /// `provisionPendingEmployee` in functions/index.js). Returns null on
-  /// success (or user cancellation), or an error message to show on the
-  /// login screen.
+  /// and waits for administrator approval (see `provisionPendingEmployee`
+  /// in functions/index.js). Returns null on success (or user cancellation),
+  /// or an error message to show on the login screen.
   Future<String?> signInWithGoogle() async {
     _isBypassed = false;
     state = state.copyWith(isLoading: true);
@@ -281,11 +312,10 @@ class AuthNotifier extends Notifier<AuthState> {
       final doc = await _findEmployeeDoc(firebaseUser);
 
       if (doc == null) {
-        // Brand-new Google account — auto-provision as PENDING (3-day grace
-        // period) instead of rejecting outright. Runs server-side via a
-        // Cloud Function callable so custom claims and the Firestore doc
-        // are set atomically and the client never needs write access to
-        // employees/*.
+        // Brand-new Google account — auto-provision as PENDING instead
+        // of rejecting outright. Runs server-side via a Cloud Function
+        // callable so custom claims and the Firestore doc are set
+        // atomically and the client never needs write access to employees/*.
         try {
           await ref.read(firestoreServiceProvider).provisionPendingEmployee();
         } catch (e) {
@@ -295,35 +325,22 @@ class AuthNotifier extends Notifier<AuthState> {
           return 'Could not set up your account. Please try again or '
               'contact your administrator.';
         }
-        await _onAuthStateChanged(firebaseUser);
-        return null;
-      }
-
-      final data = doc.data() ?? {};
-      final status = (data['status'] as String?)?.toUpperCase() ?? 'ACTIVE';
-
-      if (status == 'RESTRICTED' || status == 'REJECTED') {
         await FirebaseAuth.instance.signOut();
         await googleSignIn?.signOut();
         state = state.copyWith(isLoading: false);
-        return 'Your account is waiting for admin approval. Contact your '
-            'administrator.';
+        return 'Your account is waiting for administrator approval.';
       }
 
-      if (status == 'PENDING') {
-        final expiresAt = (data['access_expires_at'] as Timestamp?)
-            ?.toDate();
-        if (expiresAt != null && DateTime.now().isAfter(expiresAt)) {
-          // Grace window lapsed but the scheduled sweep hasn't caught it
-          // yet — block here rather than letting a stale PENDING doc grant
-          // access past the 3 days.
-          await FirebaseAuth.instance.signOut();
-          await googleSignIn?.signOut();
-          state = state.copyWith(isLoading: false);
-          return 'Your access request has expired. Contact your '
-              'administrator.';
-        }
-        // Still within the 3-day window — full employee access.
+      final errorMsg = _eligibilityError(
+        firebaseUser,
+        doc.data() ?? {},
+        doc.exists,
+      );
+      if (errorMsg != null) {
+        await FirebaseAuth.instance.signOut();
+        await googleSignIn?.signOut();
+        state = state.copyWith(isLoading: false);
+        return errorMsg;
       }
 
       await _onAuthStateChanged(firebaseUser);
@@ -396,7 +413,12 @@ class AuthNotifier extends Notifier<AuthState> {
     try {
       String cleanEmail = email.trim();
       if (!cleanEmail.contains('@')) {
-        cleanEmail = '$cleanEmail@growmont.com';
+        cleanEmail = '$cleanEmail$kAllowedEmailDomain';
+      }
+      // Same domain gate as [login] — never send a reset mail to, or confirm
+      // the existence of, an address outside the company domain.
+      if (!cleanEmail.toLowerCase().endsWith(kAllowedEmailDomain)) {
+        return 'Only $kAllowedEmailDomain accounts can sign in to Growmont CRM.';
       }
       await FirebaseAuth.instance.sendPasswordResetEmail(email: cleanEmail);
       return null;

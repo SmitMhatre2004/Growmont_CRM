@@ -1,3 +1,6 @@
 /Growmont_crm-main/functions/node_modules
-/Growmont_crm-main/scripts
+/Growmont_crm-main/scripts/node_modules
 client_secret_*.json
+
+# Firebase Admin SDK service account keys (any download filename)
+*firebase-adminsdk*.json
