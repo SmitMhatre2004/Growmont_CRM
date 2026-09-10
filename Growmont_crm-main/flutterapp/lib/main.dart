@@ -1,10 +1,15 @@
+import 'dart:io';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 import 'firebase_options.dart';
 import 'core/router/app_router.dart';
+import 'core/storage/app_paths.dart';
 import 'core/theme/app_theme.dart';
 import 'features/auth/auth_provider.dart';
 
@@ -23,6 +28,22 @@ void main() async {
     );
   } catch (e) {
     debugPrint('Firebase initialization note: $e');
+  }
+
+  if (!kIsWeb &&
+      (Platform.isWindows || Platform.isLinux || Platform.isMacOS)) {
+    // Resolve the canonical, per-user app-data directory (via path_provider
+    // — NOT the install folder, see AppPaths) before anything touches the
+    // local database.
+    final appDataDir = await AppPaths.directory;
+    sqfliteFfiInit();
+    databaseFactory = databaseFactoryFfi;
+    // Defense-in-depth: sqflite_common_ffi's getDatabasesPath() otherwise
+    // defaults to Directory.current (the install folder). This neutralizes
+    // that default for any code that still calls getDatabasesPath()
+    // directly, on top of LocalDatabase resolving its own path explicitly
+    // via AppPaths.
+    await databaseFactory.setDatabasesPath(appDataDir.path);
   }
 
   runApp(const ProviderScope(child: GrowmontApp()));
