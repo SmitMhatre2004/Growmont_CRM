@@ -35,6 +35,8 @@ String _employeeStatusToString(EmployeeStatus status) {
 
 DateTime? _timestampToDate(dynamic raw) {
   if (raw is Timestamp) return raw.toDate();
+  if (raw is DateTime) return raw;
+  if (raw is String && raw.isNotEmpty) return DateTime.tryParse(raw);
   return null;
 }
 
