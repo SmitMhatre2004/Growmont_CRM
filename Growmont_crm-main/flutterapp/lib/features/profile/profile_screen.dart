@@ -1,4 +1,7 @@
+import 'dart:io' show Platform;
+
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -14,8 +17,17 @@ import '../../shared/widgets/error_state.dart';
 import '../auth/auth_provider.dart';
 import '../reminders/reminders_excel.dart';
 import '../reminders/widgets/add_reminder_modal.dart';
+import 'widgets/data_location_card.dart';
+import 'widgets/sync_status_card.dart';
+import 'widgets/update_card.dart';
 
-enum ProfileTab { sales, interactions, reminders }
+enum ProfileTab { sales, interactions, reminders, system }
+
+/// True on the desktop platforms this app ships an installer for — gates
+/// the self-update card and the local data-location card, neither of
+/// which make sense on mobile/web.
+bool get _isDesktop =>
+    !kIsWeb && (Platform.isWindows || Platform.isLinux || Platform.isMacOS);
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key, this.initialTab});
@@ -388,6 +400,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   _interactions.length,
                 ),
                 _tabChip('Reminders', ProfileTab.reminders, _reminders.length),
+                _tabChip('System', ProfileTab.system, 0, showCount: false),
               ],
             ),
           ),
@@ -401,11 +414,28 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 ProfileTab.sales => _salesTab(),
                 ProfileTab.interactions => _interactionsTab(),
                 ProfileTab.reminders => _remindersTab(),
+                ProfileTab.system => _systemTab(),
               },
             ),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _systemTab() {
+    return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      children: [
+        if (_isDesktop) ...[
+          const UpdateCard(),
+          const SizedBox(height: AppSpacing.lg),
+          const DataLocationCard(),
+          const SizedBox(height: AppSpacing.lg),
+        ],
+        const SyncStatusCard(),
+      ],
     );
   }
 
@@ -436,12 +466,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
-  Widget _tabChip(String label, ProfileTab tab, int count) {
+  Widget _tabChip(String label, ProfileTab tab, int count, {bool showCount = true}) {
     final selected = _tab == tab;
     return Padding(
       padding: const EdgeInsets.only(right: AppSpacing.sm),
       child: FilterChip(
-        label: Text('$label ($count)'),
+        label: Text(showCount ? '$label ($count)' : label),
         selected: selected,
         onSelected: (_) => setState(() => _tab = tab),
         selectedColor: AppColors.primaryGreen,
