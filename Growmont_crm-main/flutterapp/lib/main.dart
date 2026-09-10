@@ -12,6 +12,7 @@ import 'core/providers.dart';
 import 'core/router/app_router.dart';
 import 'core/storage/app_paths.dart';
 import 'core/theme/app_theme.dart';
+import 'core/updater/update_notifier.dart';
 import 'features/auth/auth_provider.dart';
 
 void main() async {
@@ -45,6 +46,13 @@ void main() async {
     // directly, on top of LocalDatabase resolving its own path explicitly
     // via AppPaths.
     await databaseFactory.setDatabasesPath(appDataDir.path);
+  }
+
+  if (!kIsWeb && Platform.isWindows) {
+    // Deliberately not awaited — startup must never block on a network
+    // call. The Profile -> System tab's UpdateCard is the notification
+    // surface; this just warms the check so it's ready when opened.
+    UpdateNotifier.instance.checkForUpdate();
   }
 
   runApp(const ProviderScope(child: GrowmontApp()));
