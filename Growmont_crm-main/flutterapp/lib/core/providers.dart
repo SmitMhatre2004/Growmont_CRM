@@ -18,7 +18,7 @@ final tokenStorageProvider = Provider<TokenStorage>((ref) {
   return TokenStorage(const FlutterSecureStorage());
 });
 
-/// Declared type stays Provider<FirestoreService> — only the concrete
+/// Declared type stays `Provider<FirestoreService>` — only the concrete
 /// instance changes (to CrmRepository, its local-first subclass) so every
 /// existing call site keeps compiling and behaving exactly as before for
 /// every member CrmRepository doesn't override.
