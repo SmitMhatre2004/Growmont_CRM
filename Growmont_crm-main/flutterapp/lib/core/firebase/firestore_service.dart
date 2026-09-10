@@ -31,6 +31,14 @@ class FirestoreService {
   FirebaseStorage get storage => _storage;
   String? get currentUid => _auth.currentUser?.uid ?? devUid;
 
+  // Exposed so CrmRepository (core/local/crm_repository.dart) can extend
+  // this class and reach the same Firebase handles instead of re-resolving
+  // its own — the private fields above are library-private and unreachable
+  // from a subclass in another file.
+  FirebaseFirestore get firestore => _firestore;
+  FirebaseAuth get auth => _auth;
+  FirebaseFunctions get functions => _functions;
+
   /// Newest-first comparator over the models' ISO date strings.
   ///
   /// Ordering is done in memory so the queries below only ever combine an
