@@ -14,6 +14,7 @@ import 'core/storage/app_paths.dart';
 import 'core/theme/app_theme.dart';
 import 'core/updater/update_notifier.dart';
 import 'features/auth/auth_provider.dart';
+import 'features/splash/splash_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -75,12 +76,13 @@ class GrowmontApp extends ConsumerWidget {
       routerConfig: router,
       debugShowCheckedModeBanner: false,
       builder: (context, child) {
-        if (auth.isLoading) {
-          return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
-          );
-        }
-        return child ?? const SizedBox.shrink();
+        // The splash sits on top, so the auth spinner below it only ever
+        // becomes visible if sign-in outlasts the splash.
+        return SplashGate(
+          child: auth.isLoading
+              ? const Scaffold(body: Center(child: CircularProgressIndicator()))
+              : child ?? const SizedBox.shrink(),
+        );
       },
     );
   }

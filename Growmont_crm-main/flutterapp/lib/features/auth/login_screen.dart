@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/theme/app_theme.dart';
+import '../legal/legal_screen.dart';
 import 'auth_provider.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -163,6 +164,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           child: Text(_loading ? 'Logging in...' : 'Login'),
                         ),
                       ),
+                      const SizedBox(height: AppSpacing.xxxl),
+                      const _LegalFooter(),
                     ],
                   ),
                 ),
@@ -171,6 +174,43 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _LegalFooter extends StatelessWidget {
+  const _LegalFooter();
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      alignment: WrapAlignment.center,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        for (var i = 0; i < kLegalDocuments.length; i++) ...[
+          if (i > 0)
+            Text(
+              '  ·  ',
+              style: AppTypography.caption.copyWith(
+                color: AppColors.borderStrong,
+              ),
+            ),
+          GestureDetector(
+            onTap: () => showLegalDocuments(context, initialTab: i),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
+              child: Text(
+                kLegalDocuments[i].label,
+                style: AppTypography.caption.copyWith(
+                  color: AppColors.textMuted,
+                  decoration: TextDecoration.underline,
+                  decorationColor: AppColors.border,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ],
     );
   }
 }

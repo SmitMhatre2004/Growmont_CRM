@@ -68,6 +68,7 @@ flutter:
     - assets/logo.svg
     - assets/icon/app_icon.png
     - assets/images/
+    - assets/legal/
 
   fonts:
     # Body / UI / tabular data - Inter (SIL OFL 1.1)
