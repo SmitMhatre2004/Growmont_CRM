@@ -94,8 +94,8 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
 
     final emp = _employee!;
     final avatarUrl = AppConfig.mediaUrl(emp.avatar);
-    final isMobile = MediaQuery.sizeOf(context).width < 768;
-    final isTablet = MediaQuery.sizeOf(context).width >= 900;
+    final isMobile = AppLayout.isMobile(context);
+    final isTablet = !isMobile && MediaQuery.sizeOf(context).width >= 900;
 
     return RefreshIndicator(
       onRefresh: _load,
@@ -517,7 +517,13 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
           children: [
             Row(
               children: [
-                const Text('Sales History', style: AppTypography.cardTitle),
+                const Flexible(
+                  child: Text(
+                    'Sales History',
+                    style: AppTypography.cardTitle,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
                 const SizedBox(width: AppSpacing.sm),
                 Container(
                   padding: const EdgeInsets.symmetric(

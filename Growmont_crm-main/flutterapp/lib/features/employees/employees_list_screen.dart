@@ -278,45 +278,65 @@ class _EmployeesListScreenState extends ConsumerState<EmployeesListScreen> {
   @override
   Widget build(BuildContext context) {
     final isAdmin = ref.watch(authProvider).user?.isAdmin == true;
-    final isMobile = MediaQuery.sizeOf(context).width < 768;
+    final isMobile = AppLayout.isMobile(context);
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildTitleRow(),
-        _buildTabsRow(isAdmin),
-        _buildSearchRow(),
-        Expanded(
-          child: Padding(
-            padding: EdgeInsets.symmetric(
-              horizontal: isMobile ? AppSpacing.lg : AppSpacing.xxl,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final content = Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildTitleRow(),
+            _buildTabsRow(isAdmin),
+            _buildSearchRow(),
+            Expanded(
+              child: Padding(
+                padding: EdgeInsets.symmetric(
+                  horizontal: isMobile ? AppSpacing.lg : AppSpacing.xxl,
+                ),
+                child: _body(isAdmin, isMobile),
+              ),
             ),
-            child: _body(isAdmin, isMobile),
-          ),
-        ),
-        const SizedBox(height: AppSpacing.lg),
-      ],
+            const SizedBox(height: AppSpacing.xs),
+          ],
+        );
+
+        const minComfortHeight = 280.0;
+        if (constraints.maxHeight.isFinite &&
+            constraints.maxHeight < minComfortHeight) {
+          return SingleChildScrollView(
+            child: SizedBox(
+              height: minComfortHeight,
+              child: content,
+            ),
+          );
+        }
+
+        return content;
+      },
     );
   }
 
   // -- Title row: "Employees" ---------------------------------------------
 
   Widget _buildTitleRow() {
-    final isMobile = MediaQuery.sizeOf(context).width < 768;
+    final isMobile = AppLayout.isMobile(context);
+    final isShort = MediaQuery.sizeOf(context).height < 450;
     return Padding(
       padding: EdgeInsets.fromLTRB(
         isMobile ? AppSpacing.lg : AppSpacing.xxl,
-        isMobile ? 10 : 16,
+        isShort ? 4 : (isMobile ? 10 : 16),
         isMobile ? AppSpacing.lg : AppSpacing.xxl,
-        isMobile ? 8 : 12,
+        isShort ? 4 : (isMobile ? 8 : 12),
       ),
       child: Align(
         alignment: Alignment.centerLeft,
         child: Text(
           'Employees',
-          style: isMobile
-              ? AppTypography.pageTitleMobile
-              : AppTypography.pageTitle,
+          style: isShort
+              ? AppTypography.pageTitleMobile.copyWith(fontSize: 18)
+              : (isMobile
+                  ? AppTypography.pageTitleMobile
+                  : AppTypography.pageTitle),
         ),
       ),
     );
@@ -333,7 +353,7 @@ class _EmployeesListScreenState extends ConsumerState<EmployeesListScreen> {
   }
 
   Widget _buildTabsRow(bool isAdmin) {
-    final isMobile = MediaQuery.sizeOf(context).width < 768;
+    final isMobile = AppLayout.isMobile(context);
     final addButton = AppToolbarButton(
       icon: Icons.add,
       // Shorter on phones so the group never needs to scroll.
@@ -374,41 +394,61 @@ class _EmployeesListScreenState extends ConsumerState<EmployeesListScreen> {
             ],
     );
 
-    if (isMobile) {
-      return Padding(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: _roleFilters(),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final fitsSideBySide = constraints.maxWidth >= 600;
+        if (!fitsSideBySide) {
+          return Padding(
+            padding: EdgeInsets.fromLTRB(
+              isMobile ? 16 : 24,
+              0,
+              isMobile ? 16 : 24,
+              12,
             ),
-            if (isAdmin) ...[
-              const SizedBox(height: AppSpacing.md),
-              // Compact actions fit on one line — no scrolling, no clipping.
-              Align(
-                alignment: Alignment.centerLeft,
-                child: actionButtons,
-              ),
-            ],
-          ],
-        ),
-      );
-    }
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: _roleFilters(),
+                ),
+                if (isAdmin) ...[
+                  const SizedBox(height: AppSpacing.md),
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: actionButtons,
+                  ),
+                ],
+              ],
+            ),
+          );
+        }
 
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
-      child: Row(
-        children: [_roleFilters(), const Spacer(), if (isAdmin) actionButtons],
-      ),
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
+          child: Row(
+            children: [
+              Expanded(
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: _roleFilters(),
+                ),
+              ),
+              if (isAdmin) ...[
+                const SizedBox(width: AppSpacing.md),
+                actionButtons,
+              ],
+            ],
+          ),
+        );
+      },
     );
   }
 
   // -- Search Row: Search bar (BELOW) + Count Badge -------------------------
 
   Widget _buildSearchRow() {
-    final isMobile = MediaQuery.sizeOf(context).width < 768;
+    final isMobile = AppLayout.isMobile(context);
     final isSearchFocused = _searchFocusNode.hasFocus;
 
     final searchBar = Material(
@@ -480,9 +520,11 @@ class _EmployeesListScreenState extends ConsumerState<EmployeesListScreen> {
       style: AppTypography.tableCellStrong.copyWith(fontSize: 14),
     );
 
-    if (isMobile) {
+    final isCompact = MediaQuery.sizeOf(context).width < 500;
+
+    if (isCompact) {
       return Padding(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [searchBar],
@@ -491,15 +533,17 @@ class _EmployeesListScreenState extends ConsumerState<EmployeesListScreen> {
     }
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
+      padding: EdgeInsets.fromLTRB(
+        isMobile ? 16 : 24,
+        0,
+        isMobile ? 16 : 24,
+        isMobile ? 8 : 16,
+      ),
       child: Row(
         children: [
           Expanded(flex: 1, child: searchBar),
-          const SizedBox(width: AppSpacing.lg),
-          Expanded(
-            flex: 1,
-            child: Align(alignment: Alignment.centerRight, child: countBadge),
-          ),
+          const SizedBox(width: AppSpacing.md),
+          countBadge,
         ],
       ),
     );

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
@@ -18,6 +19,12 @@ import 'features/splash/splash_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Decode the splash mark alongside Firebase init rather than after it, so
+  // the first Flutter frame paints it immediately. The native launch screen
+  // shows the same mark in the same spot; if Flutter had to decode it first
+  // there would be a blank white frame between the two.
+  final splashMarkReady = _precacheSplashMark();
 
   try {
     await Firebase.initializeApp(
@@ -56,7 +63,34 @@ void main() async {
     UpdateNotifier.instance.checkForUpdate();
   }
 
+  await splashMarkReady.timeout(
+    const Duration(milliseconds: 300),
+    onTimeout: () {},
+  );
+
   runApp(const ProviderScope(child: GrowmontApp()));
+}
+
+/// Resolves once the splash mark is decoded into the image cache. Never
+/// throws: a missing/broken asset just means the splash paints it a frame
+/// late, which must not block startup.
+Future<void> _precacheSplashMark() {
+  final completer = Completer<void>();
+  final stream = const AssetImage(
+    kSplashMarkAsset,
+  ).resolve(ImageConfiguration.empty);
+  late final ImageStreamListener listener;
+  void done() {
+    stream.removeListener(listener);
+    if (!completer.isCompleted) completer.complete();
+  }
+
+  listener = ImageStreamListener(
+    (_, _) => done(),
+    onError: (_, _) => done(),
+  );
+  stream.addListener(listener);
+  return completer.future;
 }
 
 class GrowmontApp extends ConsumerWidget {
@@ -76,9 +110,8 @@ class GrowmontApp extends ConsumerWidget {
       routerConfig: router,
       debugShowCheckedModeBanner: false,
       builder: (context, child) {
-        // The splash sits on top, so the auth spinner below it only ever
-        // becomes visible if sign-in outlasts the splash.
         return SplashGate(
+          isAuthenticated: auth.isAuthenticated,
           child: auth.isLoading
               ? const Scaffold(body: Center(child: CircularProgressIndicator()))
               : child ?? const SizedBox.shrink(),

@@ -85,13 +85,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Text(
-                        'Growmont',
-                        style: AppTypography.pageTitle.copyWith(
-                          color: AppColors.primaryGreen,
-                        ),
+                      Image.asset(
+                        'assets/images/growmont_logo.png',
+                        width: isWide ? 260 : 210,
+                        fit: BoxFit.contain,
+                        filterQuality: FilterQuality.high,
                       ),
-                      const SizedBox(height: AppSpacing.xxxl),
+                      const SizedBox(height: AppSpacing.xxl),
                       Text(
                         'Login',
                         style: AppTypography.headingLarge.copyWith(

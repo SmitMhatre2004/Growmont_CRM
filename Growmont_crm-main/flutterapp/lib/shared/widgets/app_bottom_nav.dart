@@ -108,47 +108,52 @@ class _NavCell extends StatelessWidget {
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(AppRadius.md),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          AnimatedContainer(
-            duration: AppMotion.fast,
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.lg,
-              vertical: AppSpacing.xxs,
-            ),
-            decoration: BoxDecoration(
-              color: isSelected
-                  ? Colors.white.withValues(alpha: 0.18)
-                  : Colors.transparent,
-              borderRadius: BorderRadius.circular(AppRadius.full),
-            ),
-            child: Icon(
-              isSelected ? item.activeIcon : item.icon,
-              size: AppSizing.iconLg,
-              color: color,
-            ),
-          ),
-          const SizedBox(height: AppSpacing.xxs),
-          // Labels are short by construction, but a large system font scale can
-          // still push them wide, so they ellipsize rather than overflow.
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xxs),
-            child: Text(
-              item.label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 11,
-                height: 1.1,
-                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                color: color,
+      child: Center(
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              AnimatedContainer(
+                duration: AppMotion.fast,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.lg,
+                  vertical: AppSpacing.xxs,
+                ),
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? Colors.white.withValues(alpha: 0.18)
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(AppRadius.full),
+                ),
+                child: Icon(
+                  isSelected ? item.activeIcon : item.icon,
+                  size: AppSizing.iconLg,
+                  color: color,
+                ),
               ),
-            ),
+              const SizedBox(height: AppSpacing.xxs),
+              // Labels are short by construction, but a large system font scale can
+              // still push them wide, so they ellipsize rather than overflow.
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xxs),
+                child: Text(
+                  item.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 11,
+                    height: 1.1,
+                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                    color: color,
+                  ),
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }

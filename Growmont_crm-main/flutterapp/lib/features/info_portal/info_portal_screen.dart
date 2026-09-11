@@ -576,40 +576,60 @@ class _InfoPortalScreenState extends ConsumerState<InfoPortalScreen> {
   Widget build(BuildContext context) {
     final user = ref.watch(authProvider).user;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildTitleRow(),
-        _buildTabsRow(user),
-        _buildSearchRow(),
-        Expanded(
-          child: _loading
-              ? const Center(child: CircularProgressIndicator())
-              : _buildTableCard(),
-        ),
-        const SizedBox(height: AppSpacing.lg),
-      ],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final content = Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildTitleRow(),
+            _buildTabsRow(user),
+            _buildSearchRow(),
+            Expanded(
+              child: _loading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _buildTableCard(),
+            ),
+            const SizedBox(height: AppSpacing.xs),
+          ],
+        );
+
+        const minComfortHeight = 280.0;
+        if (constraints.maxHeight.isFinite &&
+            constraints.maxHeight < minComfortHeight) {
+          return SingleChildScrollView(
+            child: SizedBox(
+              height: minComfortHeight,
+              child: content,
+            ),
+          );
+        }
+
+        return content;
+      },
     );
   }
 
   // -- Title Row --------------------------------------------------------
 
   Widget _buildTitleRow() {
-    final isMobile = MediaQuery.sizeOf(context).width < 768;
+    final isMobile = AppLayout.isMobile(context);
+    final isShort = MediaQuery.sizeOf(context).height < 450;
     return Padding(
       padding: EdgeInsets.fromLTRB(
         isMobile ? AppSpacing.lg : AppSpacing.xxl,
-        isMobile ? 10 : 16,
+        isShort ? 4 : (isMobile ? 10 : 16),
         isMobile ? AppSpacing.lg : AppSpacing.xxl,
-        isMobile ? 8 : 12,
+        isShort ? 4 : (isMobile ? 8 : 12),
       ),
       child: Align(
         alignment: Alignment.centerLeft,
         child: Text(
           'Info Portal',
-          style: isMobile
-              ? AppTypography.pageTitleMobile
-              : AppTypography.pageTitle,
+          style: isShort
+              ? AppTypography.pageTitleMobile.copyWith(fontSize: 18)
+              : (isMobile
+                  ? AppTypography.pageTitleMobile
+                  : AppTypography.pageTitle),
         ),
       ),
     );
@@ -618,7 +638,7 @@ class _InfoPortalScreenState extends ConsumerState<InfoPortalScreen> {
   // -- Tabs & Actions Row ------------------------------------------------
 
   Widget _buildTabsRow(AppUser? user) {
-    final isMobile = MediaQuery.sizeOf(context).width < 768;
+    final isMobile = AppLayout.isMobile(context);
     final isSales = _activeTab == 'sales';
     final activeIndex = isSales ? 0 : 1;
     const itemWidth = 148.0;
@@ -716,27 +736,50 @@ class _InfoPortalScreenState extends ConsumerState<InfoPortalScreen> {
             addButton,
           ];
 
-    if (isMobile) {
-      return Padding(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: slidingSegment,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final fitsSideBySide = constraints.maxWidth >= 600;
+        if (!fitsSideBySide) {
+          return Padding(
+            padding: EdgeInsets.fromLTRB(
+              isMobile ? 16 : 24,
+              0,
+              isMobile ? 16 : 24,
+              12,
             ),
-            const SizedBox(height: AppSpacing.md),
-            // Compact actions fit on one line — no scrolling, no clipping.
-            Row(mainAxisSize: MainAxisSize.min, children: actionButtons),
-          ],
-        ),
-      );
-    }
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: slidingSegment,
+                ),
+                const SizedBox(height: AppSpacing.md),
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(mainAxisSize: MainAxisSize.min, children: actionButtons),
+                ),
+              ],
+            ),
+          );
+        }
 
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
-      child: Row(children: [slidingSegment, const Spacer(), ...actionButtons]),
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
+          child: Row(
+            children: [
+              Flexible(
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: slidingSegment,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              ...actionButtons,
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -782,7 +825,7 @@ class _InfoPortalScreenState extends ConsumerState<InfoPortalScreen> {
   // -- Search Row & Selection Action Bar ---------------------------------
 
   Widget _buildSearchRow() {
-    final isMobile = MediaQuery.sizeOf(context).width < 768;
+    final isMobile = AppLayout.isMobile(context);
     final isInteractions = _activeTab == 'interactions';
     final selectedIds = isInteractions
         ? _selectedInteractionIds
@@ -843,13 +886,15 @@ class _InfoPortalScreenState extends ConsumerState<InfoPortalScreen> {
       activeFilterColor: activeFilterColor,
     );
 
-    if (isMobile) {
+    final isCompact = MediaQuery.sizeOf(context).width < 500;
+
+    if (isCompact) {
       return Padding(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
         child: Column(
           children: [
             searchBar,
-            const SizedBox(height: AppSpacing.sm),
+            const SizedBox(height: AppSpacing.xs),
             Align(alignment: Alignment.centerRight, child: selectionBar),
           ],
         ),
@@ -857,18 +902,17 @@ class _InfoPortalScreenState extends ConsumerState<InfoPortalScreen> {
     }
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
+      padding: EdgeInsets.fromLTRB(
+        isMobile ? 16 : 24,
+        0,
+        isMobile ? 16 : 24,
+        isMobile ? 8 : 16,
+      ),
       child: Row(
         children: [
           Expanded(flex: 1, child: searchBar),
-          const SizedBox(width: AppSpacing.lg),
-          Expanded(
-            flex: 1,
-            child: Align(
-              alignment: Alignment.centerRight,
-              child: selectionBar,
-            ),
-          ),
+          const SizedBox(width: AppSpacing.md),
+          selectionBar,
         ],
       ),
     );
@@ -1237,7 +1281,7 @@ class _InfoPortalScreenState extends ConsumerState<InfoPortalScreen> {
   // -- Table Card --------------------------------------------------------
 
   Widget _buildTableCard() {
-    final isMobile = MediaQuery.sizeOf(context).width < 768;
+    final isMobile = AppLayout.isMobile(context);
     final isInteractions = _activeTab == 'interactions';
     final interactionItems = _filteredInteractions;
     final saleItems = _filteredSales;
@@ -1632,28 +1676,54 @@ class _InfoPortalScreenState extends ConsumerState<InfoPortalScreen> {
   }
 
   Widget _buildEmptyState(String message, String subtitle) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(AppSpacing.xl),
-            decoration: const BoxDecoration(
-              color: _Palette.headerBg,
-              shape: BoxShape.circle,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return SingleChildScrollView(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              minHeight:
+                  constraints.maxHeight.isFinite ? constraints.maxHeight : 0,
             ),
-            child: const Icon(
-              Icons.inbox_outlined,
-              size: AppSizing.iconDisplay,
-              color: _Palette.textMuted,
+            child: Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  vertical: AppSpacing.md,
+                  horizontal: AppSpacing.lg,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(AppSpacing.md),
+                      decoration: const BoxDecoration(
+                        color: _Palette.headerBg,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.inbox_outlined,
+                        size: AppSizing.iconLg,
+                        color: _Palette.textMuted,
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    Text(
+                      message,
+                      style: AppTypography.itemTitle,
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: AppSpacing.xs),
+                    Text(
+                      subtitle,
+                      style: AppTypography.caption,
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              ),
             ),
           ),
-          const SizedBox(height: AppSpacing.lg),
-          Text(message, style: AppTypography.itemTitle),
-          const SizedBox(height: AppSpacing.sm),
-          Text(subtitle, style: AppTypography.caption),
-        ],
-      ),
+        );
+      },
     );
   }
 }

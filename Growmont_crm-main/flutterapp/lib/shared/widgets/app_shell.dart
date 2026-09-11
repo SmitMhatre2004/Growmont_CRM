@@ -44,7 +44,7 @@ class _AppShellState extends ConsumerState<AppShell> {
   @override
   Widget build(BuildContext context) {
     final isSidebarCollapsed = ref.watch(sidebarCollapsedProvider);
-    final isWide = MediaQuery.sizeOf(context).width >= AppLayout.mobileBreakpoint;
+    final isWide = !AppLayout.isMobile(context);
 
     if (isWide) {
       return CallbackShortcuts(

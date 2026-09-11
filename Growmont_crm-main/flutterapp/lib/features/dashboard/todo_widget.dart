@@ -110,75 +110,86 @@ class _TodoWidgetState extends ConsumerState<TodoWidget> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            const Icon(
-              Icons.sticky_note_2_outlined,
-              color: Color(0xFFCA8A04),
-              size: AppSizing.iconMd,
-            ),
-            const SizedBox(width: AppSpacing.sm),
-            const Text(
-              'Sticky Notes',
-              style: AppTypography.sectionTitle,
-            ),
-            const Spacer(),
-            Tooltip(
-              message: 'Add Timestamp',
-              child: InkWell(
-                onTap: _insertTimestamp,
-                borderRadius: BorderRadius.circular(AppRadius.xs),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.xs,
-                    vertical: AppSpacing.xxs,
-                  ),
-                  child: const Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.access_time,
-                        size: AppSizing.iconXs,
-                        color: Color(0xFFCA8A04),
-                      ),
-                      SizedBox(width: AppSpacing.xxs),
-                      Text(
-                        '+Time',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: Color(0xFFCA8A04),
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final showTextLabel = constraints.maxWidth >= 340;
+            return Row(
+              children: [
+                const Icon(
+                  Icons.sticky_note_2_outlined,
+                  color: Color(0xFFCA8A04),
+                  size: AppSizing.iconMd,
+                ),
+                const SizedBox(width: AppSpacing.xs),
+                const Expanded(
+                  child: Text(
+                    'Sticky Notes',
+                    style: AppTypography.sectionTitle,
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
                   ),
                 ),
-              ),
-            ),
-            const SizedBox(width: AppSpacing.xs),
-            Tooltip(
-              message: 'Copy Notes',
-              child: IconButton(
-                icon: const Icon(Icons.copy_outlined, size: AppSizing.iconXs),
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(minWidth: 26, minHeight: 26),
-                onPressed: _copyToClipboard,
-              ),
-            ),
-            Tooltip(
-              message: 'Clear Notes',
-              child: IconButton(
-                icon: const Icon(
-                  Icons.delete_outline,
-                  size: AppSizing.iconXs,
-                  color: AppColors.danger,
+                const SizedBox(width: AppSpacing.xs),
+                Tooltip(
+                  message: 'Add Timestamp',
+                  child: InkWell(
+                    onTap: _insertTimestamp,
+                    borderRadius: BorderRadius.circular(AppRadius.xs),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.xs,
+                        vertical: AppSpacing.xxs,
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.access_time,
+                            size: AppSizing.iconXs,
+                            color: Color(0xFFCA8A04),
+                          ),
+                          if (showTextLabel) ...[
+                            const SizedBox(width: AppSpacing.xxs),
+                            const Text(
+                              '+Time',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Color(0xFFCA8A04),
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ),
                 ),
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(minWidth: 26, minHeight: 26),
-                onPressed: _clearNotes,
-              ),
-            ),
-          ],
+                const SizedBox(width: AppSpacing.xxs),
+                Tooltip(
+                  message: 'Copy Notes',
+                  child: IconButton(
+                    icon: const Icon(Icons.copy_outlined, size: AppSizing.iconXs),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(minWidth: 26, minHeight: 26),
+                    onPressed: _copyToClipboard,
+                  ),
+                ),
+                Tooltip(
+                  message: 'Clear Notes',
+                  child: IconButton(
+                    icon: const Icon(
+                      Icons.delete_outline,
+                      size: AppSizing.iconXs,
+                      color: AppColors.danger,
+                    ),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(minWidth: 26, minHeight: 26),
+                    onPressed: _clearNotes,
+                  ),
+                ),
+              ],
+            );
+          },
         ),
         const SizedBox(height: AppSpacing.sm),
         TextField(

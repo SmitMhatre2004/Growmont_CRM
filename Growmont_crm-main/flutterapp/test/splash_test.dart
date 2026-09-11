@@ -118,5 +118,44 @@ void main() {
       expect(find.byType(SplashScreen), findsNothing);
       expect(find.text('app body'), findsOneWidget);
     });
+
+    testWidgets('SplashGate triggers splash when moving from login to app UI', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: SplashGate(
+            isAuthenticated: false,
+            child: Scaffold(body: Text('dashboard body')),
+          ),
+        ),
+      );
+
+      // Initial boot splash is shown
+      expect(find.byType(SplashScreen), findsOneWidget);
+      await tester.pump(kSplashDuration);
+      await tester.pumpAndSettle();
+      expect(find.byType(SplashScreen), findsNothing);
+
+      // Successful login occurs: isAuthenticated becomes true
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: SplashGate(
+            isAuthenticated: true,
+            child: Scaffold(body: Text('dashboard body')),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      // Splash screen appears again for the login transition
+      expect(find.byType(SplashScreen), findsOneWidget);
+
+      // After splash duration, it smoothly reveals the dashboard
+      await tester.pump(kSplashDuration);
+      await tester.pumpAndSettle();
+      expect(find.byType(SplashScreen), findsNothing);
+      expect(find.text('dashboard body'), findsOneWidget);
+    });
   });
 }

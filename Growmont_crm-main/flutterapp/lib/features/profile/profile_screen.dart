@@ -251,108 +251,173 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       );
     }
 
-    final isWide = MediaQuery.sizeOf(context).width >= 768;
+    final isMobile = AppLayout.isMobile(context);
+    final isWide = !isMobile;
+    final size = MediaQuery.sizeOf(context);
+    final isShort = size.height < 450;
+    final isLandscapeOrWide = size.width >= 500;
 
-    return Padding(
-      padding: EdgeInsets.fromLTRB(
-        isWide ? 24 : 16,
-        isWide ? 16 : 10,
-        isWide ? 24 : 16,
-        isWide ? 16 : 12,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (!isWide) ...[
-            const Text('Profile', style: AppTypography.pageTitleMobile),
-            const SizedBox(height: AppSpacing.md),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: () =>
-                        setState(() => _showProfilePanel = !_showProfilePanel),
-                    icon: const Icon(
-                      Icons.person_outline,
-                      size: AppSizing.iconMd,
-                    ),
-                    label: Text(_showProfilePanel ? 'Hide Info' : 'My Info'),
-                    style: OutlinedButton.styleFrom(),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final showSideBySide =
+            isWide || (_showProfilePanel && constraints.maxWidth >= 650);
+
+        Widget titleAndActions;
+        if (isWide || isLandscapeOrWide) {
+          titleAndActions = Row(
+            children: [
+              Text(
+                'Profile',
+                style: isWide
+                    ? AppTypography.pageTitle
+                    : AppTypography.pageTitleMobile,
+              ),
+              const Spacer(),
+              if (!isWide) ...[
+                OutlinedButton.icon(
+                  onPressed: () =>
+                      setState(() => _showProfilePanel = !_showProfilePanel),
+                  icon: const Icon(
+                    Icons.person_outline,
+                    size: AppSizing.iconMd,
+                  ),
+                  label: Text(_showProfilePanel ? 'Hide Info' : 'My Info'),
+                  style: OutlinedButton.styleFrom(
+                    visualDensity: isShort ? VisualDensity.compact : null,
+                    padding: isShort
+                        ? const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 6,
+                          )
+                        : null,
                   ),
                 ),
                 const SizedBox(width: AppSpacing.sm),
-                Expanded(
-                  child: FilledButton.icon(
-                    onPressed: () => _showReminderModal(),
-                    icon: const Icon(Icons.add, size: AppSizing.iconMd),
-                    label: const Text('Add Reminder'),
-                    style: FilledButton.styleFrom(),
-                  ),
-                ),
               ],
-            ),
-          ] else
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Expanded(
-                  child: Text('Profile', style: AppTypography.pageTitle),
+              FilledButton.icon(
+                onPressed: () => _showReminderModal(),
+                icon: Icon(
+                  Icons.add,
+                  size: isWide ? AppSizing.iconLg : AppSizing.iconMd,
                 ),
-                FilledButton.icon(
-                  onPressed: () => _showReminderModal(),
-                  icon: const Icon(Icons.add),
-                  label: const Text('Add Reminder'),
+                label: const Text('Add Reminder'),
+                style: FilledButton.styleFrom(
+                  visualDensity: isShort ? VisualDensity.compact : null,
+                  padding: isShort
+                      ? const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        )
+                      : null,
                 ),
-              ],
-            ),
-          const SizedBox(height: AppSpacing.lg),
-          Expanded(
-            child: isWide
-                ? Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      SizedBox(
-                        width: 280,
-                        child: _ProfileInfoPanel(
-                          employee: _employee!,
-                          salesCount: _sales.length,
-                          interactionsCount: _interactions.length,
-                          remindersCount: _reminders.length,
-                          totalSales: _totalSalesAmount,
-                        ),
+              ),
+            ],
+          );
+        } else {
+          titleAndActions = Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Profile', style: AppTypography.pageTitleMobile),
+              const SizedBox(height: AppSpacing.md),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () => setState(
+                        () => _showProfilePanel = !_showProfilePanel,
                       ),
-                      const SizedBox(width: AppSpacing.lg),
-                      Expanded(child: _tabContent()),
-                    ],
-                  )
-                : Column(
-                    children: [
-                      if (_showProfilePanel) ...[
-                        _ProfileInfoPanel(
-                          employee: _employee!,
-                          salesCount: _sales.length,
-                          interactionsCount: _interactions.length,
-                          remindersCount: _reminders.length,
-                          totalSales: _totalSalesAmount,
-                        ),
-                        const SizedBox(height: AppSpacing.lg),
-                      ],
-                      Expanded(child: _tabContent()),
-                    ],
+                      icon: const Icon(
+                        Icons.person_outline,
+                        size: AppSizing.iconMd,
+                      ),
+                      label: Text(_showProfilePanel ? 'Hide Info' : 'My Info'),
+                      style: OutlinedButton.styleFrom(),
+                    ),
                   ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: FilledButton.icon(
+                      onPressed: () => _showReminderModal(),
+                      icon: const Icon(Icons.add, size: AppSizing.iconMd),
+                      label: const Text('Add Reminder'),
+                      style: FilledButton.styleFrom(),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          );
+        }
+
+        final content = Padding(
+          padding: EdgeInsets.fromLTRB(
+            isWide ? 24 : (isShort ? 12 : 16),
+            isShort ? 6 : (isWide ? 16 : 10),
+            isWide ? 24 : (isShort ? 12 : 16),
+            isShort ? 6 : (isWide ? 16 : 12),
           ),
-        ],
-      ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              titleAndActions,
+              SizedBox(height: isShort ? AppSpacing.sm : AppSpacing.lg),
+              Expanded(
+                child: showSideBySide
+                    ? Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          SizedBox(
+                            width: 280,
+                            child: _ProfileInfoPanel(
+                              employee: _employee!,
+                              salesCount: _sales.length,
+                              interactionsCount: _interactions.length,
+                              remindersCount: _reminders.length,
+                              totalSales: _totalSalesAmount,
+                            ),
+                          ),
+                          const SizedBox(width: AppSpacing.lg),
+                          Expanded(child: _tabContent(isShort: isShort)),
+                        ],
+                      )
+                    : (_showProfilePanel
+                        ? _ProfileInfoPanel(
+                            employee: _employee!,
+                            salesCount: _sales.length,
+                            interactionsCount: _interactions.length,
+                            remindersCount: _reminders.length,
+                            totalSales: _totalSalesAmount,
+                          )
+                        : _tabContent(isShort: isShort)),
+              ),
+            ],
+          ),
+        );
+
+        final minComfortHeight = showSideBySide ? 320.0 : 280.0;
+
+        if (constraints.maxHeight.isFinite &&
+            constraints.maxHeight < minComfortHeight) {
+          return SingleChildScrollView(
+            child: SizedBox(
+              height: minComfortHeight,
+              child: content,
+            ),
+          );
+        }
+
+        return content;
+      },
     );
   }
 
-  Widget _reminderImportExportRow() {
+  Widget _reminderImportExportRow({bool isShort = false}) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(
+      padding: EdgeInsets.fromLTRB(
         AppSpacing.md,
         0,
         AppSpacing.md,
-        AppSpacing.md,
+        isShort ? AppSpacing.xs : AppSpacing.md,
       ),
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
@@ -361,12 +426,16 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           children: [
             OutlinedButton.icon(
               onPressed: _exportReminders,
-              icon: const Icon(
+              icon: Icon(
                 Icons.download_outlined,
-                size: AppSizing.iconMd,
+                size: isShort ? AppSizing.iconSm : AppSizing.iconMd,
               ),
               label: const Text('Export'),
               style: OutlinedButton.styleFrom(
+                visualDensity: isShort ? VisualDensity.compact : null,
+                padding: isShort
+                    ? const EdgeInsets.symmetric(horizontal: 10, vertical: 4)
+                    : null,
                 foregroundColor: AppColors.textPrimary,
                 side: const BorderSide(color: AppColors.border),
                 backgroundColor: AppColors.surface,
@@ -375,9 +444,16 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             const SizedBox(width: AppSpacing.sm),
             OutlinedButton.icon(
               onPressed: _importReminders,
-              icon: const Icon(Icons.upload_outlined, size: AppSizing.iconMd),
+              icon: Icon(
+                Icons.upload_outlined,
+                size: isShort ? AppSizing.iconSm : AppSizing.iconMd,
+              ),
               label: const Text('Import'),
               style: OutlinedButton.styleFrom(
+                visualDensity: isShort ? VisualDensity.compact : null,
+                padding: isShort
+                    ? const EdgeInsets.symmetric(horizontal: 10, vertical: 4)
+                    : null,
                 foregroundColor: AppColors.textPrimary,
                 side: const BorderSide(color: AppColors.border),
                 backgroundColor: AppColors.surface,
@@ -389,27 +465,35 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
-  Widget _tabContent() {
+  Widget _tabContent({bool isShort = false}) {
     return Card(
       child: Column(
         children: [
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.all(AppSpacing.md),
+            padding: EdgeInsets.symmetric(
+              horizontal: AppSpacing.md,
+              vertical: isShort ? AppSpacing.xs : AppSpacing.md,
+            ),
             child: Row(
               children: [
-                _tabChip('Product Sales', ProfileTab.sales, _sales.length),
+                _tabChip('Product Sales', ProfileTab.sales, _sales.length,
+                    isShort: isShort),
                 _tabChip(
                   'Interactions',
                   ProfileTab.interactions,
                   _interactions.length,
+                  isShort: isShort,
                 ),
-                _tabChip('Reminders', ProfileTab.reminders, _reminders.length),
-                _tabChip('System', ProfileTab.system, 0, showCount: false),
+                _tabChip('Reminders', ProfileTab.reminders, _reminders.length,
+                    isShort: isShort),
+                _tabChip('System', ProfileTab.system, 0,
+                    showCount: false, isShort: isShort),
               ],
             ),
           ),
-          if (_tab == ProfileTab.reminders) _reminderImportExportRow(),
+          if (_tab == ProfileTab.reminders)
+            _reminderImportExportRow(isShort: isShort),
           const Divider(height: 1),
           Expanded(
             child: RefreshIndicator(
@@ -450,7 +534,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         physics: const AlwaysScrollableScrollPhysics(),
         children: [
           SizedBox(
-            height: constraints.maxHeight,
+            height:
+                constraints.maxHeight > 140.0 ? constraints.maxHeight : 140.0,
             child: Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -471,16 +556,26 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
-  Widget _tabChip(String label, ProfileTab tab, int count, {bool showCount = true}) {
+  Widget _tabChip(
+    String label,
+    ProfileTab tab,
+    int count, {
+    bool showCount = true,
+    bool isShort = false,
+  }) {
     final selected = _tab == tab;
     return Padding(
       padding: const EdgeInsets.only(right: AppSpacing.sm),
       child: FilterChip(
+        visualDensity: isShort ? VisualDensity.compact : null,
+        materialTapTargetSize:
+            isShort ? MaterialTapTargetSize.shrinkWrap : null,
         label: Text(showCount ? '$label ($count)' : label),
         selected: selected,
         onSelected: (_) => setState(() => _tab = tab),
         selectedColor: AppColors.primaryGreen,
         labelStyle: TextStyle(
+          fontSize: isShort ? 12 : null,
           color: selected ? Colors.white : AppColors.textSecondary,
         ),
         checkmarkColor: Colors.white,
@@ -549,9 +644,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   color: AppColors.textMuted,
                 ),
                 const SizedBox(width: AppSpacing.xs),
-                Text(
-                  AppFormatters.formatDate(s.date),
-                  style: AppTypography.caption,
+                Expanded(
+                  child: Text(
+                    AppFormatters.formatDate(s.date),
+                    style: AppTypography.caption,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
               ],
             ),
@@ -598,7 +696,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     color: AppColors.textMuted,
                   ),
                   const SizedBox(width: AppSpacing.xs),
-                  Text(item.clientContact, style: AppTypography.itemSubtitle),
+                  Flexible(
+                    child: Text(
+                      item.clientContact,
+                      style: AppTypography.itemSubtitle,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
                   const SizedBox(width: AppSpacing.md),
                 ],
                 const Icon(
@@ -607,9 +711,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   color: AppColors.textMuted,
                 ),
                 const SizedBox(width: AppSpacing.xs),
-                Text(
-                  'Follow-up: ${AppFormatters.formatDate(item.followUpDate)}',
-                  style: AppTypography.caption,
+                Flexible(
+                  child: Text(
+                    'Follow-up: ${AppFormatters.formatDate(item.followUpDate)}',
+                    style: AppTypography.caption,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
               ],
             ),
@@ -683,9 +790,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       color: AppColors.textMuted,
                     ),
                     const SizedBox(width: AppSpacing.xs),
-                    Text(
-                      '${AppFormatters.formatDate(r.date)} at ${AppFormatters.formatTime(r.time)}',
-                      style: AppTypography.caption,
+                    Expanded(
+                      child: Text(
+                        '${AppFormatters.formatDate(r.date)} at ${AppFormatters.formatTime(r.time)}',
+                        style: AppTypography.caption,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
                   ],
                 ),
@@ -849,7 +959,7 @@ class _ProfileInfoPanel extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppRadius.lg),
         side: const BorderSide(color: AppColors.border),
       ),
-      child: Padding(
+      child: SingleChildScrollView(
         padding: const EdgeInsets.all(AppSpacing.xl),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

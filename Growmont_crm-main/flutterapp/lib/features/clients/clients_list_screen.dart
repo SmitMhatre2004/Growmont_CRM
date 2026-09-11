@@ -131,31 +131,54 @@ class _ClientsListScreenState extends ConsumerState<ClientsListScreen> {
   @override
   Widget build(BuildContext context) {
     final isAdmin = ref.watch(authProvider).user?.isAdmin == true;
-    final isMobile = MediaQuery.sizeOf(context).width < 768;
+    final isMobile = AppLayout.isMobile(context);
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildTitleRow(isAdmin),
-        _buildSearchRow(isMobile),
-        Expanded(
-          child: Padding(
-            padding: EdgeInsets.symmetric(
-              horizontal: isMobile ? AppSpacing.lg : AppSpacing.xxl,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final content = Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildTitleRow(isAdmin),
+            _buildSearchRow(isMobile),
+            Expanded(
+              child: Padding(
+                padding: EdgeInsets.symmetric(
+                  horizontal: isMobile ? AppSpacing.lg : AppSpacing.xxl,
+                ),
+                child: _body(isAdmin, isMobile),
+              ),
             ),
-            child: _body(isAdmin, isMobile),
-          ),
-        ),
-        const SizedBox(height: AppSpacing.lg),
-      ],
+            const SizedBox(height: AppSpacing.xs),
+          ],
+        );
+
+        const minComfortHeight = 280.0;
+        if (constraints.maxHeight.isFinite &&
+            constraints.maxHeight < minComfortHeight) {
+          return SingleChildScrollView(
+            child: SizedBox(
+              height: minComfortHeight,
+              child: content,
+            ),
+          );
+        }
+
+        return content;
+      },
     );
   }
 
   Widget _buildTitleRow(bool isAdmin) {
-    final isMobile = MediaQuery.sizeOf(context).width < 768;
+    final isMobile = AppLayout.isMobile(context);
+    final isShort = MediaQuery.sizeOf(context).height < 450;
     final title = Text(
       isAdmin ? 'Clients' : 'My Clients',
-      style: isMobile ? AppTypography.pageTitleMobile : AppTypography.pageTitle,
+      style: isShort
+          ? AppTypography.pageTitleMobile.copyWith(fontSize: 18)
+          : (isMobile
+              ? AppTypography.pageTitleMobile
+              : AppTypography.pageTitle),
+      overflow: TextOverflow.ellipsis,
     );
     final addButton = SizedBox(
       height: 40.0,
@@ -167,31 +190,44 @@ class _ClientsListScreenState extends ConsumerState<ClientsListScreen> {
       ),
     );
 
-    if (isMobile) {
-      // The button drops below the title on phones instead of squeezing
-      // onto the same line, and stays left-aligned like every other
-      // screen's primary action.
-      return Padding(
-        padding: const EdgeInsets.fromLTRB(
-          AppSpacing.lg,
-          10,
-          AppSpacing.lg,
-          8,
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            title,
-            const SizedBox(height: AppSpacing.md),
-            Align(alignment: Alignment.centerLeft, child: addButton),
-          ],
-        ),
-      );
-    }
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final fitsInline = constraints.maxWidth >= 380;
+        if (!fitsInline) {
+          return Padding(
+            padding: EdgeInsets.fromLTRB(
+              isMobile ? AppSpacing.lg : AppSpacing.xxl,
+              isShort ? 4 : (isMobile ? 10 : 16),
+              isMobile ? AppSpacing.lg : AppSpacing.xxl,
+              isShort ? 4 : (isMobile ? 8 : 12),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                title,
+                const SizedBox(height: AppSpacing.md),
+                Align(alignment: Alignment.centerLeft, child: addButton),
+              ],
+            ),
+          );
+        }
 
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(AppSpacing.xxl, 16, AppSpacing.xxl, 12),
-      child: Row(children: [title, const Spacer(), addButton]),
+        return Padding(
+          padding: EdgeInsets.fromLTRB(
+            isMobile ? AppSpacing.lg : AppSpacing.xxl,
+            isShort ? 4 : 16,
+            isMobile ? AppSpacing.lg : AppSpacing.xxl,
+            isShort ? 4 : 12,
+          ),
+          child: Row(
+            children: [
+              Expanded(child: title),
+              const SizedBox(width: AppSpacing.sm),
+              addButton,
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -262,15 +298,22 @@ class _ClientsListScreenState extends ConsumerState<ClientsListScreen> {
       style: AppTypography.tableCellStrong.copyWith(fontSize: 14),
     );
 
-    if (isMobile) {
+    final isCompact = MediaQuery.sizeOf(context).width < 500;
+
+    if (isCompact) {
       return Padding(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
         child: searchBar,
       );
     }
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
+      padding: EdgeInsets.fromLTRB(
+        isMobile ? 16 : 24,
+        0,
+        isMobile ? 16 : 24,
+        isMobile ? 8 : 16,
+      ),
       child: Row(
         children: [
           Expanded(flex: 1, child: searchBar),
@@ -336,62 +379,73 @@ class _ClientsListScreenState extends ConsumerState<ClientsListScreen> {
   Widget _buildEmptyState(bool isAdmin) {
     final isFiltered = _search.isNotEmpty;
 
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(
-          vertical: AppSpacing.huge,
-          horizontal: AppSpacing.xxl,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(AppSpacing.xl),
-              decoration: BoxDecoration(
-                color: AppColors.primaryBlue.withValues(alpha: 0.08),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.handshake_outlined,
-                size: AppSizing.iconEmptyState,
-                color: AppColors.primaryBlue,
-              ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return SingleChildScrollView(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              minHeight: constraints.maxHeight.isFinite ? constraints.maxHeight : 0,
             ),
-            const SizedBox(height: AppSpacing.xl),
-            Text(
-              isFiltered
-                  ? 'No clients found'
-                  : (isAdmin
-                        ? 'No clients found'
-                        : 'No clients assigned to you yet'),
-              style: AppTypography.sectionTitle,
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 420),
-              child: Text(
-                isFiltered
-                    ? 'Try adjusting your search.'
-                    : 'Start building your book of business by adding your first client.',
-                style: AppTypography.caption,
-                textAlign: TextAlign.center,
-              ),
-            ),
-            if (!isFiltered) ...[
-              const SizedBox(height: AppSpacing.xxl),
-              FilledButton.icon(
-                onPressed: () => _showModal(),
-                icon: const Icon(Icons.add, size: AppSizing.iconMd),
-                label: const Text('Add First Client'),
-                style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.primaryBlue,
+            child: Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  vertical: AppSpacing.xl,
+                  horizontal: AppSpacing.xxl,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(AppSpacing.xl),
+                      decoration: BoxDecoration(
+                        color: AppColors.primaryBlue.withValues(alpha: 0.08),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.handshake_outlined,
+                        size: AppSizing.iconEmptyState,
+                        color: AppColors.primaryBlue,
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.xl),
+                    Text(
+                      isFiltered
+                          ? 'No clients found'
+                          : (isAdmin
+                                ? 'No clients found'
+                                : 'No clients assigned to you yet'),
+                      style: AppTypography.sectionTitle,
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 420),
+                      child: Text(
+                        isFiltered
+                            ? 'Try adjusting your search.'
+                            : 'Start building your book of business by adding your first client.',
+                        style: AppTypography.caption,
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                    if (!isFiltered) ...[
+                      const SizedBox(height: AppSpacing.xxl),
+                      FilledButton.icon(
+                        onPressed: () => _showModal(),
+                        icon: const Icon(Icons.add, size: AppSizing.iconMd),
+                        label: const Text('Add First Client'),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: AppColors.primaryBlue,
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
               ),
-            ],
-          ],
-        ),
-      ),
+            ),
+          ),
+        );
+      },
     );
   }
 }

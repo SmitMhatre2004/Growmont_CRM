@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 /// -----------------------------------------------------------------------------
@@ -151,12 +152,23 @@ class AppLayout {
   static const double mobileBreakpoint = 768;
   static const double tabletBreakpoint = 1100;
 
-  static bool isMobile(BuildContext context) =>
-      MediaQuery.sizeOf(context).width < mobileBreakpoint;
+  static bool isMobile(BuildContext context) {
+    final size = MediaQuery.sizeOf(context);
+    // When a phone is in landscape, its width may exceed mobileBreakpoint
+    // but its shortest side is typically < 500 (e.g. 360-430).
+    final isMobilePlatform = defaultTargetPlatform == TargetPlatform.android ||
+        defaultTargetPlatform == TargetPlatform.iOS;
+    if (isMobilePlatform) {
+      return size.width < mobileBreakpoint || size.shortestSide < 500;
+    }
+    return size.width < mobileBreakpoint;
+  }
 
   static bool isTablet(BuildContext context) {
-    final w = MediaQuery.sizeOf(context).width;
-    return w >= mobileBreakpoint && w < tabletBreakpoint;
+    final size = MediaQuery.sizeOf(context);
+    return !isMobile(context) &&
+        size.width >= mobileBreakpoint &&
+        size.width < tabletBreakpoint;
   }
 
   /// Horizontal gutter for a screen's scrollable body.

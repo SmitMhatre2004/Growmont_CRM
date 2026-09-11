@@ -84,8 +84,8 @@ class _ClientDetailScreenState extends ConsumerState<ClientDetailScreen> {
     }
 
     final client = _client!;
-    final isMobile = MediaQuery.sizeOf(context).width < 768;
-    final isTablet = MediaQuery.sizeOf(context).width >= 900;
+    final isMobile = AppLayout.isMobile(context);
+    final isTablet = !isMobile && MediaQuery.sizeOf(context).width >= 900;
 
     return RefreshIndicator(
       onRefresh: _load,
@@ -374,7 +374,13 @@ class _ClientDetailScreenState extends ConsumerState<ClientDetailScreen> {
           children: [
             Row(
               children: [
-                const Text('Sales History', style: AppTypography.cardTitle),
+                const Flexible(
+                  child: Text(
+                    'Sales History',
+                    style: AppTypography.cardTitle,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
                 const SizedBox(width: AppSpacing.sm),
                 Container(
                   padding: const EdgeInsets.symmetric(

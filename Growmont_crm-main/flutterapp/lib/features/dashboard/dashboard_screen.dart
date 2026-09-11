@@ -692,97 +692,104 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Dashboard',
-                        style: isWide
-                            ? AppTypography.pageTitle
-                            : AppTypography.pageTitleMobile,
-                      ),
-                      const SizedBox(height: AppSpacing.xxs),
-                      Text(
-                        'Welcome back, ${user?.name ?? 'User'}',
-                        style: const TextStyle(
-                          color: AppColors.textSecondary,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w400,
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final showHeaderButtons = constraints.maxWidth >= 720;
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Dashboard',
+                                style: showHeaderButtons
+                                    ? AppTypography.pageTitle
+                                    : AppTypography.pageTitleMobile,
+                              ),
+                              const SizedBox(height: AppSpacing.xxs),
+                              Text(
+                                'Welcome back, ${user?.name ?? 'User'}',
+                                style: const TextStyle(
+                                  color: AppColors.textSecondary,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w400,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
+                        if (showHeaderButtons) ...[
+                          _quickActionButton(
+                            icon: Icons.add,
+                            label: 'Add Sale',
+                            isPrimary: true,
+                            color: AppColors.primaryBlue,
+                            onPressed: () => _openAddSale(user),
+                          ),
+                          const SizedBox(width: AppSpacing.sm),
+                          _quickActionButton(
+                            icon: Icons.add,
+                            label: 'Add Follow-up',
+                            isPrimary: true,
+                            color: AppColors.primaryBlue,
+                            onPressed: () => _openAddInteraction(user),
+                          ),
+                          const SizedBox(width: AppSpacing.sm),
+                          _quickActionButton(
+                            icon: Icons.add,
+                            label: 'Add Reminder',
+                            isPrimary: true,
+                            color: AppColors.primaryBlue,
+                            onPressed: () => _openAddReminder(user),
+                          ),
+                        ],
+                      ],
+                    ),
+                    if (!showHeaderButtons) ...[
+                      const SizedBox(height: AppSpacing.md),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _quickActionButton(
+                              icon: Icons.add,
+                              label: 'Sale',
+                              isPrimary: true,
+                              color: AppColors.primaryBlue,
+                              onPressed: () => _openAddSale(user),
+                            ),
+                          ),
+                          const SizedBox(width: AppSpacing.sm),
+                          Expanded(
+                            child: _quickActionButton(
+                              icon: Icons.add,
+                              label: 'Follow-up',
+                              isPrimary: true,
+                              color: AppColors.primaryBlue,
+                              onPressed: () => _openAddInteraction(user),
+                            ),
+                          ),
+                          const SizedBox(width: AppSpacing.sm),
+                          Expanded(
+                            child: _quickActionButton(
+                              icon: Icons.add,
+                              label: 'Reminder',
+                              isPrimary: true,
+                              color: AppColors.primaryBlue,
+                              onPressed: () => _openAddReminder(user),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
-                  ),
-                ),
-                if (isWide) ...[
-                  _quickActionButton(
-                    icon: Icons.add,
-                    label: 'Add Sale',
-                    isPrimary: true,
-                    color: AppColors.primaryBlue,
-                    onPressed: () => _openAddSale(user),
-                  ),
-                  const SizedBox(width: AppSpacing.sm),
-                  _quickActionButton(
-                    icon: Icons.add,
-                    label: 'Add Follow-up',
-                    isPrimary: true,
-                    color: AppColors.primaryBlue,
-                    onPressed: () => _openAddInteraction(user),
-                  ),
-                  const SizedBox(width: AppSpacing.sm),
-                  _quickActionButton(
-                    icon: Icons.add,
-                    label: 'Add Reminder',
-                    isPrimary: true,
-                    color: AppColors.primaryBlue,
-                    onPressed: () => _openAddReminder(user),
-                  ),
-                ],
-              ],
+                  ],
+                );
+              },
             ),
-            if (!isWide) ...[
-              const SizedBox(height: AppSpacing.md),
-              // One horizontal row of three equal-width buttons that span the
-              // full gutter. Each shrinks its own label to fit, so the group
-              // never scrolls, never wraps and never clips.
-              Row(
-                children: [
-                  Expanded(
-                    child: _quickActionButton(
-                      icon: Icons.add,
-                      label: 'Sale',
-                      isPrimary: true,
-                      color: AppColors.primaryBlue,
-                      onPressed: () => _openAddSale(user),
-                    ),
-                  ),
-                  const SizedBox(width: AppSpacing.sm),
-                  Expanded(
-                    child: _quickActionButton(
-                      icon: Icons.add,
-                      label: 'Follow-up',
-                      isPrimary: true,
-                      color: AppColors.primaryBlue,
-                      onPressed: () => _openAddInteraction(user),
-                    ),
-                  ),
-                  const SizedBox(width: AppSpacing.sm),
-                  Expanded(
-                    child: _quickActionButton(
-                      icon: Icons.add,
-                      label: 'Reminder',
-                      isPrimary: true,
-                      color: AppColors.primaryBlue,
-                      onPressed: () => _openAddReminder(user),
-                    ),
-                  ),
-                ],
-              ),
-            ],
             const SizedBox(height: AppSpacing.lg),
             DashboardAnalytics(
               sales: _sales,
@@ -790,23 +797,28 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               reminders: _reminders,
             ),
             const SizedBox(height: AppSpacing.lg),
-            if (isWide)
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(flex: 2, child: _leftColumn(user)),
-                  const SizedBox(width: AppSpacing.sm),
-                  Expanded(child: _rightColumn(user)),
-                ],
-              )
-            else
-              Column(
-                children: [
-                  _leftColumn(user),
-                  const SizedBox(height: AppSpacing.sm),
-                  _rightColumn(user),
-                ],
-              ),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final splitColumns = constraints.maxWidth >= 850;
+                if (splitColumns) {
+                  return Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(flex: 2, child: _leftColumn(user)),
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(child: _rightColumn(user)),
+                    ],
+                  );
+                }
+                return Column(
+                  children: [
+                    _leftColumn(user),
+                    const SizedBox(height: AppSpacing.sm),
+                    _rightColumn(user),
+                  ],
+                );
+              },
+            ),
           ],
         ),
       ),
@@ -994,47 +1006,52 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     required Color color,
     required VoidCallback onPressed,
   }) {
-    if (isPrimary) {
-      return SizedBox(
-        height: _controlHeight,
-        child: FilledButton.icon(
-          onPressed: onPressed,
-          icon: Icon(icon, size: AppSizing.iconMd),
-          // These three sit in equal-width Expanded slots on a phone, so the
-          // label scales itself down rather than overflowing its button.
-          label: FittedBox(
+    final content = Row(
+      mainAxisSize: MainAxisSize.min,
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(
+          icon,
+          size: AppSizing.iconSm,
+          color: isPrimary ? Colors.white : color,
+        ),
+        const SizedBox(width: AppSpacing.xs),
+        Flexible(
+          child: FittedBox(
             fit: BoxFit.scaleDown,
             child: Text(
               label,
               maxLines: 1,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
+                color: isPrimary ? Colors.white : color,
               ),
             ),
           ),
+        ),
+      ],
+    );
+
+    if (isPrimary) {
+      return SizedBox(
+        height: _controlHeight,
+        child: FilledButton(
+          onPressed: onPressed,
           style: FilledButton.styleFrom(
             backgroundColor: color,
             foregroundColor: Colors.white,
             elevation: 0,
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
           ),
+          child: content,
         ),
       );
     }
     return SizedBox(
       height: _controlHeight,
-      child: OutlinedButton.icon(
+      child: OutlinedButton(
         onPressed: onPressed,
-        icon: Icon(icon, size: AppSizing.iconMd, color: color),
-        label: Text(
-          label,
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-            color: color,
-          ),
-        ),
         style: OutlinedButton.styleFrom(
           side: BorderSide(
             color: color == AppColors.textPrimary
@@ -1042,7 +1059,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 : color.withValues(alpha: 0.35),
           ),
           backgroundColor: AppColors.surface,
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
         ),
+        child: content,
       ),
     );
   }

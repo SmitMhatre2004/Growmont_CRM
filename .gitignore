@@ -4,3 +4,6 @@ client_secret_*.json
 
 # Firebase Admin SDK service account keys (any download filename)
 *firebase-adminsdk*.json
+/Growmont_crm-main/installer/Output
+/Growmont_crm-main/installer/Output
+Growmont_crm-main/installer/Output/Growmont-Setup-1.0.0.exe

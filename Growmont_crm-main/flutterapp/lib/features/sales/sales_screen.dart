@@ -301,77 +301,95 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isWide = MediaQuery.sizeOf(context).width >= 900;
-    final isMobile = MediaQuery.sizeOf(context).width < 768;
+    final isMobile = AppLayout.isMobile(context);
+    final isWide = !isMobile && MediaQuery.sizeOf(context).width >= 900;
     final user = ref.watch(authProvider).user;
     final filtered = _filtered;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildTitleRow(),
-        _summaryRow(user),
-        Expanded(
-          child: Padding(
-            padding: EdgeInsets.symmetric(
-              horizontal: isMobile ? AppSpacing.lg : AppSpacing.xxl,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final content = Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildTitleRow(),
+            _summaryRow(user),
+            Expanded(
+              child: Padding(
+                padding: EdgeInsets.symmetric(
+                  horizontal: isMobile ? AppSpacing.lg : AppSpacing.xxl,
+                ),
+                child: isWide
+                    ? Row(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          // Filter by product side column
+                          SizedBox(width: 250, child: _filterPanel()),
+                          const SizedBox(width: AppSpacing.lg),
+                          Expanded(
+                            child: _loading
+                                ? const Center(
+                                    child: CircularProgressIndicator(),
+                                  )
+                                : _salesTableOrEmpty(filtered, user),
+                          ),
+                        ],
+                      )
+                    : Column(
+                        children: [
+                          SizedBox(
+                            height: 40,
+                            child: _filterPanel(horizontal: true),
+                          ),
+                          const SizedBox(height: AppSpacing.xs),
+                          if (MediaQuery.sizeOf(context).width < 600) ...[
+                            Align(
+                              alignment: Alignment.centerRight,
+                              child: _buildSelectionBar(),
+                            ),
+                            const SizedBox(height: AppSpacing.xs),
+                          ],
+                          Expanded(
+                            child: _loading
+                                ? const Center(
+                                    child: CircularProgressIndicator(),
+                                  )
+                                : _salesTableOrEmpty(filtered, user),
+                          ),
+                        ],
+                      ),
+              ),
             ),
-            child: isWide
-                ? Row(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      // Filter by product side column
-                      SizedBox(width: 250, child: _filterPanel()),
-                      const SizedBox(width: AppSpacing.lg),
-                      Expanded(
-                        child: _loading
-                            ? const Center(child: CircularProgressIndicator())
-                            : _salesTableOrEmpty(filtered, user),
-                      ),
-                    ],
-                  )
-                : Column(
-                    children: [
-                      SizedBox(
-                        height: 120,
-                        child: _filterPanel(horizontal: true),
-                      ),
-                      const SizedBox(height: AppSpacing.md),
-                      // On phones the selection indicator lives here, under
-                      // the filter panel and right-aligned, matching the
-                      // Interactions screen's search-row/selection-bar
-                      // arrangement — it used to sit in the toolbar above.
-                      if (isMobile) ...[
-                        Align(
-                          alignment: Alignment.centerRight,
-                          child: _buildSelectionBar(),
-                        ),
-                        const SizedBox(height: AppSpacing.sm),
-                      ],
-                      Expanded(
-                        child: _loading
-                            ? const Center(child: CircularProgressIndicator())
-                            : _salesTableOrEmpty(filtered, user),
-                      ),
-                    ],
-                  ),
-          ),
-        ),
-        const SizedBox(height: AppSpacing.lg),
-      ],
+            const SizedBox(height: AppSpacing.xs),
+          ],
+        );
+
+        const minComfortHeight = 280.0;
+        if (constraints.maxHeight.isFinite &&
+            constraints.maxHeight < minComfortHeight) {
+          return SingleChildScrollView(
+            child: SizedBox(
+              height: minComfortHeight,
+              child: content,
+            ),
+          );
+        }
+
+        return content;
+      },
     );
   }
 
   // -- Title row: "Sales" ---------------------------------------------------
 
   Widget _buildTitleRow() {
-    final isMobile = MediaQuery.sizeOf(context).width < 768;
+    final isMobile = AppLayout.isMobile(context);
+    final isShort = MediaQuery.sizeOf(context).height < 450;
     return Padding(
       padding: EdgeInsets.fromLTRB(
         isMobile ? AppSpacing.lg : AppSpacing.xxl,
-        isMobile ? 10 : 16,
+        isShort ? 4 : (isMobile ? 10 : 16),
         isMobile ? AppSpacing.lg : AppSpacing.xxl,
-        isMobile ? 8 : 12,
+        isShort ? 4 : (isMobile ? 8 : 12),
       ),
       child: Align(
         alignment: Alignment.centerLeft,
@@ -407,23 +425,26 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
       onPressed: _importSales,
     );
 
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: isMobile
-          ? [
-              addButton,
-              const SizedBox(width: AppSpacing.sm),
-              exportButton,
-              const SizedBox(width: AppSpacing.sm),
-              importButton,
-            ]
-          : [
-              exportButton,
-              const SizedBox(width: AppSpacing.sm),
-              importButton,
-              const SizedBox(width: AppSpacing.sm),
-              addButton,
-            ],
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: isMobile
+            ? [
+                addButton,
+                const SizedBox(width: AppSpacing.sm),
+                exportButton,
+                const SizedBox(width: AppSpacing.sm),
+                importButton,
+              ]
+            : [
+                exportButton,
+                const SizedBox(width: AppSpacing.sm),
+                importButton,
+                const SizedBox(width: AppSpacing.sm),
+                addButton,
+              ],
+      ),
     );
   }
 
@@ -538,7 +559,7 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
 
     final isFiltered = _selectedProduct != 'ALL';
     final currentCatName = _getCategoryName(_selectedProduct);
-    final isMobile = MediaQuery.sizeOf(context).width < 768;
+    final isMobile = AppLayout.isMobile(context);
 
     final dealsBox = _infoBox(
       title: isFiltered ? currentCatName.toUpperCase() : 'TOTAL DEALS',
@@ -563,6 +584,8 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
     final actionButtons = _buildActions(user, isMobile: isMobile);
     const gap = 10.0;
 
+    final isCompactWidth = MediaQuery.sizeOf(context).width < 600;
+
     return Padding(
       padding: EdgeInsets.fromLTRB(
         isMobile ? AppSpacing.lg : AppSpacing.xxl,
@@ -570,15 +593,12 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
         isMobile ? AppSpacing.lg : AppSpacing.xxl,
         gap,
       ),
-      child: isMobile
+      child: isCompactWidth
           ? Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // The selection indicator now lives below the filter panel
-                // (see build()), so this row is just the actions, left
-                // aligned with the primary Add button leading the group.
                 actionButtons,
-                const SizedBox(height: AppSpacing.md),
+                const SizedBox(height: AppSpacing.sm),
                 SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   child: Row(
@@ -723,78 +743,77 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
     }
 
     if (horizontal) {
-      final itemsToShow = <(String, String)>[allCategory, ...activeCategories];
-      if (_expandZeroCountFilters) {
-        itemsToShow.addAll(zeroCountCategories);
-      } else if (_selectedProduct != 'ALL' &&
-          zeroCountCategories.any((c) => c.$1 == _selectedProduct)) {
-        final selectedCat = zeroCountCategories.firstWhere(
-          (c) => c.$1 == _selectedProduct,
-        );
-        itemsToShow.add(selectedCat);
-      }
+      final itemsToShow = <(String, String)>[allCategory, ...otherCategories];
 
       return Container(
+        height: 40,
         decoration: BoxDecoration(
           color: Colors.white,
           border: Border.all(color: _Palette.border),
-          borderRadius: BorderRadius.circular(AppRadius.lg),
+          borderRadius: BorderRadius.circular(AppRadius.md),
         ),
-        clipBehavior: Clip.antiAlias,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.lg,
-                vertical: AppSpacing.sm,
-              ),
-              decoration: const BoxDecoration(
-                color: AppColors.surfaceHeader,
-                border: Border(bottom: BorderSide(color: AppColors.border)),
-              ),
-              child: Row(
-                children: [
-                  Text('FILTER BY PRODUCT', style: AppTypography.tableHeader),
-                  const Spacer(),
-                  if (zeroCountCategories.isNotEmpty)
-                    InkWell(
-                      onTap: () => setState(
-                        () =>
-                            _expandZeroCountFilters = !_expandZeroCountFilters,
-                      ),
-                      child: Text(
-                        _expandZeroCountFilters
-                            ? 'Show less'
-                            : '+ ${zeroCountCategories.length} more',
-                        style: AppTypography.tableHeader.copyWith(
-                          color: AppColors.primaryBlue,
-                        ),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.xs,
+          vertical: 3,
+        ),
+        child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: itemsToShow.map((cat) {
+              final count = cat.$1 == 'ALL'
+                  ? _sales.length
+                  : _sales.where((s) => s.product == cat.$1).length;
+              final selected = _selectedProduct == cat.$1;
+              final catColor = productColor(cat.$1);
+              return Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 3),
+                child: InkWell(
+                  onTap: () => setState(() => _selectedProduct = cat.$1),
+                  borderRadius: BorderRadius.circular(AppRadius.sm),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 5,
+                    ),
+                    decoration: BoxDecoration(
+                      color: selected
+                          ? catColor.withValues(alpha: 0.12)
+                          : Colors.transparent,
+                      borderRadius: BorderRadius.circular(AppRadius.sm),
+                      border: Border.all(
+                        color: selected ? catColor : Colors.transparent,
+                        width: 1,
                       ),
                     ),
-                ],
-              ),
-            ),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.sm,
-                  vertical: AppSpacing.xs,
-                ),
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: itemsToShow
-                        .map(
-                          (c) =>
-                              SizedBox(width: 160, child: buildCategoryItem(c)),
-                        )
-                        .toList(),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          cat.$2,
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight:
+                                selected ? FontWeight.w700 : FontWeight.w500,
+                            color: selected ? catColor : _Palette.textPrimary,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          '($count)',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight:
+                                selected ? FontWeight.w700 : FontWeight.w400,
+                            color: selected ? catColor : _Palette.textMuted,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-              ),
-            ),
-          ],
+              );
+            }).toList(),
+          ),
         ),
       );
     }
@@ -836,7 +855,14 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                Text('FILTER BY PRODUCT', style: AppTypography.tableHeader),
+                Flexible(
+                  child: Text(
+                    'FILTER BY PRODUCT',
+                    style: AppTypography.tableHeader,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.sm),
                 const Spacer(),
                 Container(
                   padding: const EdgeInsets.symmetric(
@@ -1151,88 +1177,99 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
     final isFiltered = _selectedProduct != 'ALL';
     final categoryName = _getCategoryName(_selectedProduct);
 
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(
-          vertical: AppSpacing.huge,
-          horizontal: AppSpacing.xxl,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(AppSpacing.xl),
-              decoration: BoxDecoration(
-                color: AppColors.primaryBlue.withValues(alpha: 0.08),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.receipt_long_outlined,
-                size: AppSizing.iconEmptyState,
-                color: AppColors.primaryBlue,
-              ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return SingleChildScrollView(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              minHeight: constraints.maxHeight.isFinite ? constraints.maxHeight : 0,
             ),
-            const SizedBox(height: AppSpacing.xl),
-            Text(
-              isFiltered
-                  ? 'No sales found in $categoryName'
-                  : 'No sales recorded yet',
-              style: AppTypography.sectionTitle,
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 420),
-              child: Text(
-                isFiltered
-                    ? 'There are currently no transactions logged under $categoryName. You can record a new transaction for this category or explore other categories.'
-                    : 'Start building your sales pipeline by recording your first transaction.',
-                style: const TextStyle(
-                  fontSize: 13,
-                  color: _Palette.textSecondary,
-                  height: 1.4,
+            child: Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  vertical: AppSpacing.xl,
+                  horizontal: AppSpacing.xxl,
                 ),
-                textAlign: TextAlign.center,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(AppSpacing.xl),
+                      decoration: BoxDecoration(
+                        color: AppColors.primaryBlue.withValues(alpha: 0.08),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.receipt_long_outlined,
+                        size: AppSizing.iconEmptyState,
+                        color: AppColors.primaryBlue,
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.xl),
+                    Text(
+                      isFiltered
+                          ? 'No sales found in $categoryName'
+                          : 'No sales recorded yet',
+                      style: AppTypography.sectionTitle,
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 420),
+                      child: Text(
+                        isFiltered
+                            ? 'There are currently no transactions logged under $categoryName. You can record a new transaction for this category or explore other categories.'
+                            : 'Start building your sales pipeline by recording your first transaction.',
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: _Palette.textSecondary,
+                          height: 1.4,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.xxl),
+                    Wrap(
+                      spacing: 12,
+                      runSpacing: 12,
+                      alignment: WrapAlignment.center,
+                      children: [
+                        FilledButton.icon(
+                          onPressed: () => _showSaleModal(
+                            context,
+                            ref.read(authProvider).user,
+                            defaultProduct: isFiltered ? _selectedProduct : null,
+                          ),
+                          icon: const Icon(Icons.add, size: AppSizing.iconMd),
+                          label: Text(
+                            isFiltered ? 'Add $categoryName Sale' : 'Add First Sale',
+                          ),
+                          style: FilledButton.styleFrom(
+                            backgroundColor: AppColors.primaryBlue,
+                          ),
+                        ),
+                        if (isFiltered)
+                          OutlinedButton.icon(
+                            onPressed: () => setState(() => _selectedProduct = 'ALL'),
+                            icon: const Icon(
+                              Icons.filter_alt_off,
+                              size: AppSizing.iconMd,
+                            ),
+                            label: const Text('View All Categories'),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: _Palette.textPrimary,
+                              side: const BorderSide(color: _Palette.border),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
-            const SizedBox(height: AppSpacing.xxl),
-            Wrap(
-              spacing: 12,
-              runSpacing: 12,
-              alignment: WrapAlignment.center,
-              children: [
-                FilledButton.icon(
-                  onPressed: () => _showSaleModal(
-                    context,
-                    ref.read(authProvider).user,
-                    defaultProduct: isFiltered ? _selectedProduct : null,
-                  ),
-                  icon: const Icon(Icons.add, size: AppSizing.iconMd),
-                  label: Text(
-                    isFiltered ? 'Add $categoryName Sale' : 'Add First Sale',
-                  ),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.primaryBlue,
-                  ),
-                ),
-                if (isFiltered)
-                  OutlinedButton.icon(
-                    onPressed: () => setState(() => _selectedProduct = 'ALL'),
-                    icon: const Icon(
-                      Icons.filter_alt_off,
-                      size: AppSizing.iconMd,
-                    ),
-                    label: const Text('View All Categories'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: _Palette.textPrimary,
-                      side: const BorderSide(color: _Palette.border),
-                    ),
-                  ),
-              ],
-            ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 

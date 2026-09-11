@@ -136,20 +136,24 @@ class DashboardAnalytics extends StatelessWidget {
                 ],
               )
             else
-              Row(
+              Wrap(
+                alignment: WrapAlignment.spaceBetween,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: AppSpacing.sm,
+                runSpacing: AppSpacing.xs,
                 children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(title, style: AppTypography.sectionTitle),
-                        const SizedBox(height: AppSpacing.xxs),
-                        Text(subtitle, style: AppTypography.caption),
-                      ],
-                    ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(title, style: AppTypography.sectionTitle),
+                      const SizedBox(height: AppSpacing.xxs),
+                      Text(subtitle, style: AppTypography.caption),
+                    ],
                   ),
-                  const SizedBox(width: AppSpacing.sm),
-                  headerAction,
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: headerAction,
+                  ),
                 ],
               ),
             const SizedBox(height: AppSpacing.lg),
