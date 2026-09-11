@@ -1,0 +1,9 @@
+# Installer build output — not source, produced by installer/build_release.ps1
+installer/Output/
+
+# Secrets and credentials
+client_secret_*.json
+serviceAccountKey.json
+
+# Firebase Admin SDK service account keys (any download filename)
+*firebase-adminsdk*.json

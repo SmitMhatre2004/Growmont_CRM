@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../../core/config/app_config.dart';
 import '../../../core/providers.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../models/employee.dart';
@@ -68,6 +69,30 @@ class _AddEmployeeModalState extends ConsumerState<AddEmployeeModal> {
     }
   }
 
+  /// A bare username is completed to a full company address, so an admin can
+  /// type "rohan" and get rohan@growmont.com — the same shorthand the login
+  /// screen accepts. An address typed in full must already be on the domain;
+  /// [_validateEmail] rejects anything else before we get here.
+  String _normalisedEmail() {
+    final raw = _email.text.trim();
+    if (raw.contains('@')) return raw;
+    return '$raw$kAllowedEmailDomain';
+  }
+
+  String? _validateEmail(String? v) {
+    final raw = (v ?? '').trim();
+    if (raw.isEmpty) return 'Required';
+    if (!raw.contains('@')) {
+      // Bare username — _normalisedEmail() will append the domain.
+      return null;
+    }
+    if (!raw.toLowerCase().endsWith(kAllowedEmailDomain)) {
+      return 'Employee emails must be $kAllowedEmailDomain';
+    }
+    if (raw.split('@').first.isEmpty) return 'Enter a valid email address';
+    return null;
+  }
+
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
     if (widget.existing == null && _password.text.isEmpty) {
@@ -83,7 +108,7 @@ class _AddEmployeeModalState extends ConsumerState<AddEmployeeModal> {
     setState(() => _loading = true);
     final map = <String, dynamic>{
       'name': _name.text.trim(),
-      'email': _email.text.trim(),
+      'email': _normalisedEmail(),
       'mobile_no': _mobile.text.trim(),
       'gender': _gender,
       'dob': AppFormatters.toApiDate(_dob),
@@ -172,13 +197,14 @@ class _AddEmployeeModalState extends ConsumerState<AddEmployeeModal> {
             const SizedBox(height: AppSpacing.md),
             TextFormField(
               controller: _email,
-              decoration: const InputDecoration(labelText: 'Email *'),
+              decoration: const InputDecoration(
+                labelText: 'Email *',
+                helperText:
+                    'Username is enough — $kAllowedEmailDomain '
+                    'is added automatically',
+              ),
               keyboardType: TextInputType.emailAddress,
-              validator: (v) {
-                if (v == null || v.trim().isEmpty) return 'Required';
-                if (!v.contains('@')) return 'Enter a valid email address';
-                return null;
-              },
+              validator: _validateEmail,
             ),
             const SizedBox(height: AppSpacing.md),
             TextFormField(

@@ -3,17 +3,39 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     // ─── Helper functions ───
-    function isAuthenticated() {
-      return request.auth != null;
+    // The employees/{uid} document is the single source of truth for who may
+    // do what. Custom claims are informational only.
+    //
+    // Reading the document rather than trusting a claim is what makes an
+    // admin's Restrict take effect on the very next request: claims can only
+    // be rewritten by the Admin SDK, which isn't reachable from the desktop
+    // app, so a claim-based check would let a restricted account keep working
+    // until its token happened to be reissued.
+    //
+    // This is safe against self-promotion because only an admin can write to
+    // employees/* (below), so nobody can edit their own role or status.
+    function empPath() {
+      return /databases/$(database)/documents/employees/$(request.auth.uid);
+    }
+
+    function empExists() {
+      return request.auth != null && exists(empPath());
+    }
+
+    function empData() {
+      return get(empPath()).data;
+    }
+
+    function isActive() {
+      return empExists() && empData().status == 'ACTIVE';
     }
 
     function isAdmin() {
-      return isAuthenticated() &&
-             request.auth.token.role == 'ADMIN';
+      return isActive() && empData().role == 'ADMIN';
     }
 
     function isOwnerEmployee(employeeId) {
-      return isAuthenticated() &&
+      return isActive() &&
              request.auth.uid == employeeId;
     }
 
@@ -23,8 +45,8 @@ service cloud.firestore {
 
     // ─── Employees ───
     match /employees/{employeeId} {
-      // Any authenticated user can read employees (needed for dropdowns, detail views)
-      allow read: if isAuthenticated();
+      // Any active user can read employees (needed for dropdowns, detail views)
+      allow read: if isActive();
 
       // Only admins can create/update/delete employees
       allow create, update, delete: if isAdmin();
@@ -34,14 +56,12 @@ service cloud.firestore {
     match /clients/{clientId} {
       // Each client belongs to exactly one employee; admins see all,
       // employees see only the clients assigned to them.
-      allow read: if isAdmin() ||
-                     resource.data.employee_id == request.auth.uid;
+      allow read: if isAdminOrOwner(resource.data.employee_id);
 
       // Employees can add a client, but only assigned to themselves;
       // admins can create a client for anyone.
       allow create: if isAdmin() ||
-                       (isAuthenticated() &&
-                        request.resource.data.employee_id == request.auth.uid);
+                       isOwnerEmployee(request.resource.data.employee_id);
 
       // Employees can edit their own client's details but cannot reassign
       // ownership; only admins can reassign a client to a different employee.
@@ -56,42 +76,38 @@ service cloud.firestore {
     // ─── Sales ───
     match /sales/{saleId} {
       // Admins see all; employees see only their own
-      allow read: if isAdmin() ||
-                     resource.data.sales_rep_id == request.auth.uid;
+      allow read: if isAdminOrOwner(resource.data.sales_rep_id);
 
       // Create: employee must set sales_rep_id to self;
       // admin can set any sales_rep_id
-      allow create: if isAuthenticated() &&
-                       (isAdmin() || request.resource.data.sales_rep_id == request.auth.uid) &&
+      allow create: if (isAdmin() ||
+                        isOwnerEmployee(request.resource.data.sales_rep_id)) &&
                        // Money validation
                        request.resource.data.amount_paise is int &&
                        request.resource.data.amount_paise > 0 &&
                        request.resource.data.amount_paise < 100000000000;
 
       // Update: admin can update any; employee only own
-      allow update: if (isAdmin() || resource.data.sales_rep_id == request.auth.uid) &&
+      allow update: if isAdminOrOwner(resource.data.sales_rep_id) &&
                        request.resource.data.amount_paise is int &&
                        request.resource.data.amount_paise > 0 &&
                        request.resource.data.amount_paise < 100000000000;
 
       // Delete: admin can delete any; employee only own
       // (Fixes the Django bug where any user could delete any sale)
-      allow delete: if isAdmin() || resource.data.sales_rep_id == request.auth.uid;
+      allow delete: if isAdminOrOwner(resource.data.sales_rep_id);
     }
 
     // ─── Interactions ───
     match /interactions/{interactionId} {
-      allow read: if isAdmin() ||
-                     resource.data.employee_id == request.auth.uid;
+      allow read: if isAdminOrOwner(resource.data.employee_id);
 
-      allow create: if isAuthenticated() &&
-                       (isAdmin() || request.resource.data.employee_id == request.auth.uid);
+      allow create: if isAdmin() ||
+                       isOwnerEmployee(request.resource.data.employee_id);
 
-      allow update: if isAdmin() ||
-                       resource.data.employee_id == request.auth.uid;
+      allow update: if isAdminOrOwner(resource.data.employee_id);
 
-      allow delete: if isAdmin() ||
-                       resource.data.employee_id == request.auth.uid;
+      allow delete: if isAdminOrOwner(resource.data.employee_id);
     }
 
     // ─── Reminders ───
@@ -99,8 +115,7 @@ service cloud.firestore {
     match /reminders/{reminderId} {
       allow read: if isOwnerEmployee(resource.data.employee_id);
 
-      allow create: if isAuthenticated() &&
-                       request.resource.data.employee_id == request.auth.uid;
+      allow create: if isOwnerEmployee(request.resource.data.employee_id);
 
       allow update: if isOwnerEmployee(resource.data.employee_id) &&
                        request.resource.data.employee_id == request.auth.uid;
