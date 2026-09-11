@@ -70,7 +70,7 @@ class GrowmontApp extends ConsumerWidget {
     ref.watch(syncEngineProvider);
 
     return MaterialApp.router(
-      title: 'Growmont Employee Portal',
+      title: 'Growmont CRM',
       theme: AppTheme.light,
       routerConfig: router,
       debugShowCheckedModeBanner: false,

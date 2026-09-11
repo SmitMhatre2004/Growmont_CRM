@@ -90,12 +90,12 @@ BEGIN
         BLOCK "040904e4"
         BEGIN
             VALUE "CompanyName", "com.growmont" "\0"
-            VALUE "FileDescription", "growmont_crm" "\0"
+            VALUE "FileDescription", "Growmont CRM" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
             VALUE "InternalName", "growmont_crm" "\0"
             VALUE "LegalCopyright", "Copyright (C) 2026 com.growmont. All rights reserved." "\0"
             VALUE "OriginalFilename", "growmont_crm.exe" "\0"
-            VALUE "ProductName", "growmont_crm" "\0"
+            VALUE "ProductName", "Growmont CRM" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END
