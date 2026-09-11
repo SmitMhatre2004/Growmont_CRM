@@ -3,10 +3,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/excel/excel_io.dart';
+import '../../core/io/file_saver.dart';
+import '../../core/io/record_import.dart';
+import '../../core/io/record_json.dart';
 import '../../core/providers.dart';
 import '../../core/theme/app_theme.dart';
 import '../../models/interaction.dart';
 import '../../models/user.dart';
+import '../../shared/widgets/export_format_picker.dart';
 import '../../shared/widgets/toolbar_action_button.dart';
 import '../auth/auth_provider.dart';
 import 'interactions_excel.dart';
@@ -250,14 +254,29 @@ class _InteractionsScreenState extends ConsumerState<InteractionsScreen> {
   }
 
   Future<void> _export() async {
+    final format = await pickExportFormat(context);
+    if (format == null) return;
+
     try {
-      final savedPath = await ExcelIO.exportWorkbook(
-        filename: 'interactions_export.xlsx',
-        sheetName: 'Interactions',
-        headers: interactionsExcelHeaders,
-        rows: _interactions.map(interactionExportRow).toList(),
-        shareText: 'Interactions Export',
-      );
+      final rows = _interactions.map(interactionExportRow).toList();
+      final savedPath = format == ExportFormat.json
+          ? await FileSaver.save(
+              filename: 'interactions_export.json',
+              bytes: RecordJson.encode(
+                type: 'interactions',
+                keys: interactionsJsonKeys,
+                rows: rows,
+              ),
+              extensions: const ['json'],
+              shareText: 'Interactions Export',
+            )
+          : await ExcelIO.exportWorkbook(
+              filename: 'interactions_export.xlsx',
+              sheetName: 'Interactions',
+              headers: interactionsExcelHeaders,
+              rows: rows,
+              shareText: 'Interactions Export',
+            );
       if (savedPath != null && mounted) {
         ScaffoldMessenger.of(
           context,
@@ -276,32 +295,42 @@ class _InteractionsScreenState extends ConsumerState<InteractionsScreen> {
   }
 
   Future<void> _import() async {
-    final result = await FilePicker.pickFiles(
+    final picked = await FilePicker.pickFiles(
       type: FileType.custom,
-      allowedExtensions: ['xlsx'],
+      allowedExtensions: ['xlsx', 'json'],
     );
-    if (result?.files.single.path == null) return;
+    final path = picked?.files.single.path;
+    if (path == null) return;
     try {
-      final rows = await ExcelIO.readDataRows(result!.files.single.path!);
+      final rows = RecordJson.isJsonPath(path)
+          ? await RecordJson.readRows(path, interactionsJsonKeys)
+          : await ExcelIO.readDataRows(path);
+
       final currentUserName =
           ref.read(authProvider).user?.name ?? 'Team Member';
       final api = ref.read(apiServiceProvider);
-      var count = 0;
-      for (final row in rows) {
-        final payload = interactionImportPayload(
-          row,
-          currentUserName: currentUserName,
-        );
-        if (payload == null) continue;
-        try {
-          await api.createInteraction(payload);
-          count++;
-        } catch (_) {}
-      }
+
+      final result = await runRecordImport(
+        payloads: rows
+            .map(
+              (r) => interactionImportPayload(
+                r,
+                currentUserName: currentUserName,
+              ),
+            )
+            .nonNulls,
+        existingIdBySignature: {
+          for (final i in _interactions) interactionSignatureOf(i): i.id,
+        },
+        signatureFields: interactionsSignatureFields,
+        create: api.createInteraction,
+        update: api.updateInteraction,
+      );
+
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Imported $count interaction(s)')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(result.describe('interaction'))),
+        );
       }
       _load();
     } catch (e) {

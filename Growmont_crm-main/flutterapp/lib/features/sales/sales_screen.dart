@@ -3,10 +3,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/excel/excel_io.dart';
+import '../../core/io/file_saver.dart';
+import '../../core/io/record_import.dart';
+import '../../core/io/record_json.dart';
 import '../../core/providers.dart';
 import '../../core/theme/app_theme.dart';
 import '../../models/sale.dart';
 import '../../models/user.dart';
+import '../../shared/widgets/export_format_picker.dart';
 import '../../shared/widgets/toolbar_action_button.dart';
 import '../auth/auth_provider.dart';
 import 'sales_excel.dart';
@@ -205,14 +209,29 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
   }
 
   Future<void> _exportSales() async {
+    final format = await pickExportFormat(context);
+    if (format == null) return;
+
     try {
-      final savedPath = await ExcelIO.exportWorkbook(
-        filename: 'sales_export.xlsx',
-        sheetName: 'Sales',
-        headers: salesExcelHeaders,
-        rows: _sales.map(saleExportRow).toList(),
-        shareText: 'Sales Export',
-      );
+      final rows = _sales.map(saleExportRow).toList();
+      final savedPath = format == ExportFormat.json
+          ? await FileSaver.save(
+              filename: 'sales_export.json',
+              bytes: RecordJson.encode(
+                type: 'sales',
+                keys: salesJsonKeys,
+                rows: rows,
+              ),
+              extensions: const ['json'],
+              shareText: 'Sales Export',
+            )
+          : await ExcelIO.exportWorkbook(
+              filename: 'sales_export.xlsx',
+              sheetName: 'Sales',
+              headers: salesExcelHeaders,
+              rows: rows,
+              shareText: 'Sales Export',
+            );
       if (savedPath != null) _showSuccess('Saved to $savedPath');
     } catch (e) {
       _showError('Export failed: $e');
@@ -220,30 +239,35 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
   }
 
   Future<void> _importSales() async {
-    final result = await FilePicker.pickFiles(
+    final picked = await FilePicker.pickFiles(
       type: FileType.custom,
-      allowedExtensions: ['xlsx'],
+      allowedExtensions: ['xlsx', 'json'],
     );
-    if (result == null || result.files.single.path == null) return;
+    final path = picked?.files.single.path;
+    if (path == null) return;
 
     try {
-      final rows = await ExcelIO.readDataRows(result.files.single.path!);
+      final rows = RecordJson.isJsonPath(path)
+          ? await RecordJson.readRows(path, salesJsonKeys)
+          : await ExcelIO.readDataRows(path);
+
       final currentUserName =
           ref.read(authProvider).user?.name ?? 'Team Member';
       final api = ref.read(firestoreServiceProvider);
-      var count = 0;
-      for (final row in rows) {
-        final payload = saleImportPayload(
-          row,
-          currentUserName: currentUserName,
-        );
-        if (payload == null) continue;
-        try {
-          await api.createSale(payload);
-          count++;
-        } catch (_) {}
-      }
-      _showSuccess('Imported $count sale(s)');
+
+      final result = await runRecordImport(
+        payloads: rows
+            .map((r) => saleImportPayload(r, currentUserName: currentUserName))
+            .nonNulls,
+        existingIdBySignature: {
+          for (final s in _sales) saleSignatureOf(s): s.id,
+        },
+        signatureFields: salesSignatureFields,
+        create: api.createSale,
+        update: api.updateSale,
+      );
+
+      _showSuccess(result.describe('sale'));
       _loadSales();
     } catch (e) {
       _showError('Import failed: $e');

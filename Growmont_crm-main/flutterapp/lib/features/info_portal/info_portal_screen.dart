@@ -3,6 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/excel/excel_io.dart';
+import '../../core/io/file_saver.dart';
+import '../../core/io/record_import.dart';
+import '../../core/io/record_json.dart';
+import '../../shared/widgets/export_format_picker.dart';
 import '../../core/providers.dart';
 import '../../core/theme/app_theme.dart';
 import '../../models/interaction.dart';
@@ -401,22 +405,36 @@ class _InfoPortalScreenState extends ConsumerState<InfoPortalScreen> {
   }
 
   Future<void> _export() async {
+    final format = await pickExportFormat(context);
+    if (format == null) return;
+
     try {
       final isInteractions = _activeTab == 'interactions';
-      final savedPath = isInteractions
-          ? await ExcelIO.exportWorkbook(
-              filename: 'interactions_export.xlsx',
-              sheetName: 'Interactions',
-              headers: interactionsExcelHeaders,
-              rows: _interactions.map(interactionExportRow).toList(),
-              shareText: 'Interactions Export',
+      final rows = isInteractions
+          ? _interactions.map(interactionExportRow).toList()
+          : _sales.map(saleExportRow).toList();
+      final stem = isInteractions ? 'interactions_export' : 'sales_export';
+      final label = isInteractions ? 'Interactions Export' : 'Sales Export';
+
+      final savedPath = format == ExportFormat.json
+          ? await FileSaver.save(
+              filename: '$stem.json',
+              bytes: RecordJson.encode(
+                type: isInteractions ? 'interactions' : 'sales',
+                keys: isInteractions ? interactionsJsonKeys : salesJsonKeys,
+                rows: rows,
+              ),
+              extensions: const ['json'],
+              shareText: label,
             )
           : await ExcelIO.exportWorkbook(
-              filename: 'sales_export.xlsx',
-              sheetName: 'Sales',
-              headers: salesExcelHeaders,
-              rows: _sales.map(saleExportRow).toList(),
-              shareText: 'Sales Export',
+              filename: '$stem.xlsx',
+              sheetName: isInteractions ? 'Interactions' : 'Sales',
+              headers: isInteractions
+                  ? interactionsExcelHeaders
+                  : salesExcelHeaders,
+              rows: rows,
+              shareText: label,
             );
       if (savedPath != null && mounted) {
         ScaffoldMessenger.of(
@@ -436,46 +454,64 @@ class _InfoPortalScreenState extends ConsumerState<InfoPortalScreen> {
   }
 
   Future<void> _import() async {
-    final result = await FilePicker.pickFiles(
+    final picked = await FilePicker.pickFiles(
       type: FileType.custom,
-      allowedExtensions: ['xlsx'],
+      allowedExtensions: ['xlsx', 'json'],
     );
-    if (result?.files.single.path == null) return;
+    final path = picked?.files.single.path;
+    if (path == null) return;
     try {
-      final rows = await ExcelIO.readDataRows(result!.files.single.path!);
       final currentUserName =
           ref.read(authProvider).user?.name ?? 'Team Member';
       final api = ref.read(apiServiceProvider);
       final isInteractions = _activeTab == 'interactions';
-      var count = 0;
-      for (final row in rows) {
-        if (isInteractions) {
-          final payload = interactionImportPayload(
-            row,
-            currentUserName: currentUserName,
-          );
-          if (payload == null) continue;
-          try {
-            await api.createInteraction(payload);
-            count++;
-          } catch (_) {}
-        } else {
-          final payload = saleImportPayload(
-            row,
-            currentUserName: currentUserName,
-          );
-          if (payload == null) continue;
-          try {
-            await api.createSale(payload);
-            count++;
-          } catch (_) {}
-        }
-      }
+
+      final rows = RecordJson.isJsonPath(path)
+          ? await RecordJson.readRows(
+              path,
+              isInteractions ? interactionsJsonKeys : salesJsonKeys,
+            )
+          : await ExcelIO.readDataRows(path);
+
+      final outcome = isInteractions
+          ? await runRecordImport(
+              payloads: rows
+                  .map(
+                    (r) => interactionImportPayload(
+                      r,
+                      currentUserName: currentUserName,
+                    ),
+                  )
+                  .nonNulls,
+              existingIdBySignature: {
+                for (final i in _interactions) interactionSignatureOf(i): i.id,
+              },
+              signatureFields: interactionsSignatureFields,
+              create: api.createInteraction,
+              update: api.updateInteraction,
+            )
+          : await runRecordImport(
+              payloads: rows
+                  .map(
+                    (r) => saleImportPayload(
+                      r,
+                      currentUserName: currentUserName,
+                    ),
+                  )
+                  .nonNulls,
+              existingIdBySignature: {
+                for (final s in _sales) saleSignatureOf(s): s.id,
+              },
+              signatureFields: salesSignatureFields,
+              create: api.createSale,
+              update: api.updateSale,
+            );
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'Imported $count ${isInteractions ? 'interaction' : 'sale'}(s)',
+              outcome.describe(isInteractions ? 'interaction' : 'sale'),
             ),
           ),
         );

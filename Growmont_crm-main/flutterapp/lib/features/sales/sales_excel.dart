@@ -1,4 +1,5 @@
 import '../../core/excel/excel_io.dart';
+import '../../core/io/record_import.dart';
 import '../../models/sale.dart';
 
 /// Shared row (export) / payload (import) builders for the Sales Excel
@@ -14,6 +15,20 @@ const salesExcelHeaders = [
   'Amount (Rs)',
   'Frequency',
   'Remarks',
+];
+
+/// JSON field names, in the same column order as [salesExcelHeaders], so a
+/// JSON record and a spreadsheet row feed the same payload builder.
+const salesJsonKeys = [
+  'date',
+  'client_name',
+  'sales_rep_name',
+  'product',
+  'company',
+  'scheme',
+  'amount',
+  'frequency',
+  'remarks',
 ];
 
 List<Object?> saleExportRow(Sale s) {
@@ -65,4 +80,37 @@ Map<String, dynamic>? saleImportPayload(
     'frequency': frequency.isEmpty ? 'O' : frequency,
     'remarks': remarks,
   };
+}
+
+/// Fields that identify a sale on import. Remarks are deliberately left out:
+/// everything else matching means it is the same sale, so a re-import with
+/// reworded remarks should update that record rather than duplicate it.
+const salesSignatureFields = [
+  'date',
+  'client_name',
+  'sales_rep_name',
+  'product',
+  'company',
+  'scheme',
+  'amount',
+  'frequency',
+];
+
+/// The signature of a sale already in the list, built to line up exactly with
+/// what [saleImportPayload] produces for the same record - including its
+/// fallbacks, or an existing sale with a blank client would never match an
+/// imported row that became 'Unknown Client'.
+String saleSignatureOf(Sale s) {
+  final product = s.productDisplay ?? s.product;
+  final frequency = s.frequencyDisplay ?? s.frequency;
+  return recordSignature({
+    'date': s.date,
+    'client_name': s.clientName.isEmpty ? 'Unknown Client' : s.clientName,
+    'sales_rep_name': s.salesRepName ?? s.salesRep,
+    'product': product.isEmpty ? 'MF' : product,
+    'company': s.company,
+    'scheme': s.scheme,
+    'amount': double.tryParse(s.amount) ?? (s.amountPaise / 100.0),
+    'frequency': frequency.isEmpty ? 'O' : frequency,
+  }, salesSignatureFields);
 }

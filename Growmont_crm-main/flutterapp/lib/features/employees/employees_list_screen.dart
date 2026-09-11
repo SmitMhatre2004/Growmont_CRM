@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/excel/excel_io.dart';
+import '../../core/io/record_import.dart';
 import '../../core/providers.dart';
 import '../../core/config/app_config.dart';
 import '../../core/theme/app_theme.dart';
@@ -242,28 +243,24 @@ class _EmployeesListScreenState extends ConsumerState<EmployeesListScreen> {
     try {
       final rows = await ExcelIO.readDataRows(result.files.single.path!);
       final api = ref.read(firestoreServiceProvider);
-      var count = 0;
-      var skipped = 0;
-      for (final row in rows) {
-        final payload = employeeImportPayload(row);
-        if (payload == null) {
-          skipped++;
-          continue;
-        }
-        try {
-          await api.createEmployee(payload);
-          count++;
-        } catch (_) {
-          skipped++;
-        }
-      }
+
+      final outcome = await runRecordImport(
+        payloads: rows.map(employeeImportPayload).nonNulls,
+        existingIdBySignature: {
+          for (final e in _employees) employeeSignatureOf(e): e.id,
+        },
+        signatureFields: employeesSignatureFields,
+        create: api.createEmployee,
+        // An employee who already exists is updated in place; their password
+        // is deliberately not part of the update payload.
+        update: (id, payload) =>
+            api.updateEmployee(id, employeeUpdatePayload(payload)),
+      );
+
       if (mounted) {
-        final summary = skipped > 0
-            ? 'Imported $count employee(s) ($skipped skipped)'
-            : 'Imported $count employee(s)';
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(summary)));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(outcome.describe('employee'))),
+        );
       }
       _load();
     } catch (e) {

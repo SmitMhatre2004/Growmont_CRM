@@ -196,15 +196,30 @@ class _LegalFooter extends StatelessWidget {
               ),
             ),
           GestureDetector(
+            // Opaque, and padded out to the minimum tap target: the label
+            // itself is only ~14pt of text, which is far too small to hit
+            // reliably on a phone.
+            behavior: HitTestBehavior.opaque,
             onTap: () => showLegalDocuments(context, initialTab: i),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
-              child: Text(
-                kLegalDocuments[i].label,
-                style: AppTypography.caption.copyWith(
-                  color: AppColors.textMuted,
-                  decoration: TextDecoration.underline,
-                  decorationColor: AppColors.border,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(
+                minHeight: AppSizing.minTapTarget,
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.sm,
+                  vertical: AppSpacing.md,
+                ),
+                child: Center(
+                  widthFactor: 1,
+                  child: Text(
+                    kLegalDocuments[i].label,
+                    style: AppTypography.caption.copyWith(
+                      color: AppColors.textMuted,
+                      decoration: TextDecoration.underline,
+                      decorationColor: AppColors.border,
+                    ),
+                  ),
                 ),
               ),
             ),

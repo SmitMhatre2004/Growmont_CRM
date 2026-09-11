@@ -2,10 +2,8 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:excel/excel.dart' as xls;
-import 'package:file_picker/file_picker.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
-import 'package:path_provider/path_provider.dart';
-import 'package:share_plus/share_plus.dart';
+
+import '../io/file_saver.dart';
 
 /// Generic .xlsx read/write helpers used by every screen's Export/Import
 /// buttons. All parsing/building runs on-device — there is no server
@@ -47,49 +45,25 @@ class ExcelIO {
     return Uint8List.fromList(bytes);
   }
 
-  /// Builds a workbook and hands it to the user.
+  /// Builds a workbook and hands it to the user via [FileSaver], which opens
+  /// a native Save As dialog on desktop and the share sheet on mobile, and
+  /// side-steps an existing file rather than overwriting or failing on it.
   ///
-  /// On desktop (Windows/macOS/Linux) this opens a native "Save As" dialog
-  /// and writes the file straight to the chosen path — `share_plus`'s
-  /// share sheet doesn't save a file there, it just opens the OS share
-  /// flyout, which is why Export used to look like it did nothing on
-  /// Windows. On mobile/web the OS share sheet is the right, idiomatic
-  /// place to hand off a generated file, so that path is unchanged.
-  ///
-  /// Returns the saved file path when the desktop dialog was used and the
-  /// user picked a location; null otherwise (mobile/web share, or the
-  /// user cancelled the save dialog).
+  /// Returns the path actually written on desktop; null on mobile, or if the
+  /// user cancelled the save dialog.
   static Future<String?> exportWorkbook({
     required String filename,
     required String sheetName,
     required List<String> headers,
     required List<List<Object?>> rows,
     String? shareText,
-  }) async {
-    final bytes = buildBytes(
-      sheetName: sheetName,
-      headers: headers,
-      rows: rows,
+  }) {
+    return FileSaver.save(
+      filename: filename,
+      bytes: buildBytes(sheetName: sheetName, headers: headers, rows: rows),
+      extensions: const ['xlsx'],
+      shareText: shareText,
     );
-
-    final isDesktop =
-        !kIsWeb && (Platform.isWindows || Platform.isMacOS || Platform.isLinux);
-    if (isDesktop) {
-      return FilePicker.saveFile(
-        dialogTitle: 'Save $filename',
-        fileName: filename,
-        type: FileType.custom,
-        allowedExtensions: ['xlsx'],
-        bytes: bytes,
-      );
-    }
-
-    final dir = await getTemporaryDirectory();
-    final file = File('${dir.path}/$filename');
-    await file.writeAsBytes(bytes, flush: true);
-    // ignore: deprecated_member_use
-    await Share.shareXFiles([XFile(file.path)], text: shareText ?? filename);
-    return null;
   }
 
   static xls.CellValue? _toCellValue(Object? value) {

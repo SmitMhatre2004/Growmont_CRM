@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/config/app_config.dart';
 import '../../core/excel/excel_io.dart';
+import '../../core/io/record_import.dart';
 import '../../core/providers.dart';
 import '../../core/theme/app_theme.dart';
 import '../../models/employee.dart';
@@ -204,21 +205,25 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       final currentUserName =
           ref.read(authProvider).user?.name ?? 'Team Member';
       final api = ref.read(firestoreServiceProvider);
-      var count = 0;
-      for (final row in rows) {
-        final payload = reminderImportPayload(
-          row,
-          currentUserName: currentUserName,
-        );
-        if (payload == null) continue;
-        try {
-          await api.createReminder(payload);
-          count++;
-        } catch (_) {}
-      }
+
+      final outcome = await runRecordImport(
+        payloads: rows
+            .map(
+              (r) =>
+                  reminderImportPayload(r, currentUserName: currentUserName),
+            )
+            .nonNulls,
+        existingIdBySignature: {
+          for (final r in _reminders) reminderSignatureOf(r): r.id,
+        },
+        signatureFields: remindersSignatureFields,
+        create: api.createReminder,
+        update: api.updateReminder,
+      );
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Imported $count reminder(s)')),
+          SnackBar(content: Text(outcome.describe('reminder'))),
         );
       }
       _load();

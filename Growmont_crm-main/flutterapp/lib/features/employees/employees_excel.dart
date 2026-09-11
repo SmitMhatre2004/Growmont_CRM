@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import '../../core/excel/excel_io.dart';
+import '../../core/io/record_import.dart';
 import '../../models/employee.dart';
 
 /// Shared row (export) / payload (import) builders for the Employees Excel
@@ -70,6 +71,28 @@ Map<String, dynamic>? employeeImportPayload(List<Object?> row) {
     'dob': ExcelIO.isoDate(row, 4),
     'role': roleRaw == 'ADMIN' ? 'ADMIN' : 'EMPLOYEE',
     'password': password.isEmpty ? _randomPassword() : password,
+  };
+}
+
+/// Employees are matched on email alone, unlike every other import. It is the
+/// account's natural key: a row whose address already exists is that same
+/// person even if their mobile or role changed. Matching on every field would
+/// instead try to create a second Firebase Auth account for the address, which
+/// just fails.
+const employeesSignatureFields = ['email'];
+
+String employeeSignatureOf(Employee e) =>
+    recordSignature({'email': e.email}, employeesSignatureFields);
+
+/// The part of [employeeImportPayload] that may be written over an employee
+/// who already exists - deliberately without `password`, so re-importing a
+/// sheet never resets somebody's sign-in, and without `email`, which is the
+/// key being matched on.
+Map<String, dynamic> employeeUpdatePayload(Map<String, dynamic> payload) {
+  const updatable = ['name', 'mobile_no', 'gender', 'dob', 'role'];
+  return {
+    for (final key in updatable)
+      if (payload.containsKey(key)) key: payload[key],
   };
 }
 

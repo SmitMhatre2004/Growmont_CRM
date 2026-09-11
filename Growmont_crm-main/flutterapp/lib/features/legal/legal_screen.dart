@@ -73,9 +73,9 @@ class _DocumentView extends StatefulWidget {
 
 class _DocumentViewState extends State<_DocumentView>
     with AutomaticKeepAliveClientMixin {
-  late final Future<List<_Block>> _blocks = rootBundle
+  late final Future<List<LegalBlock>> _blocks = rootBundle
       .loadString(widget.asset)
-      .then(_parseMarkdown);
+      .then(parseLegalMarkdown);
 
   @override
   bool get wantKeepAlive => true;
@@ -84,7 +84,7 @@ class _DocumentViewState extends State<_DocumentView>
   Widget build(BuildContext context) {
     super.build(context);
 
-    return FutureBuilder<List<_Block>>(
+    return FutureBuilder<List<LegalBlock>>(
       future: _blocks,
       builder: (context, snapshot) {
         if (snapshot.hasError) {
@@ -102,7 +102,7 @@ class _DocumentViewState extends State<_DocumentView>
             child: ListView.builder(
               padding: AppLayout.pagePadding(context),
               itemCount: blocks.length,
-              itemBuilder: (context, i) => blocks[i].build(context),
+              itemBuilder: (context, i) => blocks[i].toWidget(),
             ),
           ),
         );
@@ -117,22 +117,22 @@ class _DocumentViewState extends State<_DocumentView>
 // keep the .md files the single source of truth without pulling in a renderer.
 // ---------------------------------------------------------------------------
 
-enum _BlockKind { h1, h2, rule, bullet, paragraph }
+enum LegalBlockKind { h1, h2, rule, bullet, paragraph }
 
-class _Block {
-  const _Block(this.kind, [this.text = '']);
+class LegalBlock {
+  const LegalBlock(this.kind, [this.text = '']);
 
-  final _BlockKind kind;
+  final LegalBlockKind kind;
   final String text;
 
-  Widget build(BuildContext context) {
+  Widget toWidget() {
     switch (kind) {
-      case _BlockKind.h1:
+      case LegalBlockKind.h1:
         return Padding(
           padding: const EdgeInsets.only(bottom: AppSpacing.lg),
           child: Text(text, style: AppTypography.pageTitle),
         );
-      case _BlockKind.h2:
+      case LegalBlockKind.h2:
         return Padding(
           padding: const EdgeInsets.only(
             top: AppSpacing.xl,
@@ -140,12 +140,12 @@ class _Block {
           ),
           child: Text(text, style: AppTypography.sectionTitle),
         );
-      case _BlockKind.rule:
+      case LegalBlockKind.rule:
         return const Padding(
           padding: EdgeInsets.symmetric(vertical: AppSpacing.lg),
           child: Divider(height: 1),
         );
-      case _BlockKind.bullet:
+      case LegalBlockKind.bullet:
         return Padding(
           padding: const EdgeInsets.only(
             left: AppSpacing.sm,
@@ -169,7 +169,7 @@ class _Block {
             ],
           ),
         );
-      case _BlockKind.paragraph:
+      case LegalBlockKind.paragraph:
         return Padding(
           padding: const EdgeInsets.only(bottom: AppSpacing.md),
           child: _richText(),
@@ -205,14 +205,14 @@ class _Block {
   }
 }
 
-List<_Block> _parseMarkdown(String source) {
-  final blocks = <_Block>[];
+List<LegalBlock> parseLegalMarkdown(String source) {
+  final blocks = <LegalBlock>[];
   final buffer = <String>[];
-  _BlockKind? pending;
+  LegalBlockKind? pending;
 
   void flush() {
     if (pending != null && buffer.isNotEmpty) {
-      blocks.add(_Block(pending!, buffer.join(' ')));
+      blocks.add(LegalBlock(pending!, buffer.join(' ')));
     }
     buffer.clear();
     pending = null;
@@ -226,23 +226,23 @@ List<_Block> _parseMarkdown(String source) {
       flush();
     } else if (trimmed.startsWith('# ')) {
       flush();
-      blocks.add(_Block(_BlockKind.h1, trimmed.substring(2).trim()));
+      blocks.add(LegalBlock(LegalBlockKind.h1, trimmed.substring(2).trim()));
     } else if (trimmed.startsWith('## ')) {
       flush();
-      blocks.add(_Block(_BlockKind.h2, trimmed.substring(3).trim()));
+      blocks.add(LegalBlock(LegalBlockKind.h2, trimmed.substring(3).trim()));
     } else if (trimmed == '---') {
       flush();
-      blocks.add(const _Block(_BlockKind.rule));
+      blocks.add(const LegalBlock(LegalBlockKind.rule));
     } else if (trimmed.startsWith('- ')) {
       flush();
-      pending = _BlockKind.bullet;
+      pending = LegalBlockKind.bullet;
       buffer.add(trimmed.substring(2).trim());
-    } else if (pending == _BlockKind.bullet && line.startsWith('  ')) {
+    } else if (pending == LegalBlockKind.bullet && line.startsWith('  ')) {
       // Indented wrap of the bullet above.
       buffer.add(trimmed);
     } else {
-      if (pending != _BlockKind.paragraph) flush();
-      pending = _BlockKind.paragraph;
+      if (pending != LegalBlockKind.paragraph) flush();
+      pending = LegalBlockKind.paragraph;
       buffer.add(trimmed);
     }
   }
