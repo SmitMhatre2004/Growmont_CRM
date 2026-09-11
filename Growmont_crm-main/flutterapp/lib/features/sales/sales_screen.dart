@@ -313,6 +313,17 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                         child: _filterPanel(horizontal: true),
                       ),
                       const SizedBox(height: AppSpacing.md),
+                      // On phones the selection indicator lives here, under
+                      // the filter panel and right-aligned, matching the
+                      // Interactions screen's search-row/selection-bar
+                      // arrangement — it used to sit in the toolbar above.
+                      if (isMobile) ...[
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: _buildSelectionBar(),
+                        ),
+                        const SizedBox(height: AppSpacing.sm),
+                      ],
                       Expanded(
                         child: _loading
                             ? const Center(child: CircularProgressIndicator())
@@ -352,29 +363,43 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
 
   // -- Actions: Export / Import / Add Sale ----------------------------------
 
-  Widget _buildActions(AppUser? user) {
+  /// On phones the primary (blue) action leads the group, on the extreme
+  /// left; desktop keeps Export/Import first with Add trailing.
+  Widget _buildActions(AppUser? user, {required bool isMobile}) {
+    final addButton = AppToolbarButton(
+      icon: Icons.add,
+      label: 'Add Sale',
+      isPrimary: true,
+      onPressed: () => _showSaleModal(context, user),
+    );
+    final exportButton = _outlinedIconButton(
+      icon: Icons.download_outlined,
+      label: 'Export',
+      onPressed: _exportSales,
+    );
+    final importButton = _outlinedIconButton(
+      icon: Icons.upload_outlined,
+      label: 'Import',
+      onPressed: _importSales,
+    );
+
     return Row(
       mainAxisSize: MainAxisSize.min,
-      children: [
-        _outlinedIconButton(
-          icon: Icons.download_outlined,
-          label: 'Export',
-          onPressed: _exportSales,
-        ),
-        const SizedBox(width: AppSpacing.sm),
-        _outlinedIconButton(
-          icon: Icons.upload_outlined,
-          label: 'Import',
-          onPressed: _importSales,
-        ),
-        const SizedBox(width: AppSpacing.sm),
-        AppToolbarButton(
-          icon: Icons.add,
-          label: 'Add Sale',
-          isPrimary: true,
-          onPressed: () => _showSaleModal(context, user),
-        ),
-      ],
+      children: isMobile
+          ? [
+              addButton,
+              const SizedBox(width: AppSpacing.sm),
+              exportButton,
+              const SizedBox(width: AppSpacing.sm),
+              importButton,
+            ]
+          : [
+              exportButton,
+              const SizedBox(width: AppSpacing.sm),
+              importButton,
+              const SizedBox(width: AppSpacing.sm),
+              addButton,
+            ],
     );
   }
 
@@ -511,7 +536,7 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
       value: AppFormatters.formatAmount(avgDeal.toStringAsFixed(2)),
     );
 
-    final actionButtons = _buildActions(user);
+    final actionButtons = _buildActions(user, isMobile: isMobile);
     const gap = 10.0;
 
     return Padding(
@@ -525,19 +550,10 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
           ? Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // The action group is compact on phones (icon-only secondary
-                // actions), so it fits outright — no horizontal scroll view,
-                // which previously overflowed this Row by 94px because it
-                // claimed its child's full intrinsic width.
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Flexible(child: _buildSelectionBar()),
-                    const SizedBox(width: AppSpacing.sm),
-                    actionButtons,
-                  ],
-                ),
+                // The selection indicator now lives below the filter panel
+                // (see build()), so this row is just the actions, left
+                // aligned with the primary Add button leading the group.
+                actionButtons,
                 const SizedBox(height: AppSpacing.md),
                 SingleChildScrollView(
                   scrollDirection: Axis.horizontal,

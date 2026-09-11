@@ -345,23 +345,36 @@ class _EmployeesListScreenState extends ConsumerState<EmployeesListScreen> {
       onPressed: () => _showModal(),
     );
 
+    final exportButton = _outlinedIconButton(
+      icon: Icons.download_outlined,
+      label: 'Export',
+      onPressed: _exportEmployees,
+    );
+    final importButton = _outlinedIconButton(
+      icon: Icons.upload_outlined,
+      label: 'Import',
+      onPressed: _importEmployees,
+    );
+
+    // On phones the primary (blue) action leads the group, on the extreme
+    // left; desktop keeps Export/Import first with Add trailing.
     final actionButtons = Row(
       mainAxisSize: MainAxisSize.min,
-      children: [
-        _outlinedIconButton(
-          icon: Icons.download_outlined,
-          label: 'Export',
-          onPressed: _exportEmployees,
-        ),
-        const SizedBox(width: AppSpacing.sm),
-        _outlinedIconButton(
-          icon: Icons.upload_outlined,
-          label: 'Import',
-          onPressed: _importEmployees,
-        ),
-        const SizedBox(width: AppSpacing.sm),
-        addButton,
-      ],
+      children: isMobile
+          ? [
+              addButton,
+              const SizedBox(width: AppSpacing.sm),
+              exportButton,
+              const SizedBox(width: AppSpacing.sm),
+              importButton,
+            ]
+          : [
+              exportButton,
+              const SizedBox(width: AppSpacing.sm),
+              importButton,
+              const SizedBox(width: AppSpacing.sm),
+              addButton,
+            ],
     );
 
     if (isMobile) {

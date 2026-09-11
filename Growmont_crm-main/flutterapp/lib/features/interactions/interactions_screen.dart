@@ -472,29 +472,43 @@ class _InteractionsScreenState extends ConsumerState<InteractionsScreen> {
       ),
     );
 
+    final addButton = AppToolbarButton(
+      icon: Icons.add,
+      // Shorter on phones so the group never needs to scroll.
+      label: isMobile ? 'Add' : 'Add Interaction',
+      isPrimary: true,
+      onPressed: () => _showModal(user),
+    );
+    final exportButton = _outlinedIconButton(
+      icon: Icons.download_outlined,
+      label: 'Export',
+      onPressed: _export,
+    );
+    final importButton = _outlinedIconButton(
+      icon: Icons.upload_outlined,
+      label: 'Import',
+      onPressed: _import,
+    );
+
+    // On phones the primary (blue) action leads the group, on the extreme
+    // left; desktop keeps Export/Import first with Add trailing.
     final actionButtons = Row(
       mainAxisSize: MainAxisSize.min,
-      children: [
-        _outlinedIconButton(
-          icon: Icons.download_outlined,
-          label: 'Export',
-          onPressed: _export,
-        ),
-        const SizedBox(width: AppSpacing.sm),
-        _outlinedIconButton(
-          icon: Icons.upload_outlined,
-          label: 'Import',
-          onPressed: _import,
-        ),
-        const SizedBox(width: AppSpacing.sm),
-        AppToolbarButton(
-          icon: Icons.add,
-          // Shorter on phones so the group never needs to scroll.
-          label: isMobile ? 'Add' : 'Add Interaction',
-          isPrimary: true,
-          onPressed: () => _showModal(user),
-        ),
-      ],
+      children: isMobile
+          ? [
+              addButton,
+              const SizedBox(width: AppSpacing.sm),
+              exportButton,
+              const SizedBox(width: AppSpacing.sm),
+              importButton,
+            ]
+          : [
+              exportButton,
+              const SizedBox(width: AppSpacing.sm),
+              importButton,
+              const SizedBox(width: AppSpacing.sm),
+              addButton,
+            ],
     );
 
     if (isMobile) {
@@ -570,222 +584,9 @@ class _InteractionsScreenState extends ConsumerState<InteractionsScreen> {
       activeFilterColor = _Palette.low;
     }
 
-    final isSearchFocused = _searchFocusNode.hasFocus;
-
-    final searchBar = Material(
-      color: Colors.white,
-      elevation: isSearchFocused ? 2.0 : 1.5,
-      shadowColor: isSearchFocused
-          ? AppColors.primaryBlue.withValues(alpha: 0.18)
-          : Colors.black.withValues(alpha: 0.08),
-      shape: RoundedRectangleBorder(
-        borderRadius: AppRadius.brMd,
-        side: BorderSide(
-          color: isSearchFocused ? AppColors.primaryBlue : _Palette.border,
-          width: isSearchFocused ? 1.5 : 1.0,
-        ),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: SizedBox(
-        height: _controlHeight,
-        child: TextField(
-          focusNode: _searchFocusNode,
-          textAlignVertical: TextAlignVertical.center,
-          decoration: InputDecoration(
-            isDense: true,
-            hintText: 'Search clients, representatives, notes...',
-            hintStyle: const TextStyle(fontSize: 13, color: _Palette.textMuted),
-            prefixIconConstraints: const BoxConstraints(
-              minWidth: 72,
-              maxHeight: 40,
-            ),
-            prefixIcon: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const SizedBox(width: AppSpacing.sm),
-                PopupMenuButton<String>(
-                  tooltip: 'Filter & sort options',
-                  icon: Icon(
-                    _hasActiveFilters
-                        ? Icons.filter_alt
-                        : Icons.filter_alt_outlined,
-                    size: AppSizing.iconMd,
-                    color: _hasActiveFilters
-                        ? activeFilterColor
-                        : _Palette.textMuted,
-                  ),
-                  padding: EdgeInsets.zero,
-                  splashRadius: 18,
-                  offset: const Offset(0, 36),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(AppRadius.lg),
-                    side: const BorderSide(color: _Palette.border),
-                  ),
-                  color: Colors.white,
-                  elevation: 6,
-                  onSelected: (val) {
-                    if (val == 'CLEAR') {
-                      setState(() {
-                        _priorityFilter = '';
-                        _sortColumn = 'date';
-                        _sortAscending = false;
-                      });
-                    } else if (val.startsWith('PRIORITY:')) {
-                      final p = val.replaceFirst('PRIORITY:', '');
-                      setState(() {
-                        _priorityFilter = (p == 'ALL') ? '' : p;
-                      });
-                    } else if (val.startsWith('SORT:')) {
-                      final s = val.replaceFirst('SORT:', '');
-                      setState(() {
-                        if (s == 'newest') {
-                          _sortColumn = 'date';
-                          _sortAscending = false;
-                        } else if (s == 'oldest') {
-                          _sortColumn = 'date';
-                          _sortAscending = true;
-                        } else if (s == 'client') {
-                          _sortColumn = 'client';
-                          _sortAscending = true;
-                        } else if (s == 'priority') {
-                          _sortColumn = 'priority';
-                          _sortAscending = false;
-                        }
-                      });
-                    }
-                  },
-                  itemBuilder: (context) => [
-                    const PopupMenuItem<String>(
-                      enabled: false,
-                      height: 28,
-                      child: Text(
-                        'FILTER BY PRIORITY',
-                        style: AppTypography.tableHeader,
-                      ),
-                    ),
-                    _filterMenuItem(
-                      'PRIORITY:ALL',
-                      'All Priorities',
-                      _priorityFilter.isEmpty,
-                      activeColor: _Palette.all,
-                    ),
-                    _filterMenuItem(
-                      'PRIORITY:HIGH',
-                      'High Priority',
-                      _priorityFilter == 'HIGH',
-                      activeColor: _Palette.high,
-                    ),
-                    _filterMenuItem(
-                      'PRIORITY:MEDIUM',
-                      'Medium Priority',
-                      _priorityFilter == 'MEDIUM',
-                      activeColor: _Palette.medium,
-                    ),
-                    _filterMenuItem(
-                      'PRIORITY:LOW',
-                      'Low Priority',
-                      _priorityFilter == 'LOW',
-                      activeColor: _Palette.low,
-                    ),
-                    const PopupMenuDivider(height: 12),
-                    const PopupMenuItem<String>(
-                      enabled: false,
-                      height: 28,
-                      child: Text('SORT BY', style: AppTypography.tableHeader),
-                    ),
-                    _filterMenuItem(
-                      'SORT:newest',
-                      'Newest First',
-                      _sortColumn == 'date' && !_sortAscending,
-                    ),
-                    _filterMenuItem(
-                      'SORT:oldest',
-                      'Oldest First',
-                      _sortColumn == 'date' && _sortAscending,
-                    ),
-                    _filterMenuItem(
-                      'SORT:client',
-                      'Client Name (A-Z)',
-                      _sortColumn == 'client',
-                    ),
-                    _filterMenuItem(
-                      'SORT:priority',
-                      'Priority (High to Low)',
-                      _sortColumn == 'priority',
-                    ),
-                    if (_hasActiveFilters) ...[
-                      const PopupMenuDivider(height: 12),
-                      const PopupMenuItem<String>(
-                        value: 'CLEAR',
-                        height: 32,
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.clear_all,
-                              size: AppSizing.iconSm,
-                              color: AppColors.danger,
-                            ),
-                            SizedBox(width: AppSpacing.sm),
-                            Text(
-                              'Reset All Filters',
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: AppColors.danger,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-                Container(
-                  width: 1,
-                  height: 16,
-                  color: _Palette.border,
-                  margin: const EdgeInsets.only(
-                    left: AppSpacing.xxs,
-                    right: AppSpacing.sm,
-                  ),
-                ),
-                const Icon(
-                  Icons.search,
-                  color: _Palette.textMuted,
-                  size: AppSizing.iconMd,
-                ),
-                const SizedBox(width: AppSpacing.xs),
-              ],
-            ),
-            suffixIcon: _search.isNotEmpty
-                ? IconButton(
-                    icon: const Icon(
-                      Icons.clear,
-                      color: _Palette.textMuted,
-                      size: AppSizing.iconMd,
-                    ),
-                    onPressed: () => setState(() {
-                      _search = '';
-                    }),
-                  )
-                : null,
-            border: InputBorder.none,
-            enabledBorder: InputBorder.none,
-            focusedBorder: InputBorder.none,
-            errorBorder: InputBorder.none,
-            focusedErrorBorder: InputBorder.none,
-            disabledBorder: InputBorder.none,
-            filled: false,
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.lg,
-            ),
-          ),
-          style: const TextStyle(fontSize: 13),
-          onChanged: (v) => setState(() {
-            _search = v;
-          }),
-        ),
-      ),
+    final searchBar = _buildSearchBar(
+      isMobile: isMobile,
+      activeFilterColor: activeFilterColor,
     );
 
     final selectionBar = Row(
@@ -854,6 +655,251 @@ class _InteractionsScreenState extends ConsumerState<InteractionsScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  void _onFilterMenuSelected(String val) {
+    if (val == 'CLEAR') {
+      setState(() {
+        _priorityFilter = '';
+        _sortColumn = 'date';
+        _sortAscending = false;
+      });
+    } else if (val.startsWith('PRIORITY:')) {
+      final p = val.replaceFirst('PRIORITY:', '');
+      setState(() {
+        _priorityFilter = (p == 'ALL') ? '' : p;
+      });
+    } else if (val.startsWith('SORT:')) {
+      final s = val.replaceFirst('SORT:', '');
+      setState(() {
+        if (s == 'newest') {
+          _sortColumn = 'date';
+          _sortAscending = false;
+        } else if (s == 'oldest') {
+          _sortColumn = 'date';
+          _sortAscending = true;
+        } else if (s == 'client') {
+          _sortColumn = 'client';
+          _sortAscending = true;
+        } else if (s == 'priority') {
+          _sortColumn = 'priority';
+          _sortAscending = false;
+        }
+      });
+    }
+  }
+
+  List<PopupMenuEntry<String>> _filterMenuItems() {
+    return [
+      const PopupMenuItem<String>(
+        enabled: false,
+        height: 28,
+        child: Text('FILTER BY PRIORITY', style: AppTypography.tableHeader),
+      ),
+      _filterMenuItem(
+        'PRIORITY:ALL',
+        'All Priorities',
+        _priorityFilter.isEmpty,
+        activeColor: _Palette.all,
+      ),
+      _filterMenuItem(
+        'PRIORITY:HIGH',
+        'High Priority',
+        _priorityFilter == 'HIGH',
+        activeColor: _Palette.high,
+      ),
+      _filterMenuItem(
+        'PRIORITY:MEDIUM',
+        'Medium Priority',
+        _priorityFilter == 'MEDIUM',
+        activeColor: _Palette.medium,
+      ),
+      _filterMenuItem(
+        'PRIORITY:LOW',
+        'Low Priority',
+        _priorityFilter == 'LOW',
+        activeColor: _Palette.low,
+      ),
+      const PopupMenuDivider(height: 12),
+      const PopupMenuItem<String>(
+        enabled: false,
+        height: 28,
+        child: Text('SORT BY', style: AppTypography.tableHeader),
+      ),
+      _filterMenuItem(
+        'SORT:newest',
+        'Newest First',
+        _sortColumn == 'date' && !_sortAscending,
+      ),
+      _filterMenuItem(
+        'SORT:oldest',
+        'Oldest First',
+        _sortColumn == 'date' && _sortAscending,
+      ),
+      _filterMenuItem(
+        'SORT:client',
+        'Client Name (A-Z)',
+        _sortColumn == 'client',
+      ),
+      _filterMenuItem(
+        'SORT:priority',
+        'Priority (High to Low)',
+        _sortColumn == 'priority',
+      ),
+      if (_hasActiveFilters) ...[
+        const PopupMenuDivider(height: 12),
+        const PopupMenuItem<String>(
+          value: 'CLEAR',
+          height: 32,
+          child: Row(
+            children: [
+              Icon(Icons.clear_all, size: AppSizing.iconSm, color: AppColors.danger),
+              SizedBox(width: AppSpacing.sm),
+              Text(
+                'Reset All Filters',
+                style: TextStyle(
+                  fontSize: 13,
+                  color: AppColors.danger,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    ];
+  }
+
+  /// Builds the search bar. [isMobile] only changes how the leading
+  /// filter-icon cluster is sized: on phones the popup menu's default
+  /// 48x48 tap target is taller than this field's 40px height, which was
+  /// throwing the icon row off-centre relative to the hint text. Giving it
+  /// an explicit compact size there fixes that without touching desktop,
+  /// where the field is wide enough that the default sizing never showed it.
+  Widget _buildSearchBar({
+    required bool isMobile,
+    required Color activeFilterColor,
+  }) {
+    final isSearchFocused = _searchFocusNode.hasFocus;
+
+    final filterIcon = Icon(
+      _hasActiveFilters ? Icons.filter_alt : Icons.filter_alt_outlined,
+      size: AppSizing.iconMd,
+      color: _hasActiveFilters ? activeFilterColor : _Palette.textMuted,
+    );
+
+    final filterPopup = PopupMenuButton<String>(
+      tooltip: 'Filter & sort options',
+      padding: EdgeInsets.zero,
+      splashRadius: 18,
+      offset: const Offset(0, 36),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        side: const BorderSide(color: _Palette.border),
+      ),
+      color: Colors.white,
+      elevation: 6,
+      onSelected: _onFilterMenuSelected,
+      itemBuilder: (context) => _filterMenuItems(),
+      icon: isMobile ? null : filterIcon,
+      child: isMobile
+          ? SizedBox(width: 28, height: 28, child: Center(child: filterIcon))
+          : null,
+    );
+
+    final prefixChildren = [
+      const SizedBox(width: AppSpacing.sm),
+      filterPopup,
+      Container(
+        width: 1,
+        height: 16,
+        color: _Palette.border,
+        margin: const EdgeInsets.only(
+          left: AppSpacing.xxs,
+          right: AppSpacing.sm,
+        ),
+      ),
+      const Icon(Icons.search, color: _Palette.textMuted, size: AppSizing.iconMd),
+      const SizedBox(width: AppSpacing.xs),
+    ];
+
+    return Material(
+      color: Colors.white,
+      elevation: isSearchFocused ? 2.0 : 1.5,
+      shadowColor: isSearchFocused
+          ? AppColors.primaryBlue.withValues(alpha: 0.18)
+          : Colors.black.withValues(alpha: 0.08),
+      shape: RoundedRectangleBorder(
+        borderRadius: AppRadius.brMd,
+        side: BorderSide(
+          color: isSearchFocused ? AppColors.primaryBlue : _Palette.border,
+          width: isSearchFocused ? 1.5 : 1.0,
+        ),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: SizedBox(
+        height: _controlHeight,
+        child: TextField(
+          focusNode: _searchFocusNode,
+          textAlignVertical: TextAlignVertical.center,
+          decoration: InputDecoration(
+            isDense: true,
+            hintText: 'Search clients, representatives, notes...',
+            hintStyle: const TextStyle(fontSize: 13, color: _Palette.textMuted),
+            prefixIconConstraints: BoxConstraints(
+              minWidth: 72,
+              minHeight: isMobile ? _controlHeight : 0,
+              maxHeight: _controlHeight,
+            ),
+            prefixIcon: isMobile
+                ? SizedBox(
+                    height: _controlHeight,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: prefixChildren,
+                    ),
+                  )
+                : Row(mainAxisSize: MainAxisSize.min, children: prefixChildren),
+            suffixIcon: _search.isNotEmpty
+                ? IconButton(
+                    icon: const Icon(
+                      Icons.clear,
+                      color: _Palette.textMuted,
+                      size: AppSizing.iconMd,
+                    ),
+                    onPressed: () => setState(() {
+                      _search = '';
+                    }),
+                    padding: isMobile ? EdgeInsets.zero : null,
+                    constraints: isMobile
+                        ? const BoxConstraints(
+                            minWidth: 32,
+                            minHeight: 32,
+                            maxWidth: 32,
+                            maxHeight: 32,
+                          )
+                        : null,
+                  )
+                : null,
+            border: InputBorder.none,
+            enabledBorder: InputBorder.none,
+            focusedBorder: InputBorder.none,
+            errorBorder: InputBorder.none,
+            focusedErrorBorder: InputBorder.none,
+            disabledBorder: InputBorder.none,
+            filled: false,
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.lg,
+            ),
+          ),
+          style: const TextStyle(fontSize: 13),
+          onChanged: (v) => setState(() {
+            _search = v;
+          }),
+        ),
       ),
     );
   }

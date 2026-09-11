@@ -153,35 +153,45 @@ class _ClientsListScreenState extends ConsumerState<ClientsListScreen> {
 
   Widget _buildTitleRow(bool isAdmin) {
     final isMobile = MediaQuery.sizeOf(context).width < 768;
+    final title = Text(
+      isAdmin ? 'Clients' : 'My Clients',
+      style: isMobile ? AppTypography.pageTitleMobile : AppTypography.pageTitle,
+    );
+    final addButton = SizedBox(
+      height: 40.0,
+      child: FilledButton.icon(
+        style: FilledButton.styleFrom(backgroundColor: AppColors.primaryBlue),
+        onPressed: () => _showModal(),
+        icon: const Icon(Icons.add, size: AppSizing.iconMd),
+        label: const Text('Add Client'),
+      ),
+    );
+
+    if (isMobile) {
+      // The button drops below the title on phones instead of squeezing
+      // onto the same line, and stays left-aligned like every other
+      // screen's primary action.
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.lg,
+          10,
+          AppSpacing.lg,
+          8,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            title,
+            const SizedBox(height: AppSpacing.md),
+            Align(alignment: Alignment.centerLeft, child: addButton),
+          ],
+        ),
+      );
+    }
+
     return Padding(
-      padding: EdgeInsets.fromLTRB(
-        isMobile ? AppSpacing.lg : AppSpacing.xxl,
-        isMobile ? 10 : 16,
-        isMobile ? AppSpacing.lg : AppSpacing.xxl,
-        isMobile ? 8 : 12,
-      ),
-      child: Row(
-        children: [
-          Text(
-            isAdmin ? 'Clients' : 'My Clients',
-            style: isMobile
-                ? AppTypography.pageTitleMobile
-                : AppTypography.pageTitle,
-          ),
-          const Spacer(),
-          SizedBox(
-            height: 40.0,
-            child: FilledButton.icon(
-              style: FilledButton.styleFrom(
-                backgroundColor: AppColors.primaryBlue,
-              ),
-              onPressed: () => _showModal(),
-              icon: const Icon(Icons.add, size: AppSizing.iconMd),
-              label: const Text('Add Client'),
-            ),
-          ),
-        ],
-      ),
+      padding: const EdgeInsets.fromLTRB(AppSpacing.xxl, 16, AppSpacing.xxl, 12),
+      child: Row(children: [title, const Spacer(), addButton]),
     );
   }
 
