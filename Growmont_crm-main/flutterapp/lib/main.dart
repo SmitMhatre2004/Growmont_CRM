@@ -56,10 +56,14 @@ void main() async {
     await databaseFactory.setDatabasesPath(appDataDir.path);
   }
 
-  if (!kIsWeb && Platform.isWindows) {
+  if (!kIsWeb && (Platform.isWindows || Platform.isAndroid)) {
     // Deliberately not awaited — startup must never block on a network
     // call. The Profile -> System tab's UpdateCard is the notification
     // surface; this just warms the check so it's ready when opened.
+    //
+    // Both platforms resolve their own asset from the same GitHub release
+    // (Growmont-Setup-<v>.exe / Growmont-CRM-<v>.apk), so one published
+    // release drives the update prompt on both. See ANDROID_RELEASE.md.
     UpdateNotifier.instance.checkForUpdate();
   }
 

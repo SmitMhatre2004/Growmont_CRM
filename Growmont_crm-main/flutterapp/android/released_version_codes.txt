@@ -1,0 +1,8 @@
+# Android releases, oldest first: <versionCode> <versionName> <UTC date>
+#
+# Written by installer/build_android_release.ps1, which refuses to
+# package a versionCode at or below the highest listed here (Android
+# rejects it as a downgrade) or a versionName already listed (the
+# in-app updater would never prompt for it). Commit this file --
+# it is the record of what versionCodes are already in the wild.
+1 1.0.0 2026-09-20

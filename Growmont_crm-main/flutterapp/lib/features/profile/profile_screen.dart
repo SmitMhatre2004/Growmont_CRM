@@ -25,10 +25,16 @@ import 'widgets/update_card.dart';
 enum ProfileTab { sales, interactions, reminders, system }
 
 /// True on the desktop platforms this app ships an installer for — gates
-/// the self-update card and the local data-location card, neither of
-/// which make sense on mobile/web.
+/// the local data-location card, which has no meaning on mobile/web.
 bool get _isDesktop =>
     !kIsWeb && (Platform.isWindows || Platform.isLinux || Platform.isMacOS);
+
+/// True on the platforms that can self-update from a GitHub release:
+/// Windows via the Inno Setup installer, Android via the packaged APK.
+/// Kept separate from [_isDesktop] because Android shows the update card
+/// but none of the other desktop-only cards.
+bool get _canSelfUpdate =>
+    !kIsWeb && (Platform.isWindows || Platform.isAndroid);
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key, this.initialTab});
@@ -517,9 +523,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.all(AppSpacing.lg),
       children: [
-        if (_isDesktop) ...[
+        if (_canSelfUpdate) ...[
           const UpdateCard(),
           const SizedBox(height: AppSpacing.lg),
+        ],
+        if (_isDesktop) ...[
           const DataLocationCard(),
           const SizedBox(height: AppSpacing.lg),
         ],

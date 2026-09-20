@@ -43,3 +43,16 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Kotlin incremental-compilation cache, created by the Gradle build.
+/android/.kotlin/
+
+# Android release signing — NEVER commit these.
+# growmont-release.jks is the private key every published APK is signed
+# with, and key.properties holds its password in plaintext. If the .jks is
+# lost, no future build can update an already-installed app: users would
+# have to uninstall first, destroying their local growmont.db. Both files
+# must be backed up outside this repo. See ANDROID_RELEASE.md.
+*.jks
+*.keystore
+/android/key.properties

@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:crypto/crypto.dart';
+import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path_provider/path_provider.dart';
@@ -135,15 +136,28 @@ class UpdateService {
     return (first == 'v' || first == 'V') ? tagName.substring(1) : tagName;
   }
 
-  /// Matches the release asset that is the actual Windows installer,
-  /// e.g. `Growmont-Setup-1.2.0.exe`. Explicitly excludes GitHub's
-  /// auto-generated source archives and anything else that isn't the
-  /// installer executable.
+  /// The asset-name prefix/extension pair this platform's installer uses.
+  ///
+  /// A single GitHub release publishes both platforms' artifacts side by
+  /// side, so the running platform decides which one is "the" installer.
+  static (String prefix, String extension) get _assetNaming =>
+      Platform.isAndroid
+          ? (kAndroidAssetPrefix, kAndroidAssetExtension)
+          : (kInstallerAssetPrefix, kInstallerAssetExtension);
+
+  /// Matches the release asset that is the actual installer for the running
+  /// platform — `Growmont-Setup-1.2.0.exe` on Windows,
+  /// `Growmont-CRM-1.2.0.apk` on Android. Explicitly excludes GitHub's
+  /// auto-generated source archives, the `.sha256` sidecars, and the other
+  /// platform's artifact.
   static bool _isInstallerAsset(String assetName) {
     final lower = assetName.toLowerCase();
     if (lower.endsWith('.zip') || lower.endsWith('.tar.gz')) return false;
-    return assetName.startsWith(kInstallerAssetPrefix) &&
-        lower.endsWith(kInstallerAssetExtension);
+    // The checksum sidecar ends in the installer's own name plus
+    // `.sha256`, so it would otherwise pass a naive prefix test.
+    if (lower.endsWith('.sha256')) return false;
+    final (prefix, extension) = _assetNaming;
+    return assetName.startsWith(prefix) && lower.endsWith(extension);
   }
 
   /// Downloads the installer EXE referenced by [downloadUrl] (the
@@ -224,9 +238,10 @@ class UpdateService {
     final segments = Uri.parse(downloadUrl).pathSegments;
     final last = segments.isNotEmpty ? segments.last.trim() : '';
     if (last.isNotEmpty) return last;
-    return '$kInstallerAssetPrefix'
+    final (prefix, extension) = _assetNaming;
+    return '$prefix'
         '${DateTime.now().millisecondsSinceEpoch}'
-        '$kInstallerAssetExtension';
+        '$extension';
   }
 
   /// Best-effort SHA-256 verification against a sibling
@@ -308,16 +323,23 @@ class UpdateService {
   /// to write. The parameter is kept only so this method's signature
   /// keeps matching the call in UpdateNotifier.downloadAndInstall().
   ///
-  /// Returns `null` on success — the process calls `exit(0)`, so callers
-  /// never actually observe that return value. Returns a non-null error
-  /// string that the UI can display on any failure.
+  /// Returns `null` on success — on Windows the process calls `exit(0)`, so
+  /// callers never actually observe that return value. Returns a non-null
+  /// error string that the UI can display on any failure.
+  ///
+  /// On Android this delegates to [_installApkAndroid], which cannot be
+  /// silent and does not exit the app — see that method for why.
   static Future<String?> launchUpdaterAndExit(
     String installerPath,
     String newVersion,
   ) async {
     try {
+      if (Platform.isAndroid) {
+        return _installApkAndroid(installerPath);
+      }
+
       if (!Platform.isWindows) {
-        return 'Auto-update is only supported on Windows.';
+        return 'Auto-update is only supported on Windows and Android.';
       }
 
       final installerFile = File(installerPath);
@@ -339,6 +361,62 @@ class UpdateService {
       return 'Failed to launch installer: $e';
     }
   }
+
+  /// Hands the downloaded APK to the Android package installer.
+  ///
+  /// This deliberately does **not** mirror the Windows path:
+  ///
+  /// - It is not silent. Android gives a sideloaded app no way to install
+  ///   an APK without the user confirming on a system-drawn screen. Any
+  ///   API that could do so would be a complete device-compromise vector,
+  ///   so none exists outside of device-owner/system-app contexts.
+  /// - It does not call `exit(0)`. The installer runs in its own process;
+  ///   killing ourselves here would tear the app out from under the
+  ///   confirmation dialog the user still has to accept. Android stops our
+  ///   process itself when it replaces the APK, and the user reopens from
+  ///   the launcher.
+  ///
+  /// The common first-run failure is the per-app "install unknown apps"
+  /// setting being off, which is the default. Rather than firing an intent
+  /// that silently does nothing, that case is detected up front and the
+  /// user is sent to the exact settings page.
+  static Future<String?> _installApkAndroid(String apkPath) async {
+    final apkFile = File(apkPath);
+    if (!apkFile.existsSync() || apkFile.lengthSync() == 0) {
+      return 'Downloaded update is missing or empty ($apkPath).';
+    }
+
+    try {
+      final canInstall =
+          await _installerChannel.invokeMethod<bool>('canInstallPackages');
+
+      if (canInstall != true) {
+        final opened = await _installerChannel
+            .invokeMethod<bool>('openInstallSettings');
+        return opened == true
+            ? 'Allow "Install unknown apps" for Growmont CRM on the screen '
+                'that just opened, then tap Update again.'
+            : 'Android is blocking app installs from Growmont CRM. Enable '
+                '"Install unknown apps" for it in Settings > Apps, then tap '
+                'Update again.';
+      }
+
+      await _installerChannel.invokeMethod<bool>(
+        'installApk',
+        {'path': apkPath},
+      );
+      return null;
+    } on PlatformException catch (e) {
+      return 'Failed to start the installer: ${e.message ?? e.code}';
+    } catch (e) {
+      return 'Failed to start the installer: $e';
+    }
+  }
+
+  /// Channel implemented by MainActivity.kt. Android-only; every call site
+  /// is already behind a `Platform.isAndroid` check.
+  static const MethodChannel _installerChannel =
+      MethodChannel('com.growmont.growmont_crm/installer');
 
   static bool _isNewer(String candidate, String current) {
     final c = _parse(candidate);

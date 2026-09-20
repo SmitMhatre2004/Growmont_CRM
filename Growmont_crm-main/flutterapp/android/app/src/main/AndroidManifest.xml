@@ -1,4 +1,19 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Declared explicitly rather than inherited. Flutter's template only
+         puts INTERNET in the debug/ and profile/ manifests; release builds
+         have so far picked it up by accident, via manifest merging from the
+         Firebase/Play Services AARs. That is a dependency-ordering
+         coincidence, not a guarantee — if it ever stopped holding, the
+         release APK would ship with no network access at all while debug
+         builds kept working. -->
+    <uses-permission android:name="android.permission.INTERNET"/>
+
+    <!-- Lets the in-app updater hand a downloaded APK to the system package
+         installer. This permission alone is not sufficient: on Android 8+
+         the user must also grant this app "install unknown apps" in system
+         settings, which ApkInstaller checks for and routes to. -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES"/>
+
     <application
         android:label="Growmont CRM"
         android:name="${applicationName}"
@@ -25,6 +40,21 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
+        <!-- Android 7+ rejects a raw file:// URI handed to another app
+             (FileUriExposedException), so the downloaded APK is passed to
+             the package installer as a content:// URI granted through this
+             provider. The authority is app-specific to avoid colliding with
+             the providers share_plus/file_picker declare. -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data

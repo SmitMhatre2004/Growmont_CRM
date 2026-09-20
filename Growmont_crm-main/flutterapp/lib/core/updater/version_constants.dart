@@ -21,3 +21,13 @@ const String kLatestReleaseApiUrl =
 /// `Growmont-Setup-1.2.0.exe`. See [UpdateService] for the matching logic.
 const String kInstallerAssetPrefix = 'Growmont-Setup-';
 const String kInstallerAssetExtension = '.exe';
+
+/// Android equivalents of the two constants above, e.g.
+/// `Growmont-CRM-1.2.0.apk`.
+///
+/// A distinct prefix (not just a distinct extension) keeps the two
+/// platforms' assets unambiguous in a release that publishes both, and
+/// means neither platform's matcher can ever select the other's artifact
+/// even if an extension check were relaxed later.
+const String kAndroidAssetPrefix = 'Growmont-CRM-';
+const String kAndroidAssetExtension = '.apk';
