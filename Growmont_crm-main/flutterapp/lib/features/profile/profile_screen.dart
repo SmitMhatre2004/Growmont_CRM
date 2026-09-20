@@ -19,7 +19,6 @@ import '../auth/auth_provider.dart';
 import '../reminders/reminders_excel.dart';
 import '../reminders/widgets/add_reminder_modal.dart';
 import 'widgets/data_location_card.dart';
-import 'widgets/mobile_app_qr_card.dart';
 import 'widgets/sync_status_card.dart';
 import 'widgets/update_card.dart';
 
@@ -522,8 +521,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           const UpdateCard(),
           const SizedBox(height: AppSpacing.lg),
           const DataLocationCard(),
-          const SizedBox(height: AppSpacing.lg),
-          const MobileAppQrCard(),
           const SizedBox(height: AppSpacing.lg),
         ],
         const SyncStatusCard(),

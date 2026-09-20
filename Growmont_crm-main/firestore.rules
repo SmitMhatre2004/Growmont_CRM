@@ -123,28 +123,9 @@ service cloud.firestore {
       allow delete: if isOwnerEmployee(resource.data.employee_id);
     }
 
-    // ─── App installs ───
-    // One document per account, recording that its holder has opened the CRM
-    // on a phone. The desktop sidebar reads this to stop offering its
-    // "scan to install" QR code once the nudge has been acted on.
-    //
-    // Deliberately its own collection rather than a field on employees/*:
-    // that document is admin-write-only, and every helper above depends on
-    // nobody being able to write their own employee record.
-    //
-    // Deliberately not gated on isActive() either. A Google account whose
-    // employees doc id doesn't match its auth uid fails that check, and this
-    // document holds nothing sensitive — only "this account has the app" —
-    // so an ownership check is the right depth here.
-    match /app_installs/{installId} {
-      allow read: if isAdmin() ||
-                     (request.auth != null && request.auth.uid == installId);
-
-      allow create, update: if request.auth != null &&
-                               request.auth.uid == installId &&
-                               request.resource.data.has_mobile is bool;
-
-      allow delete: if isAdmin();
-    }
+    // The app_installs collection was removed along with the sidebar's
+    // "scan to install" QR, which was the only thing that read it. Any
+    // documents left in Firestore from before that are now covered by the
+    // default deny: unreachable, and safe to delete at leisure.
   }
 }

@@ -6,7 +6,6 @@ import 'package:go_router/go_router.dart';
 import '../../core/config/app_config.dart';
 import '../../core/theme/app_theme.dart';
 import '../../features/auth/auth_provider.dart';
-import 'sidebar_app_download_card.dart';
 
 /// Global provider for sidebar collapsed state on desktop/wide screens.
 final sidebarCollapsedProvider = StateProvider<bool>((ref) => false);
@@ -421,7 +420,6 @@ class AppSidebar extends ConsumerWidget {
                       }).toList(),
                     ),
                   ),
-                  SidebarAppDownloadCard(t: t),
                   profileCard,
                 ],
               ),

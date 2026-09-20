@@ -9,7 +9,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 import 'firebase_options.dart';
-import 'core/firebase/mobile_install.dart';
 import 'core/providers.dart';
 import 'core/router/app_router.dart';
 import 'core/storage/app_paths.dart';
@@ -104,10 +103,6 @@ class GrowmontApp extends ConsumerWidget {
     // Keeps syncEngineProvider alive for the app's lifetime so SyncEngine
     // starts/stops as the signed-in user changes — see providers.dart.
     ref.watch(syncEngineProvider);
-    // Stamps app_installs/{uid} when this build is running on a phone, which
-    // is what tells the desktop sidebar to retire its download QR. A no-op on
-    // desktop, but it has to be watched somewhere permanent to run at all.
-    ref.watch(mobileInstallRegistrarProvider);
 
     return MaterialApp.router(
       title: 'Growmont CRM',
