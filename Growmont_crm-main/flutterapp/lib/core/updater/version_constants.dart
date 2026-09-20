@@ -23,11 +23,21 @@ const String kInstallerAssetPrefix = 'Growmont-Setup-';
 const String kInstallerAssetExtension = '.exe';
 
 /// Android equivalents of the two constants above, e.g.
-/// `Growmont-CRM-1.2.0.apk`.
+/// `growmont-1.2.0.apk`.
 ///
 /// A distinct prefix (not just a distinct extension) keeps the two
 /// platforms' assets unambiguous in a release that publishes both, and
 /// means neither platform's matcher can ever select the other's artifact
 /// even if an extension check were relaxed later.
-const String kAndroidAssetPrefix = 'Growmont-CRM-';
+///
+/// The version stays in the name deliberately. A bare `growmont.apk`
+/// would be shorter, but downloading two releases through a browser then
+/// produces `growmont(1).apk`, and parentheses are what the package
+/// installer and the scanners in front of it handle least predictably.
+///
+/// This must stay in step with `installer/build_android_release.ps1`,
+/// which writes the file, and with whatever is actually attached to the
+/// GitHub release. A mismatch is silent: the updater matches nothing and
+/// reports "no update available" forever.
+const String kAndroidAssetPrefix = 'growmont-';
 const String kAndroidAssetExtension = '.apk';

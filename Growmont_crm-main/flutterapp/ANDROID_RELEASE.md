@@ -92,7 +92,7 @@ From anywhere; paths resolve relative to the script. It performs:
 5. Verify the APK's signing certificate fingerprint matches
    `growmont-release.jks`. This is what would catch a debug-signed build
    before it reaches anyone.
-6. Write `installer/Output/Growmont-CRM-<version>.apk` and its `.sha256`.
+6. Write `installer/Output/growmont-<version>.apk` and its `.sha256`.
 7. Append to the ledger.
 
 Flags: `-AllowSameVersionName` (rebuild an unpublished artifact under a
@@ -111,7 +111,7 @@ architecture is not a reasonable step. The size cost is accepted.
 | Platform | Asset name |
 | --- | --- |
 | Windows | `Growmont-Setup-<version>.exe` |
-| Android | `Growmont-CRM-<version>.apk` |
+| Android | `growmont-<version>.apk` |
 
 A differently-named asset is **silently invisible** to the updater — it
 reports "no update available" rather than erroring, so a typo here
@@ -131,7 +131,7 @@ One GitHub release serves both platforms. On
 3. Create a release tagged `v<version>`, matching `pubspec.yaml` exactly.
 4. Upload all four files from `installer/Output/`:
    - `Growmont-Setup-<version>.exe` + `.sha256`
-   - `Growmont-CRM-<version>.apk` + `.sha256`
+   - `growmont-<version>.apk` + `.sha256`
 5. Publish. Both platforms pick it up on their next check.
 6. Commit the updated `android/released_version_codes.txt`.
 
@@ -141,7 +141,7 @@ GitHub serves a stable URL for the newest release, so the button does not
 need updating per release:
 
 ```
-https://github.com/CruciaTos/GrowmontCRM_Release/releases/latest/download/Growmont-CRM-<version>.apk
+https://github.com/CruciaTos/GrowmontCRM_Release/releases/latest/download/growmont-<version>.apk
 ```
 
 The `<version>` in the filename still changes, so for a button that never

@@ -78,8 +78,19 @@ class UpdateNotifier extends ChangeNotifier {
       if (launchError != null) {
         _errorMessage = launchError;
         _setState(UpdateState.error);
+      } else if (defaultTargetPlatform == TargetPlatform.android) {
+        // Windows never reaches here: the installer is launched and the
+        // process calls exit(0). Android does. The system package
+        // installer runs in its own process and this app keeps running
+        // behind it — including when the user declines on the
+        // confirmation screen and comes straight back.
+        //
+        // Staying in `launching` would leave them looking at a spinner
+        // inside a barrier-dismissible:false dialog with both buttons
+        // disabled, and no way out but force-stopping the app. Going back
+        // to idle keeps Later and Update Now usable.
+        _setState(UpdateState.idle);
       }
-      // If launchError == null the process called exit(0); we never reach here.
     } catch (e) {
       _errorMessage = e.toString().replaceFirst('Exception: ', '');
       _setState(UpdateState.error);

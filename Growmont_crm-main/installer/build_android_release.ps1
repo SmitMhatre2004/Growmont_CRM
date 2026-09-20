@@ -15,9 +15,8 @@
          from Gradle's output-metadata.json) match pubspec.yaml.
       5. Verify the APK is signed with the release keystore — not the
          debug key — by comparing certificate fingerprints.
-      6. Package as installer/Output/Growmont-CRM-<version>.apk with a
-         SHA-256 sibling, matching the Windows naming convention that
-         UpdateService looks for.
+      6. Package as installer/Output/growmont-<version>.apk with a
+         SHA-256 sibling, matching the name UpdateService looks for.
       7. Record the released versionCode/versionName in the ledger.
 
 .PARAMETER AllowSameVersionName
@@ -351,14 +350,14 @@ growmont.db. Do not publish this build.
 
 # ── 6. Package with the release naming convention ───────────────────────
 # The filename is load-bearing: UpdateService matches assets by the
-# `Growmont-CRM-<version>.apk` prefix/extension pair declared in
+# `growmont-<version>.apk` prefix/extension pair declared in
 # version_constants.dart. A differently-named asset is silently invisible
 # to the updater.
 Write-Step "Packaging release artifact"
 
 New-Item -ItemType Directory -Force -Path $OutputDir | Out-Null
 
-$releaseApkPath = Join-Path $OutputDir "Growmont-CRM-$versionName.apk"
+$releaseApkPath = Join-Path $OutputDir "growmont-$versionName.apk"
 Copy-Item $ApkPath $releaseApkPath -Force
 
 $hash = (Get-FileHash -Algorithm SHA256 $releaseApkPath).Hash.ToLower()

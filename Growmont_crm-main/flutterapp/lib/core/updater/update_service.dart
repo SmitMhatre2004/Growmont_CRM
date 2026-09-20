@@ -147,7 +147,7 @@ class UpdateService {
 
   /// Matches the release asset that is the actual installer for the running
   /// platform — `Growmont-Setup-1.2.0.exe` on Windows,
-  /// `Growmont-CRM-1.2.0.apk` on Android. Explicitly excludes GitHub's
+  /// `growmont-1.2.0.apk` on Android. Explicitly excludes GitHub's
   /// auto-generated source archives, the `.sha256` sidecars, and the other
   /// platform's artifact.
   static bool _isInstallerAsset(String assetName) {
@@ -160,10 +160,17 @@ class UpdateService {
     return assetName.startsWith(prefix) && lower.endsWith(extension);
   }
 
-  /// Downloads the installer EXE referenced by [downloadUrl] (the
-  /// `Growmont-Setup-{version}.exe` asset from the GitHub Releases lookup)
-  /// into [getTemporaryDirectory], preserving its original filename, and
-  /// returns the local path on success. The file saved here is handed
+  /// Downloads the installer referenced by [downloadUrl] — the
+  /// `Growmont-Setup-{version}.exe` or `growmont-{version}.apk` asset from
+  /// the GitHub Releases lookup — into [getTemporaryDirectory], preserving
+  /// its original filename, and returns the local path on success.
+  ///
+  /// On Android that directory is the app's own cache dir, which is why no
+  /// storage permission is involved and none of the scoped-storage rules
+  /// apply: nothing here writes to shared storage or to
+  /// `/storage/emulated/0/Download`. It is also the only path the
+  /// FileProvider in AndroidManifest.xml exposes, so the package installer
+  /// can read the APK and nothing else. The file saved here is handed
   /// directly to [launchUpdaterAndExit], which runs it as a real Inno
   /// Setup installer — no zip extraction step.
   ///
@@ -190,6 +197,7 @@ class UpdateService {
 
       final contentLength = streamedResponse.contentLength ?? 0;
       var received = 0;
+      var lastPercentReported = -1;
 
       final file = File(installerPath);
       final sink = file.openWrite();
@@ -199,7 +207,16 @@ class UpdateService {
           sink.add(chunk);
           received += chunk.length;
           if (contentLength > 0) {
-            onProgress(received / contentLength);
+            // Reported per whole percent, not per chunk. A 66 MB APK
+            // arrives in thousands of chunks and each one would otherwise
+            // rebuild the update dialog — on a phone that is enough
+            // UI-thread work to make the download itself look stalled, and
+            // the progress bar cannot render finer than a percent anyway.
+            final percent = (received * 100) ~/ contentLength;
+            if (percent != lastPercentReported) {
+              lastPercentReported = percent;
+              onProgress(received / contentLength);
+            }
           }
         }
       } finally {
@@ -209,6 +226,19 @@ class UpdateService {
       final written = await file.length();
       if (written == 0) {
         throw Exception('Downloaded file is empty — the URL may be invalid.');
+      }
+
+      // A connection dropped mid-transfer ends the stream without raising,
+      // leaving a truncated file that is not empty and so passes the check
+      // above. Android's package installer reports that as a flat "App not
+      // installed" with no reason given, so it is compared against
+      // Content-Length here, where the real cause can still be named.
+      if (contentLength > 0 && written != contentLength) {
+        await _deleteQuietly(file);
+        throw Exception(
+          'Download incomplete — expected $contentLength bytes, got '
+          '$written. Check the connection and try again.',
+        );
       }
 
       // Checksum verification extension point — see
@@ -285,19 +315,32 @@ class UpdateService {
       return;
     }
 
-    final bytes = await installerFile.readAsBytes();
-    final actualHex = sha256.convert(bytes).toString();
+    // Hashed in chunks straight off disk. readAsBytes() would pull the
+    // whole 66 MB APK into one allocation and hash it in a single
+    // synchronous pass — unremarkable on Windows, but on a low-end phone
+    // it is either an out-of-memory kill or a multi-second freeze of the
+    // UI thread, arriving exactly at 100%. Both look to the user like the
+    // download completing and then nothing happening at all.
+    final digest = await sha256.bind(installerFile.openRead()).first;
+    final actualHex = digest.toString();
 
     if (actualHex != expectedHex) {
-      try {
-        await installerFile.delete();
-      } catch (_) {
-        // Best-effort cleanup only; the exception below is what matters.
-      }
+      await _deleteQuietly(installerFile);
       throw Exception(
         'Checksum verification failed — the downloaded installer does not '
         'match the published SHA-256 digest. Update aborted.',
       );
+    }
+  }
+
+  /// Removes a rejected download. Best-effort: the exception the caller is
+  /// about to throw is what carries the failure, and a file left behind in
+  /// the cache directory is harmless — the next attempt overwrites it.
+  static Future<void> _deleteQuietly(File file) async {
+    try {
+      await file.delete();
+    } catch (_) {
+      // Intentionally ignored.
     }
   }
 
