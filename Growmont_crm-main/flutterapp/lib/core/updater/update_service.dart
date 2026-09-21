@@ -162,17 +162,12 @@ class UpdateService {
 
   /// Downloads the installer referenced by [downloadUrl] — the
   /// `Growmont-Setup-{version}.exe` or `growmont-{version}.apk` asset from
-  /// the GitHub Releases lookup — into [getTemporaryDirectory], preserving
-  /// its original filename, and returns the local path on success.
+  /// the GitHub Releases lookup — into [_downloadDirectory], preserving its
+  /// original filename, and returns the local path on success.
   ///
-  /// On Android that directory is the app's own cache dir, which is why no
-  /// storage permission is involved and none of the scoped-storage rules
-  /// apply: nothing here writes to shared storage or to
-  /// `/storage/emulated/0/Download`. It is also the only path the
-  /// FileProvider in AndroidManifest.xml exposes, so the package installer
-  /// can read the APK and nothing else. The file saved here is handed
-  /// directly to [launchUpdaterAndExit], which runs it as a real Inno
-  /// Setup installer — no zip extraction step.
+  /// The file saved here is handed directly to [launchUpdaterAndExit],
+  /// which runs it as a real Inno Setup installer on Windows or passes it
+  /// to the package installer on Android — no zip extraction step.
   ///
   /// Throws a descriptive [Exception] on any failure so the notifier can
   /// surface the real reason to the user instead of a generic message.
@@ -182,10 +177,11 @@ class UpdateService {
   ) async {
     final client = http.Client();
     try {
-      final tmpDir = await getTemporaryDirectory();
+      final downloadDir = await _downloadDirectory();
+      await downloadDir.create(recursive: true);
       final fileName = _installerFileNameFrom(downloadUrl);
       final installerPath =
-          '${tmpDir.path}${Platform.pathSeparator}$fileName';
+          '${downloadDir.path}${Platform.pathSeparator}$fileName';
 
       final request = http.Request('GET', Uri.parse(downloadUrl));
       final streamedResponse = await client.send(request);
@@ -252,6 +248,58 @@ class UpdateService {
       throw Exception('Download failed: $e');
     } finally {
       client.close();
+    }
+  }
+
+  /// Where [downloadUpdate] saves the installer.
+  ///
+  /// Windows: the temp directory. The installer runs straight away and
+  /// nothing else competes for it.
+  ///
+  /// Android: `files/updates/`, app-private, so no storage permission is
+  /// involved and nothing is written to shared storage. Not the cache dir:
+  /// Android deletes cache files whenever it wants the space back, without
+  /// notice and while the app is running — and a 66 MB APK landing on a
+  /// phone that is short of storage is exactly what makes it want the
+  /// space. That is how a download that had just reached 100% could be
+  /// gone before its size was even read (PathNotFoundException on
+  /// `cache/growmont-<version>.apk`). OEM "cleaner" apps clear the cache
+  /// dir too.
+  ///
+  /// MainActivity resolves the Android path rather than Dart, because
+  /// file_paths.xml must expose exactly this directory to the package
+  /// installer, and a mismatch would only surface as FileProvider refusing
+  /// the file at install time.
+  static Future<Directory> _downloadDirectory() async {
+    if (Platform.isAndroid) {
+      final path =
+          await _installerChannel.invokeMethod<String>('updateDownloadDir');
+      if (path == null || path.isEmpty) {
+        throw Exception('Could not resolve the update download folder.');
+      }
+      return Directory(path);
+    }
+    return getTemporaryDirectory();
+  }
+
+  /// Deletes installers left behind by earlier updates. Android only, and
+  /// never throws.
+  ///
+  /// `files/updates/` is never cleared by the system — the whole point of
+  /// moving there — so without this every update would leave its APK
+  /// behind for good. Called at launch, when no download can be in
+  /// progress; by then the package installer has long since copied the
+  /// APK into its own staging area.
+  static Future<void> deleteOldDownloads() async {
+    if (!Platform.isAndroid) return;
+    try {
+      final dir = await _downloadDirectory();
+      if (!await dir.exists()) return;
+      await for (final entity in dir.list()) {
+        await _deleteQuietly(entity);
+      }
+    } catch (_) {
+      // Intentionally ignored — a leftover file costs space, not function.
     }
   }
 
@@ -333,12 +381,12 @@ class UpdateService {
     }
   }
 
-  /// Removes a rejected download. Best-effort: the exception the caller is
-  /// about to throw is what carries the failure, and a file left behind in
-  /// the cache directory is harmless — the next attempt overwrites it.
-  static Future<void> _deleteQuietly(File file) async {
+  /// Removes a rejected or stale download. Best-effort: a file left behind
+  /// is harmless — the next attempt overwrites it, and on Android
+  /// [deleteOldDownloads] sweeps it at the next launch.
+  static Future<void> _deleteQuietly(FileSystemEntity file) async {
     try {
-      await file.delete();
+      await file.delete(recursive: true);
     } catch (_) {
       // Intentionally ignored.
     }
@@ -429,21 +477,12 @@ class UpdateService {
       return 'Downloaded update is missing or empty ($apkPath).';
     }
 
+    // Checked again even though downloadAndInstall checks before
+    // downloading: the user can revoke it in the minute a download takes.
+    final blocked = await checkInstallPermission();
+    if (blocked != null) return blocked;
+
     try {
-      final canInstall =
-          await _installerChannel.invokeMethod<bool>('canInstallPackages');
-
-      if (canInstall != true) {
-        final opened = await _installerChannel
-            .invokeMethod<bool>('openInstallSettings');
-        return opened == true
-            ? 'Allow "Install unknown apps" for Growmont CRM on the screen '
-                'that just opened, then tap Update again.'
-            : 'Android is blocking app installs from Growmont CRM. Enable '
-                '"Install unknown apps" for it in Settings > Apps, then tap '
-                'Update again.';
-      }
-
       await _installerChannel.invokeMethod<bool>(
         'installApk',
         {'path': apkPath},
@@ -453,6 +492,34 @@ class UpdateService {
       return 'Failed to start the installer: ${e.message ?? e.code}';
     } catch (e) {
       return 'Failed to start the installer: $e';
+    }
+  }
+
+  /// Returns null if this app may hand an APK to the package installer,
+  /// otherwise a message for the user — after opening the exact settings
+  /// page they need. Always null off Android.
+  ///
+  /// The "install unknown apps" setting is off by default, so it is
+  /// checked before downloading, not only before installing. Checking it
+  /// last meant a first update downloaded 66 MB, sent the user to
+  /// Settings, and then downloaded all of it again on the next tap.
+  static Future<String?> checkInstallPermission() async {
+    if (!Platform.isAndroid) return null;
+    try {
+      final canInstall =
+          await _installerChannel.invokeMethod<bool>('canInstallPackages');
+      if (canInstall == true) return null;
+
+      final opened =
+          await _installerChannel.invokeMethod<bool>('openInstallSettings');
+      return opened == true
+          ? 'Allow "Install unknown apps" for Growmont CRM on the screen '
+              'that just opened, then tap Update again.'
+          : 'Android is blocking app installs from Growmont CRM. Enable '
+              '"Install unknown apps" for it in Settings > Apps, then tap '
+              'Update again.';
+    } on PlatformException catch (e) {
+      return 'Could not check install permission: ${e.message ?? e.code}';
     }
   }
 

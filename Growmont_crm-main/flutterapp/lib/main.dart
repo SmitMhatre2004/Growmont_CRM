@@ -14,6 +14,8 @@ import 'core/router/app_router.dart';
 import 'core/storage/app_paths.dart';
 import 'core/theme/app_theme.dart';
 import 'core/updater/update_notifier.dart';
+import 'core/updater/update_prompt.dart';
+import 'core/updater/update_service.dart';
 import 'features/auth/auth_provider.dart';
 import 'features/splash/splash_screen.dart';
 
@@ -58,13 +60,15 @@ void main() async {
 
   if (!kIsWeb && (Platform.isWindows || Platform.isAndroid)) {
     // Deliberately not awaited — startup must never block on a network
-    // call. The Profile -> System tab's UpdateCard is the notification
-    // surface; this just warms the check so it's ready when opened.
+    // call. If it finds a newer release, UpdatePrompt (in GrowmontApp)
+    // raises the update dialog once the splash is gone; the Profile ->
+    // System tab's UpdateCard stays available for checking by hand.
     //
     // Both platforms resolve their own asset from the same GitHub release
     // (Growmont-Setup-<v>.exe / growmont-<v>.apk), so one published
     // release drives the update prompt on both. See ANDROID_RELEASE.md.
     UpdateNotifier.instance.checkForUpdate();
+    UpdateService.deleteOldDownloads();
   }
 
   await splashMarkReady.timeout(
@@ -114,11 +118,16 @@ class GrowmontApp extends ConsumerWidget {
       routerConfig: router,
       debugShowCheckedModeBanner: false,
       builder: (context, child) {
-        return SplashGate(
-          isAuthenticated: auth.isAuthenticated,
-          child: auth.isLoading
-              ? const Scaffold(body: Center(child: CircularProgressIndicator()))
-              : child ?? const SizedBox.shrink(),
+        return UpdatePrompt(
+          navigatorKey: router.routerDelegate.navigatorKey,
+          enabled: !auth.isLoading,
+          deferWhile: SplashGate.isShowing,
+          child: SplashGate(
+            isAuthenticated: auth.isAuthenticated,
+            child: auth.isLoading
+                ? const Scaffold(body: Center(child: CircularProgressIndicator()))
+                : child ?? const SizedBox.shrink(),
+          ),
         );
       },
     );

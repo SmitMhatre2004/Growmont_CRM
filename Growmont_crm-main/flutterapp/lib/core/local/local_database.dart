@@ -20,6 +20,7 @@ class LocalDatabase {
   static final instance = LocalDatabase._();
 
   static Database? _db;
+  static Future<Database>? _opening;
 
   /// Test-only override — when set, [_init] opens this path instead of
   /// resolving via [AppPaths]. Lets unit tests point at an in-memory
@@ -29,7 +30,18 @@ class LocalDatabase {
   @visibleForTesting
   static String? debugDatabasePathOverride;
 
-  Future<Database> get database async => _db ??= await _init();
+  /// Shared by every caller. The first open is memoized, not just its
+  /// result: at startup many LocalStore calls arrive at once, and [_init]
+  /// may close and reopen the connection, which must not happen underneath
+  /// another caller already holding it.
+  Future<Database> get database {
+    final db = _db;
+    if (db != null) return Future.value(db);
+    return _opening ??= _init().then((db) {
+      _db = db;
+      return db;
+    }).whenComplete(() => _opening = null);
+  }
 
   /// Test-only: closes the cached database handle (if any) and clears it,
   /// so the next [database] access reopens a fresh one. Combined with
@@ -39,22 +51,71 @@ class LocalDatabase {
   static Future<void> resetForTest() async {
     final db = _db;
     _db = null;
+    _opening = null;
     if (db != null) {
       await db.close();
     }
   }
 
+  static const _maxOpenAttempts = 5;
+
   Future<Database> _init() async {
     final path = debugDatabasePathOverride ?? await _resolveDbPath();
-    return openDatabase(
-      path,
-      version: 1,
-      onConfigure: (db) => db.execute('PRAGMA foreign_keys = ON'),
-      onCreate: (db, v) async => _createTables(db),
-      // All statements use IF NOT EXISTS, so re-running on every open is
-      // safe and self-healing — no separate migration path needed yet.
-      onOpen: (db) async => _createTables(db),
-    );
+    for (var attempt = 1;; attempt++) {
+      final db = await openDatabase(
+        path,
+        version: 1,
+        onConfigure: (db) => db.execute('PRAGMA foreign_keys = ON'),
+        onCreate: (db, v) async => _createTables(db),
+        // All statements use IF NOT EXISTS, so re-running on every open is
+        // safe and self-healing — no separate migration path needed yet.
+        onOpen: (db) async => _createTables(db),
+      );
+      if (await _isWritable(db)) return db;
+
+      if (attempt == _maxOpenAttempts) {
+        // Reads still work, so the app can at least show its data; every
+        // write will report the read-only error.
+        debugPrint('LocalDatabase: $path is still read-only after '
+            '$attempt attempts');
+        return db;
+      }
+      debugPrint('LocalDatabase: $path opened read-only, reopening '
+          '(attempt $attempt)');
+      await db.close();
+      await Future<void>.delayed(Duration(milliseconds: 200 * attempt));
+    }
+  }
+
+  /// Whether [db] can actually write.
+  ///
+  /// On Windows, SQLite does not fail when growmont.db cannot be opened for
+  /// writing at the instant it is opened — say another handle holds it
+  /// without write sharing, as a file copy does. It silently opens the file
+  /// read-only instead, and every write for the rest of the session then
+  /// fails with "attempt to write a readonly database". `openDatabase`
+  /// cannot tell; this can.
+  ///
+  /// It has to be a real row write: such a connection still accepts
+  /// BEGIN IMMEDIATE and COMMIT, and only refuses once a page is actually
+  /// written. The transaction is always rolled back, so nothing is kept.
+  static Future<bool> _isWritable(Database db) async {
+    try {
+      await db.transaction((txn) async {
+        await txn.insert(
+          'sync_meta',
+          {'key': '_write_probe', 'value': ''},
+          conflictAlgorithm: ConflictAlgorithm.replace,
+        );
+        throw const _RollBack();
+      });
+    } on _RollBack {
+      return true;
+    } on DatabaseException catch (e) {
+      // Anything else — e.g. busy because another instance is writing —
+      // says nothing about this connection's own access.
+      return !e.isReadOnlyError();
+    }
   }
 
   /// Resolves the absolute path to `growmont.db`.
@@ -117,18 +178,27 @@ class LocalDatabase {
     ''');
   }
 
-  /// Copies growmont.db to a timestamped backup in the same directory.
+  /// Writes a timestamped backup of growmont.db to the same directory.
   /// Meant to be called once per session, before the first pull. Keeps the
   /// 3 most recent backups; older ones are silently pruned.
+  ///
+  /// The backup is taken with VACUUM INTO, through the open connection —
+  /// not by copying the file. On Windows a file copy holds the source
+  /// without write sharing, and sync starts this in the same second the UI
+  /// first opens the database: if the open landed mid-copy, SQLite silently
+  /// fell back to read-only and every save failed for the whole session.
+  /// Going through the connection also means the backup is a consistent
+  /// snapshot rather than a copy of a file that may be mid-write.
   ///
   /// Errors are non-fatal — a backup failure must NEVER block startup or
   /// sync.
   Future<void> createPreSyncBackup() async {
     try {
-      final dbPath = await _resolveDbPath();
+      final dbPath = debugDatabasePathOverride ?? await _resolveDbPath();
       final src = File(dbPath);
       if (!src.existsSync()) return;
 
+      final db = await database;
       final backupDir = src.parent;
 
       // Timestamp format: 2026-03-01T08-30-00 (colons replaced so it's a
@@ -141,7 +211,15 @@ class LocalDatabase {
           .first;
 
       final dest = File(p.join(backupDir.path, 'growmont.backup.$ts.db'));
-      await src.copy(dest.path);
+      try {
+        await db.execute('VACUUM INTO ?', [dest.path]);
+      } on DatabaseException {
+        // SQLite before 3.27 has no VACUUM INTO — the system SQLite on
+        // Android 10 and older. A file copy is harmless there (no share
+        // modes), and anywhere else it is now safe too: the connection
+        // above is already open, so a copy can no longer downgrade it.
+        await src.copy(dest.path);
+      }
       debugPrint('LocalDatabase.createPreSyncBackup: wrote ${dest.path}');
 
       // Prune: keep only the 3 most recent backups (newest first by
@@ -164,4 +242,10 @@ class LocalDatabase {
       debugPrint('LocalDatabase.createPreSyncBackup error (non-fatal): $e');
     }
   }
+}
+
+/// Thrown inside [LocalDatabase._isWritable]'s probe transaction purely to
+/// make sqflite roll it back.
+class _RollBack implements Exception {
+  const _RollBack();
 }

@@ -3,11 +3,15 @@
     Paths the app's FileProvider is allowed to hand out content:// URIs for.
 
     Scoped deliberately narrowly: UpdateService downloads the APK into
-    getTemporaryDirectory(), which on Android is the app's cache dir, so
-    that is the only location the package installer needs to read from.
-    Widening this to external storage or the whole files dir would expose
-    the local growmont.db to any app granted a URI here.
+    files/updates/ (resolved by MainActivity.updateDownloadDir), so that is
+    the only location the package installer needs to read from. Widening
+    this to external storage or the whole files dir would expose the rest
+    of the app's private data to any app granted a URI here.
+
+    Not the cache dir: Android deletes cache files whenever it wants the
+    space back, including a freshly downloaded APK before it can be
+    installed.
 -->
 <paths>
-    <cache-path name="update_cache" path="." />
+    <files-path name="updates" path="updates/" />
 </paths>

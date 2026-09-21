@@ -26,6 +26,12 @@ class SplashGate extends StatefulWidget {
   final Widget child;
   final bool isAuthenticated;
 
+  /// Whether the splash currently covers the app. Anything that wants the
+  /// user's attention at launch (UpdatePrompt) waits for this to go false,
+  /// rather than opening underneath the splash while routing is still
+  /// settling.
+  static final ValueNotifier<bool> isShowing = ValueNotifier<bool>(true);
+
   @override
   State<SplashGate> createState() => _SplashGateState();
 }
@@ -46,6 +52,7 @@ class _SplashGateState extends State<SplashGate> {
         _splashSession++;
         _showingSplash = true;
       });
+      SplashGate.isShowing.value = true;
     }
   }
 
@@ -55,6 +62,7 @@ class _SplashGateState extends State<SplashGate> {
         _showingSplash = false;
         _initialBootComplete = true;
       });
+      SplashGate.isShowing.value = false;
     }
   }
 

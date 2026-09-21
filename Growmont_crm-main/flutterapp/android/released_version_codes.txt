@@ -5,4 +5,4 @@
 # rejects it as a downgrade) or a versionName already listed (the
 # in-app updater would never prompt for it). Commit this file --
 # it is the record of what versionCodes are already in the wild.
-1 1.0.0 2026-09-20
+1 1.0.0 2026-09-21

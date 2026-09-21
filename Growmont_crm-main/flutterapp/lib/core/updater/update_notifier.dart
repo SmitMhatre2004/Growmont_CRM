@@ -57,6 +57,15 @@ class UpdateNotifier extends ChangeNotifier {
     _setState(UpdateState.downloading);
 
     try {
+      // Android: before spending a 66 MB download on an APK the system
+      // would not let us install. No-op on Windows.
+      final blocked = await UpdateService.checkInstallPermission();
+      if (blocked != null) {
+        _errorMessage = blocked;
+        _setState(UpdateState.error);
+        return;
+      }
+
       final installerPath = await UpdateService.downloadUpdate(
         info.downloadUrl,
         (progress) {

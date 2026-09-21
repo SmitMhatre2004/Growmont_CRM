@@ -169,13 +169,29 @@ The install step is where they diverge:
   process itself when replacing the APK.
 
 Additionally, Android 8+ requires the user to grant "install unknown apps"
-to Growmont CRM, once, and it is off by default. `MainActivity.kt` checks
-this up front and sends the user to that exact settings page. Without that
-check the update button would appear to do nothing at all.
+to Growmont CRM, once, and it is off by default. It is checked **before**
+the download starts, and the user is sent to that exact settings page if
+it is off — so a first update does not download 66 MB only to be refused.
+Without that check the update button would appear to do nothing at all.
 
-Implementation: `MainActivity.kt` (method channel + FileProvider),
-`UpdateService._installApkAndroid`, and the `REQUEST_INSTALL_PACKAGES`
-permission plus `file_paths.xml` in the Android manifest.
+The APK is downloaded to `files/updates/`, **not** the cache directory.
+Android deletes cache files whenever it wants storage back, with no notice
+and while the app is running, and a 66 MB download on a nearly-full phone
+is exactly what triggers it. OEM "cleaner" apps clear it too. In the cache
+directory the download could vanish at 100%, failing with
+`PathNotFoundException`. Because `files/` is never cleared by the system,
+leftover APKs are deleted at the next launch instead
+(`UpdateService.deleteOldDownloads`).
+
+Implementation: `MainActivity.kt` (method channel, download directory,
+FileProvider), `UpdateService._installApkAndroid`, and the
+`REQUEST_INSTALL_PACKAGES` permission plus `file_paths.xml` in the Android
+manifest.
+
+On launch, both platforms check for a newer release in the background and,
+if one exists, raise the update dialog once the splash has finished
+(`UpdatePrompt`). "Later" dismisses it for that launch; the Profile ->
+System card still offers the update.
 
 ## Why not Firebase Remote Config for version checks
 
@@ -190,5 +206,5 @@ of truth, and both platforms already read it. Nothing to add.
 Android app data (including `growmont.db`) lives in the app's private
 storage and is preserved across updates **as long as the signing key does
 not change**. See "The signing key". The FileProvider in
-`file_paths.xml` is deliberately scoped to the cache directory alone, so
-the database is never exposed to the package installer or any other app.
+`file_paths.xml` is deliberately scoped to `files/updates/` alone, so the
+database is never exposed to the package installer or any other app.

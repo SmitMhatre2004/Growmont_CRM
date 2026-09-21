@@ -41,6 +41,7 @@ class MainActivity : FlutterActivity() {
             CHANNEL,
         ).setMethodCallHandler { call, result ->
             when (call.method) {
+                "updateDownloadDir" -> result.success(updateDownloadDir().absolutePath)
                 "canInstallPackages" -> result.success(canInstallPackages())
                 "openInstallSettings" -> result.success(openInstallSettings())
                 "installApk" -> installApk(call.argument<String>("path"), result)
@@ -48,6 +49,18 @@ class MainActivity : FlutterActivity() {
             }
         }
     }
+
+    /**
+     * Where the Dart side saves a downloaded APK: `files/updates/`, the one
+     * directory `res/xml/file_paths.xml` exposes to the package installer.
+     *
+     * Resolved here rather than in Dart so the two cannot drift apart —
+     * a mismatch only surfaces as FileProvider refusing the file at install
+     * time. Deliberately not the cache dir, which Android clears whenever
+     * it wants the space back; see UpdateService._downloadDirectory.
+     */
+    private fun updateDownloadDir(): File =
+        File(filesDir, "updates").apply { mkdirs() }
 
     /**
      * Whether the user has granted this app permission to install APKs.
