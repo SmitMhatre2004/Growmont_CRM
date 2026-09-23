@@ -128,12 +128,15 @@ One GitHub release serves both platforms. On
 2. Install the APK on a real device and confirm it opens, logs in, and
    syncs. The signature and version checks cannot catch a runtime
    regression.
-3. Create a release tagged `v<version>`, matching `pubspec.yaml` exactly.
-4. Upload all four files from `installer/Output/`:
+3. Submit the Windows build to Microsoft and wait for a clean verdict —
+   see "Clearing a release with Microsoft Defender" in
+   [`RELEASE.md`](RELEASE.md).
+4. Create a release tagged `v<version>`, matching `pubspec.yaml` exactly.
+5. Upload all four files from `installer/Output/`:
    - `Growmont-Setup-<version>.exe` + `.sha256`
    - `growmont-<version>.apk` + `.sha256`
-5. Publish. Both platforms pick it up on their next check.
-6. Commit the updated `android/released_version_codes.txt`.
+6. Publish. Both platforms pick it up on their next check.
+7. Commit the updated `android/released_version_codes.txt`.
 
 ## The website download button
 

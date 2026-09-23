@@ -205,4 +205,9 @@ Write-Host "Checksum written: $checksumPath"
 
 Write-Step "Done"
 Write-Host "Installer produced: $installerPath" -ForegroundColor Green
-Write-Host "Upload both the installer and its .sha256 file to the GitHub release." -ForegroundColor Green
+Write-Host ""
+Write-Host "Next steps:" -ForegroundColor Green
+Write-Host "  1. Submit the installer and $AppExePath" -ForegroundColor Green
+Write-Host "     to Microsoft before publishing: https://www.microsoft.com/en-us/wdsi/filesubmission" -ForegroundColor Green
+Write-Host "     (see 'Clearing a release with Microsoft Defender' in flutterapp/RELEASE.md)." -ForegroundColor Green
+Write-Host "  2. Once the verdict is clean, upload the installer and its .sha256 file to the GitHub release." -ForegroundColor Green

@@ -153,14 +153,55 @@ Releases are published to the dedicated release repo,
 `lib/core/updater/version_constants.dart`.
 
 1. Run `installer/build_release.ps1` from the repo root.
-2. Create a GitHub release on
+2. Submit the build to Microsoft and wait for a clean verdict — see
+   "Clearing a release with Microsoft Defender" below.
+3. Create a GitHub release on
    [CruciaTos/GrowmontCRM_Release](https://github.com/CruciaTos/GrowmontCRM_Release)
    tagged `v<version>` (matching `pubspec.yaml`'s version exactly).
-3. Upload both `Growmont-Setup-<version>.exe` and
+4. Upload both `Growmont-Setup-<version>.exe` and
    `Growmont-Setup-<version>.exe.sha256` from `installer/Output/` as
    release assets.
-4. Publish the release. The in-app updater picks it up automatically on
+5. Publish the release. The in-app updater picks it up automatically on
    the next check — no other step required.
+
+## Clearing a release with Microsoft Defender
+
+The builds are not code-signed, and the app does exactly what malicious
+"downloader" programs do: it fetches an executable from the internet and
+runs it silently (the updater). That is legitimate here, but it is the
+pattern Defender's heuristics look for, so any new build can be wrongly
+flagged. A wrongly flagged release is worse than a delayed one: the
+updater offers it to every client at their next launch, and Defender would
+then quarantine it on all of them at once.
+
+Microsoft reviews files submitted by their developers, for free, and a
+clean verdict clears the file for every Defender user. For each release:
+
+1. Go to <https://www.microsoft.com/en-us/wdsi/filesubmission>, choose
+   **Software developer**, and sign in with a Microsoft account.
+2. Product: **Microsoft Defender Antivirus** (Windows 10/11).
+3. Submit two files, one per submission:
+   - `installer/Output/Growmont-Setup-<version>.exe` — what clients
+     download and what the updater runs.
+   - `flutterapp/build/windows/x64/runner/Release/growmont_crm.exe` — the
+     installed app, which is the process that downloads and runs updates.
+     It is replaced by the next build, so submit it before building
+     anything else.
+4. Choose the option for a clean file that should not be detected (on the
+   current form: "Incorrectly detected as malware/malicious"), leave the
+   detection name empty, and paste this into the comments:
+
+   > Growmont CRM `<version>`, a business CRM desktop app (Flutter). The
+   > installer is Inno Setup, per-user, no admin rights. The app contains
+   > a self-updater that downloads new releases of this same installer
+   > from github.com/CruciaTos/GrowmontCRM_Release over HTTPS, verifies
+   > its SHA-256, and runs it silently. Please confirm the file is clean.
+
+5. Publish once the verdict comes back clean. If a client is ever flagged
+   anyway, submit the flagged file the same way.
+
+Code-signing the builds would reduce how often this matters, but not
+remove the step — see the discussion of OV certificates and SmartScreen.
 
 ## Data safety
 
