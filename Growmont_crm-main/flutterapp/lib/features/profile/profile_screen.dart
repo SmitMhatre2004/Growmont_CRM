@@ -18,6 +18,7 @@ import '../../shared/widgets/error_state.dart';
 import '../auth/auth_provider.dart';
 import '../reminders/reminders_excel.dart';
 import '../reminders/widgets/add_reminder_modal.dart';
+import 'widgets/account_security_card.dart';
 import 'widgets/data_location_card.dart';
 import 'widgets/sync_status_card.dart';
 import 'widgets/update_card.dart';
@@ -523,6 +524,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.all(AppSpacing.lg),
       children: [
+        const AccountSecurityCard(),
+        const SizedBox(height: AppSpacing.lg),
         if (_canSelfUpdate) ...[
           const UpdateCard(),
           const SizedBox(height: AppSpacing.lg),

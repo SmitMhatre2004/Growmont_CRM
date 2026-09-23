@@ -1,8 +1,7 @@
-import 'dart:math';
-
 import '../../core/excel/excel_io.dart';
 import '../../core/io/record_import.dart';
 import '../../models/employee.dart';
+import '../../shared/widgets/password_form_field.dart';
 
 /// Shared row (export) / payload (import) builders for the Employees Excel
 /// sheet. Import creates a real Firebase Auth account per row (via
@@ -70,7 +69,7 @@ Map<String, dynamic>? employeeImportPayload(List<Object?> row) {
     'gender': gender,
     'dob': ExcelIO.isoDate(row, 4),
     'role': roleRaw == 'ADMIN' ? 'ADMIN' : 'EMPLOYEE',
-    'password': password.isEmpty ? _randomPassword() : password,
+    'password': password.isEmpty ? PasswordFormField.generate() : password,
   };
 }
 
@@ -94,11 +93,4 @@ Map<String, dynamic> employeeUpdatePayload(Map<String, dynamic> payload) {
     for (final key in updatable)
       if (payload.containsKey(key)) key: payload[key],
   };
-}
-
-String _randomPassword() {
-  const chars =
-      'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#%';
-  final rand = Random.secure();
-  return List.generate(12, (_) => chars[rand.nextInt(chars.length)]).join();
 }

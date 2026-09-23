@@ -24,6 +24,10 @@ class TokenStorage {
     await _secureStorage.write(key: _userKey, value: jsonEncode(user.toJson()));
   }
 
+  /// Replaces just the cached user, e.g. after an admin changes their role.
+  Future<void> saveUser(AppUser user) =>
+      _secureStorage.write(key: _userKey, value: jsonEncode(user.toJson()));
+
   Future<String?> getAccessToken() => _secureStorage.read(key: _accessKey);
 
   Future<String?> getRefreshToken() => _secureStorage.read(key: _refreshKey);

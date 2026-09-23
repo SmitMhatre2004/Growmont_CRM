@@ -40,6 +40,8 @@ class AuthState {
 class AuthNotifier extends Notifier<AuthState> {
   late TokenStorage _storage;
   StreamSubscription<User?>? _authSubscription;
+  StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _employeeDocSub;
+  String? _watchedEmployeeId;
 
   @override
   AuthState build() {
@@ -52,9 +54,77 @@ class AuthNotifier extends Notifier<AuthState> {
 
     ref.onDispose(() {
       _authSubscription?.cancel();
+      _stopWatchingEmployeeDoc();
     });
 
     return const AuthState(isLoading: true);
+  }
+
+  /// Follows the signed-in user's own employee document, so an admin's
+  /// change reaches this session straight away instead of at the next
+  /// sign-in: a new role takes effect in the UI, and losing access (restricted,
+  /// rejected or deleted) signs the user out.
+  void _watchEmployeeDoc(String employeeId) {
+    if (_watchedEmployeeId == employeeId && _employeeDocSub != null) return;
+    _stopWatchingEmployeeDoc();
+    _watchedEmployeeId = employeeId;
+    _employeeDocSub = FirebaseFirestore.instance
+        .collection('employees')
+        .doc(employeeId)
+        .snapshots()
+        .listen(
+          _onEmployeeDocChanged,
+          onError: (Object e) {
+            // The rules only let an ACTIVE employee read employees/*, so
+            // losing access shows up here as permission-denied rather than
+            // as a snapshot with the new status.
+            if (e is FirebaseException && e.code == 'permission-denied') {
+              unawaited(logout());
+            }
+          },
+        );
+  }
+
+  void _stopWatchingEmployeeDoc() {
+    _employeeDocSub?.cancel();
+    _employeeDocSub = null;
+    _watchedEmployeeId = null;
+  }
+
+  Future<void> _onEmployeeDocChanged(
+    DocumentSnapshot<Map<String, dynamic>> snap,
+  ) async {
+    // A cached snapshot can predate the admin's decision; act only on what
+    // the server confirms.
+    if (snap.metadata.isFromCache) return;
+    final current = state.user;
+    if (current == null || current.id != snap.id) return;
+
+    final data = snap.data();
+    if (data == null ||
+        (data['status'] as String?)?.toUpperCase() != 'ACTIVE') {
+      await logout();
+      return;
+    }
+
+    final role = (data['role'] as String?)?.toUpperCase() == 'ADMIN'
+        ? UserRole.admin
+        : UserRole.employee;
+    final name = (data['name'] as String?)?.trim();
+    final nameChanged = name != null && name.isNotEmpty && name != current.name;
+    if (role == current.role && !nameChanged) return;
+
+    final updated = AppUser(
+      id: current.id,
+      name: nameChanged ? name : current.name,
+      email: current.email,
+      avatar: current.avatar,
+      role: role,
+    );
+    state = state.copyWith(user: updated);
+    try {
+      await _storage.saveUser(updated);
+    } catch (_) {}
   }
 
   bool _isBypassed = false;
@@ -76,6 +146,7 @@ class AuthNotifier extends Notifier<AuthState> {
           return;
         }
       }
+      _stopWatchingEmployeeDoc();
       await _storage.clear();
       state = const AuthState(isLoading: false);
       return;
@@ -105,14 +176,19 @@ class AuthNotifier extends Notifier<AuthState> {
         return;
       }
 
-      final roleStr = roleClaim ?? docData['role'] as String? ?? 'EMPLOYEE';
-      // Prefer the signed-in account's own name/photo (e.g. from Google)
-      // over the employee record, which usually has neither set.
-      final name =
-          firebaseUser.displayName ??
-          docData['name'] as String? ??
-          firebaseUser.email?.split('@').first ??
-          'User';
+      // The employee document decides the role, exactly as the security
+      // rules do; the claim is only a fallback for a document without one.
+      final roleStr =
+          (docData['role'] as String?)?.toUpperCase() ?? roleClaim ?? 'EMPLOYEE';
+      // The name an admin gave the employee record wins; the account's own
+      // (e.g. from Google) only fills in when the record has none. The photo
+      // still prefers the account's, which records rarely have.
+      final docName = (docData['name'] as String?)?.trim();
+      final name = (docName != null && docName.isNotEmpty)
+          ? docName
+          : firebaseUser.displayName ??
+                firebaseUser.email?.split('@').first ??
+                'User';
       final avatar = firebaseUser.photoURL ?? docData['avatar_url'] as String?;
 
       final appUser = AppUser(
@@ -134,11 +210,13 @@ class AuthNotifier extends Notifier<AuthState> {
         accessToken: tokenResult.token,
         isLoading: false,
       );
+      _watchEmployeeDoc(appUser.id);
     } catch (e) {
       // Fallback in case of network issue on startup
       final cachedUser = await _storage.getUser();
       if (cachedUser != null) {
         state = AuthState(user: cachedUser, accessToken: '', isLoading: false);
+        _watchEmployeeDoc(cachedUser.id);
       } else {
         state = const AuthState(isLoading: false);
       }
@@ -395,6 +473,7 @@ class AuthNotifier extends Notifier<AuthState> {
   }
 
   Future<void> logout() async {
+    _stopWatchingEmployeeDoc();
     state = const AuthState(isLoading: true);
     _isBypassed = false;
     try {

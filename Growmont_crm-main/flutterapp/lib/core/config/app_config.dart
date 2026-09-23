@@ -3,6 +3,13 @@
 /// and server-side in functions/index.js.
 const kAllowedEmailDomain = '@growmont.com';
 
+/// Region the Cloud Functions in functions/index.js are deployed to (set by
+/// its setGlobalOptions). Must match, or every callable answers 404.
+const kFunctionsRegion = 'asia-south1';
+
+/// Firebase Auth's minimum password length, enforced again server-side.
+const kMinPasswordLength = 6;
+
 class AppConfig {
   static const baseUrl = String.fromEnvironment(
     'API_URL',

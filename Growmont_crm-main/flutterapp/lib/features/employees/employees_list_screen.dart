@@ -14,6 +14,7 @@ import '../../shared/widgets/toolbar_action_button.dart';
 import '../auth/auth_provider.dart';
 import 'employees_excel.dart';
 import 'widgets/add_employee_modal.dart';
+import 'widgets/employee_admin_actions.dart';
 
 enum RoleFilter { all, admin, employee }
 
@@ -101,102 +102,6 @@ class _EmployeesListScreenState extends ConsumerState<EmployeesListScreen> {
 
   int get _adminCount =>
       _employees.where((e) => e.role.toLowerCase() == 'admin').length;
-
-  /// Suspends or reinstates an employee without touching their data, so a
-  /// temporary block doesn't mean deleting and re-creating the account (which
-  /// would orphan their clients, sales and interactions).
-  Future<void> _toggleRestrict(Employee emp) async {
-    final restricting = !emp.isRestricted;
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(restricting ? 'Restrict Employee' : 'Restore Access'),
-        content: Text(
-          restricting
-              ? '${emp.name} will be signed out and blocked from logging in. '
-                    'Their records are kept and you can restore access at any '
-                    'time.'
-              : 'Restore access for ${emp.name}? They will be able to log '
-                    'in again immediately.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            style: restricting
-                ? FilledButton.styleFrom(backgroundColor: AppColors.danger)
-                : null,
-            child: Text(restricting ? 'Restrict' : 'Restore'),
-          ),
-        ],
-      ),
-    );
-    if (confirmed != true) return;
-
-    try {
-      await ref
-          .read(apiServiceProvider)
-          .setEmployeeRestricted(emp.id, restricted: restricting);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              restricting
-                  ? '${emp.name} has been restricted'
-                  : '${emp.name} can log in again',
-            ),
-          ),
-        );
-      }
-      _load();
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Could not update access: $e'),
-            backgroundColor: AppColors.danger,
-          ),
-        );
-      }
-    }
-  }
-
-  Future<void> _delete(Employee emp) async {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Delete Employee'),
-        content: Text('Delete ${emp.name}? This cannot be undone.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
-    );
-    if (ok != true) return;
-    try {
-      await ref.read(apiServiceProvider).deleteEmployee(emp.id);
-      _load();
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Delete failed: $e'),
-            backgroundColor: AppColors.danger,
-          ),
-        );
-      }
-    }
-  }
 
   Future<void> _showModal({Employee? employee}) async {
     final saved = await showDialog<bool>(
@@ -714,8 +619,7 @@ class _EmployeesListScreenState extends ConsumerState<EmployeesListScreen> {
                   canManage: isAdmin,
                   onOpen: () => context.push('/employees/${emp.id}'),
                   onEdit: () => _showModal(employee: emp),
-                  onDelete: () => _delete(emp),
-                  onToggleRestrict: () => _toggleRestrict(emp),
+                  onChanged: _load,
                 );
               },
             ),
@@ -737,8 +641,7 @@ class _EmployeeRow extends StatelessWidget {
     required this.canManage,
     required this.onOpen,
     required this.onEdit,
-    required this.onDelete,
-    required this.onToggleRestrict,
+    required this.onChanged,
   });
 
   final Employee employee;
@@ -746,8 +649,7 @@ class _EmployeeRow extends StatelessWidget {
   final bool canManage;
   final VoidCallback onOpen;
   final VoidCallback onEdit;
-  final VoidCallback onDelete;
-  final VoidCallback onToggleRestrict;
+  final VoidCallback onChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -797,6 +699,10 @@ class _EmployeeRow extends StatelessWidget {
                       ),
                       const SizedBox(width: AppSpacing.sm),
                       _roleBadge(isAdminRole),
+                      if (!employee.isActive) ...[
+                        const SizedBox(width: AppSpacing.xs),
+                        EmployeeStatusChip(employee: employee),
+                      ],
                     ],
                   ),
                   const SizedBox(height: AppSpacing.xs),
@@ -834,78 +740,10 @@ class _EmployeeRow extends StatelessWidget {
               ),
             ),
             if (canManage)
-              PopupMenuButton<String>(
-                icon: const Icon(
-                  Icons.more_vert,
-                  size: AppSizing.iconMd,
-                  color: AppColors.textMuted,
-                ),
-                padding: EdgeInsets.zero,
-                tooltip: 'Manage employee',
-                onSelected: (val) {
-                  if (val == 'edit') onEdit();
-                  if (val == 'restrict') onToggleRestrict();
-                  if (val == 'delete') onDelete();
-                },
-                itemBuilder: (ctx) => [
-                  const PopupMenuItem(
-                    value: 'edit',
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.edit_outlined,
-                          size: AppSizing.iconSm,
-                          color: AppColors.info,
-                        ),
-                        SizedBox(width: AppSpacing.sm),
-                        Text('Edit', style: TextStyle(fontSize: 13)),
-                      ],
-                    ),
-                  ),
-                  PopupMenuItem(
-                    value: 'restrict',
-                    child: Row(
-                      children: [
-                        Icon(
-                          employee.isRestricted
-                              ? Icons.lock_open_outlined
-                              : Icons.block_outlined,
-                          size: AppSizing.iconSm,
-                          color: employee.isRestricted
-                              ? AppColors.primaryGreen
-                              : AppColors.warning,
-                        ),
-                        const SizedBox(width: AppSpacing.sm),
-                        Text(
-                          employee.isRestricted
-                              ? 'Restore access'
-                              : 'Restrict access',
-                          style: const TextStyle(fontSize: 13),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const PopupMenuItem(
-                    value: 'delete',
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.delete_outline,
-                          size: AppSizing.iconSm,
-                          color: AppColors.danger,
-                        ),
-                        SizedBox(width: AppSpacing.sm),
-                        Text(
-                          'Delete',
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: AppColors.danger,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
+              EmployeeAdminMenu(
+                employee: employee,
+                onEdit: onEdit,
+                onChanged: onChanged,
               )
             else
               const Padding(

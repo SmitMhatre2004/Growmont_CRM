@@ -10,6 +10,9 @@ import '../../models/employee.dart';
 import '../../models/sale.dart';
 import '../../shared/widgets/error_state.dart';
 import '../../shared/widgets/monthly_revenue_chart.dart';
+import '../auth/auth_provider.dart';
+import 'widgets/add_employee_modal.dart';
+import 'widgets/employee_admin_actions.dart';
 
 class EmployeeDetailScreen extends ConsumerStatefulWidget {
   const EmployeeDetailScreen({super.key, required this.employeeId});
@@ -69,6 +72,24 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
           );
         }
       }
+    }
+  }
+
+  Future<void> _edit(Employee emp) async {
+    final saved = await showDialog<bool>(
+      context: context,
+      barrierDismissible: true,
+      builder: (_) => AddEmployeeModal(existing: emp),
+    );
+    if (saved == true) _load();
+  }
+
+  void _backToList() {
+    if (!mounted) return;
+    if (Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
+    } else {
+      context.go('/employees');
     }
   }
 
@@ -166,13 +187,7 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
       children: [
         InkWell(
           borderRadius: BorderRadius.circular(AppRadius.sm),
-          onTap: () {
-            if (Navigator.of(context).canPop()) {
-              Navigator.of(context).pop();
-            } else {
-              context.go('/employees');
-            }
-          },
+          onTap: _backToList,
           child: const Padding(
             padding: EdgeInsets.symmetric(
               horizontal: AppSpacing.xs,
@@ -269,6 +284,7 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
                                 : AppTypography.headingLarge,
                           ),
                           _roleBadge(emp.role),
+                          EmployeeStatusChip(employee: emp),
                         ],
                       ),
                       const SizedBox(height: AppSpacing.xs),
@@ -289,6 +305,13 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
                     ],
                   ),
                 ),
+                if (ref.watch(authProvider).user?.isAdmin == true)
+                  EmployeeAdminMenu(
+                    employee: emp,
+                    onEdit: () => _edit(emp),
+                    onChanged: _load,
+                    onDeleted: _backToList,
+                  ),
               ],
             ),
             const SizedBox(height: AppSpacing.md),

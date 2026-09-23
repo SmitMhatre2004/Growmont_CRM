@@ -140,10 +140,60 @@ class CrmRepository extends FirestoreService {
     _drain();
   }
 
-  // provisionPendingEmployee, reviewEmployee, createEmployee, deleteEmployee,
-  // streamPendingReview: intentionally NOT overridden — these are
-  // Cloud-Function-backed or admin-review flows with no offline semantics
-  // and must stay live.
+  // The account operations below run online through Cloud Functions, which
+  // write the employee document server-side. Each one then refreshes the
+  // local copy straight away: an update* push sends the whole locally
+  // merged document, so a copy still showing the old role or status would
+  // quietly undo the change on the next profile edit.
+  // provisionPendingEmployee and streamPendingReview are not overridden.
+
+  @override
+  Future<String> createEmployee(Map<String, dynamic> data) async {
+    final id = await super.createEmployee(data);
+    await _fetchAndCache('employees', id);
+    return id;
+  }
+
+  @override
+  Future<void> deleteEmployee(dynamic id) async {
+    await super.deleteEmployee(id);
+    await _store.deleteRemote('employees', id.toString());
+  }
+
+  @override
+  Future<void> reviewEmployee({
+    required String employeeId,
+    required String decision,
+    String? role,
+  }) async {
+    await super.reviewEmployee(
+      employeeId: employeeId,
+      decision: decision,
+      role: role,
+    );
+    await _fetchAndCache('employees', employeeId);
+  }
+
+  @override
+  Future<void> setEmployeeRole(dynamic id, String role) async {
+    await super.setEmployeeRole(id, role);
+    await _fetchAndCache('employees', id.toString());
+  }
+
+  @override
+  Future<void> setEmployeeAccess(dynamic id, {required bool active}) async {
+    await super.setEmployeeAccess(id, active: active);
+    await _fetchAndCache('employees', id.toString());
+  }
+
+  @override
+  Future<void> changeEmployeeEmail(dynamic id, String email) async {
+    await super.changeEmployeeEmail(id, email);
+    await _fetchAndCache('employees', id.toString());
+  }
+
+  // setEmployeePassword: not overridden — it changes nothing in the
+  // employee document.
 
   // ── Clients ──────────────────────────────────────────────────────────
 

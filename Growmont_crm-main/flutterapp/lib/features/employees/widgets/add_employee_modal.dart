@@ -10,6 +10,8 @@ import '../../../core/providers.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../models/employee.dart';
 import '../../../shared/widgets/app_modal_shell.dart';
+import '../../../shared/widgets/password_form_field.dart';
+import '../../auth/auth_provider.dart';
 
 class AddEmployeeModal extends ConsumerStatefulWidget {
   const AddEmployeeModal({super.key, this.existing});
@@ -45,7 +47,9 @@ class _AddEmployeeModalState extends ConsumerState<AddEmployeeModal> {
         ? DateTime.parse(e.dob)
         : DateTime(1990);
     _gender = e?.gender ?? 'M';
-    _role = e?.role ?? 'EMPLOYEE';
+    _role = (e?.role ?? 'EMPLOYEE').toUpperCase() == 'ADMIN'
+        ? 'ADMIN'
+        : 'EMPLOYEE';
   }
 
   @override
@@ -93,17 +97,14 @@ class _AddEmployeeModalState extends ConsumerState<AddEmployeeModal> {
     return null;
   }
 
+  /// An admin editing their own record can't change their role or sign-in
+  /// email — the server refuses both, so another admin is always needed.
+  bool get _isSelf =>
+      widget.existing != null &&
+      ref.read(authProvider).user?.id == widget.existing!.id;
+
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
-    if (widget.existing == null && _password.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Password is required for new employees'),
-          backgroundColor: AppColors.danger,
-        ),
-      );
-      return;
-    }
 
     setState(() => _loading = true);
     final map = <String, dynamic>{
@@ -136,8 +137,20 @@ class _AddEmployeeModalState extends ConsumerState<AddEmployeeModal> {
       }
 
       final api = ref.read(apiServiceProvider);
-      if (widget.existing != null) {
-        await api.updateEmployee(widget.existing!.id, map);
+      final existing = widget.existing;
+      if (existing != null) {
+        // The sign-in email and the role belong to the account, not just the
+        // record, so they change through the server; the rest is a profile
+        // edit.
+        final email = map.remove('email') as String;
+        final role = map.remove('role') as String;
+        if (email.toLowerCase() != existing.email.toLowerCase()) {
+          await api.changeEmployeeEmail(existing.id, email);
+        }
+        if (role != existing.role.toUpperCase()) {
+          await api.setEmployeeRole(existing.id, role);
+        }
+        await api.updateEmployee(existing.id, map);
       } else {
         await api.createEmployee(map);
       }
@@ -197,11 +210,15 @@ class _AddEmployeeModalState extends ConsumerState<AddEmployeeModal> {
             const SizedBox(height: AppSpacing.md),
             TextFormField(
               controller: _email,
-              decoration: const InputDecoration(
+              enabled: !_isSelf,
+              decoration: InputDecoration(
                 labelText: 'Email *',
-                helperText:
-                    'Username is enough — $kAllowedEmailDomain '
-                    'is added automatically',
+                helperText: _isSelf
+                    ? 'Ask another admin to change your sign-in email'
+                    : widget.existing != null
+                    ? 'This is the address they log in with'
+                    : 'Username is enough — $kAllowedEmailDomain '
+                          'is added automatically',
               ),
               keyboardType: TextInputType.emailAddress,
               validator: _validateEmail,
@@ -251,31 +268,26 @@ class _AddEmployeeModalState extends ConsumerState<AddEmployeeModal> {
             DropdownButtonFormField<String>(
               initialValue: _role,
               isExpanded: true,
-              decoration: const InputDecoration(labelText: 'Role'),
+              decoration: InputDecoration(
+                labelText: 'Role',
+                helperText: _isSelf
+                    ? 'Ask another admin to change your role'
+                    : _role == 'ADMIN'
+                    ? 'Admins manage accounts and see every record'
+                    : null,
+              ),
               items: const [
                 DropdownMenuItem(value: 'EMPLOYEE', child: Text('Employee')),
                 DropdownMenuItem(value: 'ADMIN', child: Text('Admin')),
               ],
-              onChanged: (v) => setState(() => _role = v!),
+              onChanged: _isSelf ? null : (v) => setState(() => _role = v!),
             ),
             if (widget.existing == null) ...[
               const SizedBox(height: AppSpacing.md),
-              TextFormField(
+              PasswordFormField(
                 controller: _password,
-                obscureText: true,
-                decoration: const InputDecoration(
-                  labelText: 'Password *',
-                  helperText: 'At least 6 characters',
-                ),
-                validator: (v) {
-                  if (v == null || v.trim().isEmpty) {
-                    return 'Password is required';
-                  }
-                  if (v.length < 6) {
-                    return 'Password must be at least 6 characters';
-                  }
-                  return null;
-                },
+                labelText: 'Password *',
+                helperText: 'At least $kMinPasswordLength characters',
               ),
             ],
             const SizedBox(height: AppSpacing.xxl),

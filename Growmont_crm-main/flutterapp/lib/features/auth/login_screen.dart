@@ -49,6 +49,31 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
   }
 
+  /// Sends Firebase's password-reset email to a company address. The
+  /// username typed so far is offered as the address.
+  Future<void> _forgotPassword() async {
+    final email = await showDialog<String>(
+      context: context,
+      builder: (_) =>
+          _ResetPasswordDialog(initialEmail: _usernameController.text.trim()),
+    );
+    if (email == null || email.isEmpty || !mounted) return;
+
+    final error = await ref
+        .read(authProvider.notifier)
+        .sendPasswordReset(email);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          error ??
+              'If an account exists for that address, a reset link is on its '
+                  'way. Check your inbox.',
+        ),
+        backgroundColor: error == null ? null : AppColors.danger,
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -155,7 +180,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         ),
                         onSubmitted: (_) => _submit(),
                       ),
-                      const SizedBox(height: AppSpacing.xxxl),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: TextButton(
+                          onPressed: _loading ? null : _forgotPassword,
+                          child: const Text('Forgot password?'),
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.xl),
                       SizedBox(
                         width: double.infinity,
                         height: AppSizing.controlLg,
@@ -225,6 +257,67 @@ class _LegalFooter extends StatelessWidget {
             ),
           ),
         ],
+      ],
+    );
+  }
+}
+
+/// Asks for the address to send a reset link to; pops with it, or with null
+/// on cancel. Stateful so it owns (and disposes) its text controller only
+/// once the dialog is gone.
+class _ResetPasswordDialog extends StatefulWidget {
+  const _ResetPasswordDialog({required this.initialEmail});
+
+  final String initialEmail;
+
+  @override
+  State<_ResetPasswordDialog> createState() => _ResetPasswordDialogState();
+}
+
+class _ResetPasswordDialogState extends State<_ResetPasswordDialog> {
+  late final _controller = TextEditingController(text: widget.initialEmail);
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Reset password'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            "Enter your work email and we'll send you a link to choose a "
+            'new password. You can also ask an administrator to set one '
+            'for you.',
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          TextField(
+            controller: _controller,
+            autofocus: true,
+            keyboardType: TextInputType.emailAddress,
+            decoration: const InputDecoration(
+              hintText: 'Username / Email',
+              prefixIcon: Icon(Icons.email_outlined),
+            ),
+            onSubmitted: (v) => Navigator.pop(context, v.trim()),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.pop(context, _controller.text.trim()),
+          child: const Text('Send link'),
+        ),
       ],
     );
   }

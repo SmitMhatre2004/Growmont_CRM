@@ -43,13 +43,28 @@ service cloud.firestore {
       return isAdmin() || isOwnerEmployee(employeeId);
     }
 
+    function isCompanyEmail(email) {
+      return email is string &&
+             email.lower().matches('[^@]+@growmont[.]com');
+    }
+
     // ─── Employees ───
     match /employees/{employeeId} {
       // Any active user can read employees (needed for dropdowns, detail views)
       allow read: if isActive();
 
-      // Only admins can create/update/delete employees
-      allow create, update, delete: if isAdmin();
+      // Only admins can create/update/delete employees. Accounts are created
+      // by the createEmployee Cloud Function, which bypasses these rules;
+      // any document written from a client must still carry a company
+      // address. An update is only checked when it changes the address, so
+      // editing an older record never fails on an email nobody touched.
+      allow create: if isAdmin() &&
+                       isCompanyEmail(request.resource.data.email);
+      allow update: if isAdmin() &&
+                       (request.resource.data.get('email', null) ==
+                          resource.data.get('email', null) ||
+                        isCompanyEmail(request.resource.data.email));
+      allow delete: if isAdmin();
     }
 
     // ─── Clients ───

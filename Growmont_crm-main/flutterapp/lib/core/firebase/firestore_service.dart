@@ -1,11 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 
-import '../config/app_config.dart';
-import 'backend_capability.dart';
+import 'cloud_callables.dart';
 import '../../models/client.dart';
 import '../../models/employee.dart';
 import '../../models/interaction.dart';
@@ -18,16 +16,19 @@ class FirestoreService {
     FirebaseAuth? auth,
     FirebaseFunctions? functions,
     FirebaseStorage? storage,
+    CloudCallables? callables,
     this.devUid,
   }) : _firestore = firestore ?? FirebaseFirestore.instance,
        _auth = auth ?? FirebaseAuth.instance,
        _functions = functions ?? FirebaseFunctions.instance,
-       _storage = storage ?? FirebaseStorage.instance;
+       _storage = storage ?? FirebaseStorage.instance,
+       _callables = callables ?? CloudCallables();
 
   final FirebaseFirestore _firestore;
   final FirebaseAuth _auth;
   final FirebaseFunctions _functions;
   final FirebaseStorage _storage;
+  final CloudCallables _callables;
   String? devUid;
 
   FirebaseStorage get storage => _storage;
@@ -174,8 +175,7 @@ class FirestoreService {
   /// client and Firestore rules block a direct client write here — there is
   /// no safe fallback, so a callable failure must surface as a real error.
   Future<void> provisionPendingEmployee() async {
-    final callable = _functions.httpsCallable('provisionPendingEmployee');
-    await callable.call();
+    await _callables.call('provisionPendingEmployee');
   }
 
   /// Admin-only Accept ('ACCEPT') / Reject ('REJECT') decision on a
@@ -187,8 +187,7 @@ class FirestoreService {
     required String decision,
     String? role,
   }) async {
-    final callable = _functions.httpsCallable('reviewEmployee');
-    await callable.call({
+    await _callables.call('reviewEmployee', {
       'employeeId': employeeId,
       'decision': decision,
       'role': ?role,
@@ -203,12 +202,17 @@ class FirestoreService {
     return snapshot.docs.map(EmployeeDropdown.fromFirestore).toList();
   }
 
-  Future<void> createEmployee(Map<String, dynamic> data) async {
-    await _privileged(
-      callableName: 'createEmployee',
-      payload: data,
-      direct: () => _createEmployeeDirect(data),
-    );
+  // Everything that touches an employee's sign-in account — creating it, its
+  // role, access, password, email, deleting it — runs in the Cloud Functions
+  // under the Admin SDK, which checks the caller is an active admin and keeps
+  // the Auth account and the employees/{uid} document in step. Only profile
+  // fields (name, mobile, ...) are written directly, by [updateEmployee].
+
+  /// Creates the Auth account and employee document; returns the new
+  /// employee's id (their Auth uid).
+  Future<String> createEmployee(Map<String, dynamic> data) async {
+    final result = await _callables.call('createEmployee', data);
+    return result['uid'] as String;
   }
 
   Future<void> updateEmployee(dynamic id, Map<String, dynamic> data) async {
@@ -225,170 +229,49 @@ class FirestoreService {
         .update(cleanData);
   }
 
+  /// Deletes the employee's sign-in account and document. Their clients,
+  /// sales and interactions are left in place.
   Future<void> deleteEmployee(dynamic id) async {
-    await _privileged(
-      callableName: 'deleteEmployee',
-      payload: {'employeeId': id.toString()},
-      direct: () => _deleteEmployeeDirect(id.toString()),
-    );
+    await _callables.call('deleteEmployee', {'employeeId': id.toString()});
   }
 
-  /// Suspends or reinstates an employee by flipping their status between
-  /// ACTIVE and RESTRICTED.
-  ///
-  /// This is a plain document write, gated by the admin-only rule on
-  /// employees/*, so it works with or without Cloud Functions. Because the
-  /// security rules read this document on every request, the change bites on
-  /// the employee's very next operation — no claim rewrite, no sign-out
-  /// needed. Their data is left untouched, so restoring them brings back an
-  /// intact account.
-  ///
-  /// Note the Auth credential itself stays enabled: a restricted employee is
-  /// refused at the login gate and denied by every rule, but fully revoking
-  /// the credential needs the Admin SDK.
-  Future<void> setEmployeeRestricted(dynamic id, {required bool restricted}) {
-    return _firestore.collection('employees').doc(id.toString()).update({
-      'status': restricted ? 'RESTRICTED' : 'ACTIVE',
-      'restricted_at': restricted ? FieldValue.serverTimestamp() : null,
-      'updated_at': FieldValue.serverTimestamp(),
+  /// Makes an employee an admin ('ADMIN') or a regular employee
+  /// ('EMPLOYEE'). An admin can't change their own role, which is also what
+  /// guarantees at least one admin always remains.
+  Future<void> setEmployeeRole(dynamic id, String role) async {
+    await _callables.call('updateEmployeeRole', {
+      'employeeId': id.toString(),
+      'role': role,
     });
   }
 
-  /// Runs a privileged employee operation through the Cloud Functions
-  /// callable when one is reachable, and through [direct] when it isn't.
-  ///
-  /// Only "this function isn't deployed" sends us down the direct path — see
-  /// [BackendCapability.indicatesAbsent]. Every other callable failure is
-  /// rethrown, so a real server-side rejection (an admin gate, a duplicate
-  /// email) is never quietly retried as an unprivileged client write.
-  Future<void> _privileged({
-    required String callableName,
-    required Map<String, dynamic> payload,
-    required Future<void> Function() direct,
-  }) async {
-    if (await BackendCapability.instance.shouldUseCallables()) {
-      try {
-        await _functions.httpsCallable(callableName).call(payload);
-        await BackendCapability.instance.markPresent();
-        return;
-      } catch (e) {
-        if (!BackendCapability.indicatesAbsent(e)) rethrow;
-        BackendCapability.instance.markAbsent();
-      }
-    }
-    await direct();
+  /// Grants ([active] true) or restricts access. Restricting disables the
+  /// sign-in account and ends every session at once; the employee's data is
+  /// untouched, so granting access again brings back an intact account.
+  /// Granting also approves a PENDING or REJECTED account.
+  Future<void> setEmployeeAccess(dynamic id, {required bool active}) async {
+    await _callables.call('setEmployeeAccess', {
+      'employeeId': id.toString(),
+      'active': active,
+    });
   }
 
-  /// The direct path has no Admin SDK behind it, so the admin check the
-  /// callable would have done server-side has to happen here. The Firestore
-  /// rules enforce it again on the document write — this is the early, clear
-  /// failure, not the security boundary.
-  Future<void> _requireAdmin() async {
-    final user = _auth.currentUser;
-    if (user == null) {
-      throw const BackendException(
-        'You must be signed in to manage employee accounts.',
-      );
-    }
-    try {
-      final token = await user.getIdTokenResult();
-      if ((token.claims?['role'] as String?)?.toUpperCase() == 'ADMIN') return;
-    } catch (_) {
-      // No usable claims — fall through to the document check below.
-    }
-    final snap = await _firestore.collection('employees').doc(user.uid).get();
-    final data = snap.data();
-    if ((data?['role'] as String?)?.toUpperCase() == 'ADMIN' &&
-        (data?['status'] as String?)?.toUpperCase() == 'ACTIVE') {
-      return;
-    }
-    throw const BackendException(
-      'Only administrators can manage employee accounts.',
-    );
+  /// Sets a new password for another employee, signing them out everywhere.
+  /// Your own password goes through [changePassword] instead.
+  Future<void> setEmployeePassword(dynamic id, String password) async {
+    await _callables.call('setEmployeePassword', {
+      'employeeId': id.toString(),
+      'password': password,
+    });
   }
 
-  /// Creates the Auth account and employee document from the admin's own
-  /// client, for deployments with no Cloud Functions.
-  ///
-  /// The account is created on a throwaway secondary [FirebaseApp] so the
-  /// admin's own session isn't swapped out for the new user's. Claims can't
-  /// be set from a client, so the new employee has none — the Firestore
-  /// rules accept the employee document as proof of status instead.
-  Future<void> _createEmployeeDirect(Map<String, dynamic> data) async {
-    await _requireAdmin();
-
-    final name = data['name']?.toString().trim() ?? '';
-    final email = data['email']?.toString().trim() ?? '';
-    final password = data['password']?.toString() ?? '';
-
-    if (name.isEmpty || email.isEmpty || password.isEmpty) {
-      throw const BackendException('Name, email, and password are required.');
-    }
-    if (!email.toLowerCase().endsWith(kAllowedEmailDomain)) {
-      throw const BackendException(
-        'Employee emails must end in $kAllowedEmailDomain.',
-      );
-    }
-
-    String? newUid;
-    final tempApp = await Firebase.initializeApp(
-      name: 'EmployeeProvisioning_${DateTime.now().microsecondsSinceEpoch}',
-      options: Firebase.app().options,
-    );
-    try {
-      final tempAuth = FirebaseAuth.instanceFor(app: tempApp);
-      final cred = await tempAuth.createUserWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
-      newUid = cred.user?.uid;
-      await tempAuth.signOut();
-    } on FirebaseAuthException catch (e) {
-      throw BackendException(switch (e.code) {
-        'email-already-in-use' => 'An account already exists for $email.',
-        'invalid-email' => 'The email address format is invalid.',
-        'weak-password' => 'Password must be at least 6 characters.',
-        _ => e.message ?? 'Could not create the employee account.',
-      });
-    } finally {
-      await tempApp.delete();
-    }
-
-    if (newUid == null) {
-      throw const BackendException(
-        'Could not create the employee account. Please try again.',
-      );
-    }
-
-    // The document id must be the Auth uid: the security rules resolve a
-    // caller's status by reading employees/{uid}, so a mismatched id would
-    // leave the new employee unable to read anything.
-    final doc = Map<String, dynamic>.from(data)..remove('password');
-    if (doc['dob'] is String && (doc['dob'] as String).isNotEmpty) {
-      final parsed = DateTime.tryParse(doc['dob'] as String);
-      if (parsed != null) doc['dob'] = Timestamp.fromDate(parsed);
-    }
-    doc['role'] = (doc['role']?.toString().toUpperCase() == 'ADMIN')
-        ? 'ADMIN'
-        : 'EMPLOYEE';
-    doc['status'] = 'ACTIVE';
-    doc['avatar_url'] = doc['avatar_url'] ?? '';
-    doc['clients_count'] = doc['clients_count'] ?? 0;
-    doc['sales_count'] = doc['sales_count'] ?? 0;
-    doc['interactions_count'] = doc['interactions_count'] ?? 0;
-    doc['created_at'] = FieldValue.serverTimestamp();
-    doc['updated_at'] = FieldValue.serverTimestamp();
-
-    await _firestore.collection('employees').doc(newUid).set(doc);
-  }
-
-  /// Removes the employee document, which is what the status gate and every
-  /// rule reads. Deleting the underlying Auth account needs the Admin SDK;
-  /// until a Functions-backed delete runs, the credential still exists but
-  /// can no longer sign in, since there's no document to prove it ACTIVE.
-  Future<void> _deleteEmployeeDirect(String id) async {
-    await _requireAdmin();
-    await _firestore.collection('employees').doc(id).delete();
+  /// Changes the address an employee signs in with, in Auth and in their
+  /// document together.
+  Future<void> changeEmployeeEmail(dynamic id, String email) async {
+    await _callables.call('changeEmployeeEmail', {
+      'employeeId': id.toString(),
+      'email': email,
+    });
   }
 
   // ----------------------------------------------------
@@ -688,21 +571,43 @@ class FirestoreService {
   // Auth & Profile
   // ----------------------------------------------------
 
+  /// Changes the signed-in user's own password. Done by the client SDK, not
+  /// a Cloud Function, so this session gets fresh tokens and stays signed in
+  /// while the user's sessions on other devices end.
   Future<void> changePassword({
     required String oldPassword,
     required String newPassword,
   }) async {
     final user = _auth.currentUser;
     if (user == null || user.email == null) {
-      throw Exception('No authenticated user found');
+      throw const BackendException(
+        'Your session has expired. Please sign in again.',
+      );
     }
 
-    // Reauthenticate
-    final cred = EmailAuthProvider.credential(
-      email: user.email!,
-      password: oldPassword,
-    );
-    await user.reauthenticateWithCredential(cred);
-    await user.updatePassword(newPassword);
+    try {
+      // Firebase only lets a recently signed-in user change their password,
+      // and asking for the current one also proves it's really them.
+      final cred = EmailAuthProvider.credential(
+        email: user.email!,
+        password: oldPassword,
+      );
+      await user.reauthenticateWithCredential(cred);
+      await user.updatePassword(newPassword);
+    } on FirebaseAuthException catch (e) {
+      throw BackendException(switch (e.code) {
+        'wrong-password' ||
+        'invalid-credential' => 'Your current password is incorrect.',
+        'weak-password' => 'Choose a stronger new password.',
+        'too-many-requests' =>
+          'Too many attempts. Wait a few minutes and try again.',
+        'requires-recent-login' =>
+          'For your security, sign out, sign back in, and try again.',
+        'network-request-failed' =>
+          'Could not reach the server. Check your internet connection and '
+              'try again.',
+        _ => e.message ?? 'Could not change your password.',
+      });
+    }
   }
 }
