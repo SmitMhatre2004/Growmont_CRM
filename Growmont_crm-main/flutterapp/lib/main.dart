@@ -111,6 +111,8 @@ class GrowmontApp extends ConsumerWidget {
     // Keeps syncEngineProvider alive for the app's lifetime so SyncEngine
     // starts/stops as the signed-in user changes — see providers.dart.
     ref.watch(syncEngineProvider);
+    // Same lifetime rule: schedules reminder notifications on Android/iOS.
+    ref.watch(reminderNotificationsProvider);
 
     return MaterialApp.router(
       title: 'Growmont CRM',
