@@ -5,6 +5,7 @@ import 'package:firebase_storage/firebase_storage.dart';
 
 import 'cloud_callables.dart';
 import '../../models/client.dart';
+import '../../models/client_transfer.dart';
 import '../../models/employee.dart';
 import '../../models/interaction.dart';
 import '../../models/reminder.dart';
@@ -133,6 +134,85 @@ class FirestoreService {
 
   Future<void> deleteClient(dynamic id) async {
     await _firestore.collection('clients').doc(id.toString()).delete();
+  }
+
+  Future<List<ClientTransfer>> getClientTransfers(String clientId) async {
+    final snapshot = await _firestore
+        .collection('client_transfers')
+        .where('client_id', isEqualTo: clientId)
+        .get();
+    final list = snapshot.docs.map(ClientTransfer.fromFirestore).toList();
+    list.sort((a, b) => b.transferredAt.compareTo(a.transferredAt));
+    return list;
+  }
+
+  Future<ClientTransfer> transferClient({
+    required String clientId,
+    required String clientName,
+    required String fromEmployeeId,
+    required String fromEmployeeName,
+    required String toEmployeeId,
+    required String toEmployeeName,
+    required String transferredById,
+    required String transferredByName,
+    required String transferredByRole,
+    String reason = '',
+    String notes = '',
+  }) async {
+    final transferDoc = _firestore.collection('client_transfers').doc();
+    final now = DateTime.now().toUtc().toIso8601String();
+    final transferData = {
+      'id': transferDoc.id,
+      'client_id': clientId,
+      'client_name': clientName,
+      'from_employee_id': fromEmployeeId,
+      'from_employee_name': fromEmployeeName,
+      'to_employee_id': toEmployeeId,
+      'to_employee_name': toEmployeeName,
+      'transferred_by_id': transferredById,
+      'transferred_by_name': transferredByName,
+      'transferred_by_role': transferredByRole,
+      'transferred_at': now,
+      'reason': reason,
+      'notes': notes,
+      'created_at': FieldValue.serverTimestamp(),
+    };
+    await transferDoc.set(transferData);
+
+    await updateClient(clientId, {
+      'employee_id': toEmployeeId,
+      'employee_name': toEmployeeName,
+    });
+
+    return ClientTransfer.fromJson(transferData, transferDoc.id);
+  }
+
+  static const List<String> defaultTransferReasons = [];
+
+  Future<List<String>> getTransferReasons() async {
+    try {
+      final snapshot = await _firestore.collection('transfer_reasons').get();
+      final saved = snapshot.docs
+          .map((doc) => doc.data()['name']?.toString() ?? '')
+          .where((name) => name.trim().isNotEmpty)
+          .toList();
+      return saved.toSet().toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  Future<void> saveTransferReason(String reason) async {
+    final trimmed = reason.trim();
+    if (trimmed.isEmpty) return;
+    try {
+      final docRef = _firestore.collection('transfer_reasons').doc();
+      await docRef.set({
+        'id': docRef.id,
+        'name': trimmed,
+        'created_at': FieldValue.serverTimestamp(),
+      });
+    } catch (_) {}
   }
 
   Future<List<Sale>> getEmployeeSales(dynamic id) async {

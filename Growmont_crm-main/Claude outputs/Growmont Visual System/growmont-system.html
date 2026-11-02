@@ -1,0 +1,607 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Growmont Visual System</title>
+<style>
+@font-face{font-family:Inter;font-weight:400;src:url("file:///C:/Soham/Kamachya_Goshti/Growmont/Growmont_CRM/Growmont_crm-main/flutterapp/assets/fonts/Inter-400.ttf")}
+@font-face{font-family:Inter;font-weight:500;src:url("file:///C:/Soham/Kamachya_Goshti/Growmont/Growmont_CRM/Growmont_crm-main/flutterapp/assets/fonts/Inter-500.ttf")}
+@font-face{font-family:Inter;font-weight:600;src:url("file:///C:/Soham/Kamachya_Goshti/Growmont/Growmont_CRM/Growmont_crm-main/flutterapp/assets/fonts/Inter-600.ttf")}
+@font-face{font-family:Inter;font-weight:700;src:url("file:///C:/Soham/Kamachya_Goshti/Growmont/Growmont_CRM/Growmont_crm-main/flutterapp/assets/fonts/Inter-700.ttf")}
+@font-face{font-family:Jakarta;font-weight:600;src:url("file:///C:/Soham/Kamachya_Goshti/Growmont/Growmont_CRM/Growmont_crm-main/flutterapp/assets/fonts/PlusJakartaSans-600.ttf")}
+@font-face{font-family:Jakarta;font-weight:700;src:url("file:///C:/Soham/Kamachya_Goshti/Growmont/Growmont_CRM/Growmont_crm-main/flutterapp/assets/fonts/PlusJakartaSans-700.ttf")}
+@font-face{font-family:Jakarta;font-weight:800;src:url("file:///C:/Soham/Kamachya_Goshti/Growmont/Growmont_CRM/Growmont_crm-main/flutterapp/assets/fonts/PlusJakartaSans-800.ttf")}
+
+:root{
+  --canvas:#F1F5F9; --surface:#FFFFFF; --header:#F8FAFC; --border:#E2E8F0; --border-strong:#CBD5E1;
+  --label:#0F172A; --secondary:#475569; --caption:#64748B; --muted:#94A3B8;
+  --navy50:#EFF4FB; --navy100:#DCE6F5; --navy200:#B8CCEB; --navy300:#86A7DA; --navy400:#4F7DC3;
+  --navy500:#2458A8; --navy600:#0F4491; --navy700:#00337C; --navy800:#002866; --navy900:#001C4A;
+  --green50:#ECFDF3; --green100:#D3F3DF; --green200:#A8E3BE; --green300:#72CB93; --green400:#45AD6D;
+  --green500:#2D8A4E; --green600:#246E3F; --green700:#185A38; --green800:#0F4A31; --green900:#092E1E;
+}
+@page{size:1440px 1024px;margin:0}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--canvas)}
+body{font-family:Inter,system-ui,sans-serif;color:var(--label);-webkit-print-color-adjust:exact;print-color-adjust:exact;font-feature-settings:"tnum" 0}
+.page{width:1440px;height:1024px;padding:52px 64px;position:relative;overflow:hidden;background:var(--canvas);break-after:page}
+.page:last-child{break-after:auto}
+.eyebrow{font-size:14px;color:var(--caption);font-weight:500}
+h1{font-family:Jakarta;font-weight:700;font-size:44px;letter-spacing:-1.2px;line-height:1.15;margin-top:6px}
+.lede{font-size:16px;color:var(--secondary);margin-top:10px;max-width:880px;line-height:1.5}
+.pageno{position:absolute;right:64px;top:56px;font-size:13px;color:var(--caption);font-weight:500}
+.card{background:var(--surface);border-radius:20px;padding:26px 28px}
+.card h2{font-family:Jakarta;font-weight:700;font-size:19px;letter-spacing:-.3px}
+.card .hint{font-size:13px;color:var(--caption)}
+.row{display:flex;gap:20px}
+.between{display:flex;justify-content:space-between;align-items:baseline}
+.tnum{font-feature-settings:"tnum" 1}
+.small{font-size:13px;color:var(--caption)}
+.lbl{font-size:13px;font-weight:600;color:var(--secondary)}
+
+/* ---------- page 1 ---------- */
+.idrow{display:grid;grid-template-columns:330px 1fr;gap:28px;align-items:stretch}
+.idcard{border-radius:18px;padding:22px 24px;color:#fff;display:flex;flex-direction:column;justify-content:space-between;min-height:200px}
+.idcard .k{font-size:13px;font-weight:600;opacity:.85}
+.idcard .n{font-family:Jakarta;font-weight:700;font-size:30px;letter-spacing:-.6px}
+.idcard .v{font-size:13px;opacity:.85;margin-top:4px}
+.scale{display:grid;grid-template-columns:repeat(10,1fr);gap:8px}
+.chip{height:62px;border-radius:12px;padding:9px 10px;font-size:13px;font-weight:600;display:flex;flex-direction:column;justify-content:space-between}
+.chip span{font-size:11px;font-weight:400;opacity:.85}
+.chip.star{outline:2px solid var(--star);outline-offset:3px}
+.roles{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:10px}
+.roles div{font-size:12px;color:var(--caption);line-height:1.35}
+.roles b{color:var(--label);font-weight:600}
+.lives{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+.tile{background:var(--header);border:1px solid var(--border);border-radius:14px;height:180px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px}
+.tile .cap{font-size:13px;color:var(--caption)}
+.btn{display:inline-flex;align-items:center;gap:8px;height:40px;padding:0 16px;border-radius:8px;font-size:14px;font-weight:600;white-space:nowrap}
+.btn.primary{background:var(--navy700);color:#fff}
+.btn.outline{background:#fff;color:var(--secondary);border:1px solid var(--border)}
+.btn.ghost{color:var(--secondary)}
+.btn.danger{background:#DC2626;color:#fff}
+.btn.sm{height:32px;font-size:13px;padding:0 12px}
+.btn.lg{height:48px;padding:0 20px}
+.btn.disabled{background:var(--border-strong);color:#fff}
+svg.i{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+/* ---------- swatch lists ---------- */
+.sw{display:grid;grid-template-columns:1fr 1fr;column-gap:28px;row-gap:14px;margin-top:18px}
+.s{display:flex;gap:14px;align-items:center}
+.s i{width:42px;height:42px;border-radius:10px;flex:none;border:1px solid rgba(15,23,42,.06)}
+.s b{display:block;font-size:14px;font-weight:600}
+.s em{display:block;font-style:normal;font-size:12px;color:var(--caption);margin-top:2px}
+.status{display:grid;grid-template-columns:1fr;gap:10px;margin-top:18px}
+.st{display:grid;grid-template-columns:150px 1fr 150px;align-items:center;gap:14px;padding:10px 0;border-bottom:1px solid var(--border)}
+.st:last-child{border-bottom:0}
+.pill{display:inline-flex;align-items:center;gap:6px;height:22px;padding:0 9px;border-radius:6px;font-size:11px;font-weight:600;letter-spacing:.2px}
+.pill i{width:7px;height:7px;border-radius:50%}
+.dots{display:flex;gap:6px}
+.dots i{width:26px;height:26px;border-radius:7px;border:1px solid rgba(15,23,42,.06)}
+.never{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-top:18px}
+.never div{border-left:3px solid #DC2626;padding:2px 0 2px 12px;font-size:13px;color:var(--secondary);line-height:1.45}
+.never b{display:block;color:var(--label);font-weight:600;margin-bottom:2px}
+
+/* ---------- type ---------- */
+.trow{display:grid;grid-template-columns:170px 170px 1fr;align-items:center;border-bottom:1px solid var(--border);padding:10px 0;gap:16px}
+.trow:last-child{border-bottom:0}
+.trow .r b{display:block;font-size:14px;font-weight:600}
+.trow .r span,.trow .m span{font-size:12px;color:var(--caption)}
+.trow .m b{display:block;font-size:12px;font-weight:600;color:var(--secondary)}
+.faces{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px}
+.face{background:var(--header);border:1px solid var(--border);border-radius:14px;padding:16px 18px}
+.face .big{font-size:40px;line-height:1;letter-spacing:-1px}
+.face p{font-size:13px;color:var(--secondary);margin-top:8px;line-height:1.45}
+
+/* ---------- foundations ---------- */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.radii{display:flex;gap:18px;align-items:flex-end;margin-top:20px}
+.radii div{text-align:center}
+.radii i{display:block;width:76px;height:76px;background:var(--navy50);border:2px solid var(--navy400);margin-bottom:10px}
+.radii b{display:block;font-size:14px;font-weight:700}
+.radii span{font-size:11.5px;color:var(--caption)}
+.space{display:flex;gap:16px;align-items:flex-end;margin-top:22px}
+.space div{text-align:center;font-size:12px;color:var(--caption)}
+.space i{display:block;background:var(--navy700);border-radius:3px;margin:0 auto 8px}
+.space b{display:block;color:var(--label);font-size:13px}
+.depth{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-top:18px;background:var(--canvas);border-radius:14px;padding:18px}
+.depth div{background:#fff;border-radius:10px;height:92px;padding:12px;font-size:13px;font-weight:600;display:flex;flex-direction:column;justify-content:space-between}
+.depth span{font-size:11.5px;font-weight:400;color:var(--caption)}
+.sizes{display:flex;gap:14px;align-items:flex-end;margin-top:18px}
+.sizes .box{border:1.5px dashed var(--navy400);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:var(--navy700);background:var(--navy50)}
+.icons{display:flex;gap:18px;align-items:flex-end;margin-top:16px;color:var(--secondary)}
+.icons div{text-align:center;font-size:12px;color:var(--caption)}
+.motion{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:16px}
+.motion div{background:var(--header);border:1px solid var(--border);border-radius:12px;padding:12px 14px}
+.motion b{font-family:Jakarta;font-size:22px;letter-spacing:-.4px}
+.motion span{display:block;font-size:12px;color:var(--caption);margin-top:4px}
+
+/* ---------- components ---------- */
+.field{display:flex;flex-direction:column;gap:6px;width:100%}
+.field label{font-size:12px;font-weight:600;color:var(--secondary)}
+.input{height:40px;border:1px solid var(--border);border-radius:8px;padding:0 12px;display:flex;align-items:center;font-size:14px;color:var(--label);background:#fff}
+.input.ph{color:var(--muted)}
+.input.focus{border:2px solid var(--navy700);padding:0 11px}
+.input.err{border-color:#DC2626}
+.help{font-size:12px;color:var(--caption)}
+.help.err{color:#DC2626}
+.av{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;flex:none}
+.tbl{border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-top:14px}
+.tr{display:grid;grid-template-columns:1.6fr 1fr 1fr 110px;padding:12px 16px;font-size:13px;color:var(--secondary);align-items:center;border-top:1px solid var(--border)}
+.tr.h{background:var(--header);font-size:11px;font-weight:700;letter-spacing:.5px;color:var(--secondary);border-top:0}
+.tr.sel{background:var(--navy50);box-shadow:inset 3px 0 0 var(--navy700)}
+.tr b{color:var(--label);font-weight:600}
+.num{text-align:right;font-feature-settings:"tnum" 1}
+.modal{background:#fff;border-radius:12px;box-shadow:0 12px 32px rgba(15,23,42,.12);border:1px solid var(--border);overflow:hidden}
+.modal .mh{padding:16px 20px;border-bottom:1px solid var(--border);font-family:Jakarta;font-weight:600;font-size:16px;display:flex;justify-content:space-between}
+.modal .mb{padding:18px 20px;font-size:13px;color:var(--secondary);line-height:1.5}
+.modal .mf{padding:12px 20px;background:var(--header);border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px}
+
+/* ---------- mobile ---------- */
+.phone{width:300px;height:640px;border-radius:40px;background:#0F172A;padding:10px;flex:none;box-shadow:0 20px 40px rgba(15,23,42,.18)}
+.screen{width:100%;height:100%;border-radius:31px;background:var(--canvas);overflow:hidden;position:relative;display:flex;flex-direction:column}
+.sb{height:30px;display:flex;justify-content:space-between;align-items:center;padding:0 22px;font-size:11px;font-weight:600;background:#fff}
+.appbar{height:48px;background:#fff;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 12px}
+.appbar img{height:18px}
+.mbody{padding:12px;display:flex;flex-direction:column;gap:10px;flex:1}
+.mt{font-family:Jakarta;font-weight:700;font-size:19px;letter-spacing:-.3px}
+.kpis{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.kpi{background:#fff;border:1px solid var(--border);border-radius:10px;padding:10px}
+.kpi .o{font-size:8.5px;font-weight:700;letter-spacing:.5px;color:var(--caption)}
+.kpi .v{font-family:Jakarta;font-weight:700;font-size:18px;letter-spacing:-.4px;margin-top:4px;font-feature-settings:"tnum" 1}
+.kpi .d{font-size:9px;font-weight:600;color:#15803D;margin-top:2px}
+.li{background:#fff;border:1px solid var(--border);border-radius:10px;padding:9px 10px;display:flex;gap:9px;align-items:center}
+.li .av{width:30px;height:30px;font-size:11px}
+.li b{font-size:11.5px;font-weight:600;display:block}
+.li span{font-size:10px;color:var(--caption)}
+.li .amt{margin-left:auto;text-align:right;font-size:11px;font-weight:600;color:var(--green600);font-feature-settings:"tnum" 1}
+.bnav{height:54px;background:var(--green800);display:grid;grid-template-columns:repeat(5,1fr);align-items:center;padding-bottom:4px}
+.bnav div{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:9px;color:rgba(255,255,255,.7);font-weight:500}
+.bnav div.on{color:#fff;font-weight:700}
+.bnav .pillnav{background:rgba(255,255,255,.18);border-radius:10px;width:44px;height:22px;display:flex;align-items:center;justify-content:center}
+.bnav svg{width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:#fff;border-radius:12px 12px 0 0;padding:8px 14px 14px;box-shadow:0 -8px 24px rgba(15,23,42,.12)}
+.handle{width:34px;height:4px;border-radius:2px;background:var(--border-strong);margin:0 auto 10px}
+.scrim{position:absolute;inset:0;background:rgba(15,23,42,.35)}
+.rules{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.rule{background:#fff;border-radius:14px;padding:14px 16px}
+.rule b{display:block;font-size:14px;font-weight:600;margin-bottom:4px}
+.rule p{font-size:12.5px;color:var(--secondary);line-height:1.45}
+.bp{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+.bp div{border-radius:12px;padding:12px 14px;background:#fff}
+.bp b{font-family:Jakarta;font-size:18px;letter-spacing:-.3px;display:block}
+.bp span{font-size:12px;color:var(--caption)}
+</style>
+</head>
+<body>
+
+<!-- ============================ PAGE 1 — BRAND ============================ -->
+<section class="page">
+  <div class="eyebrow">Growmont CRM visual system</div>
+  <h1>Grounded Growth</h1>
+  <p class="lede">Two brand colours with fixed jobs, quiet slate neutrals, and status colour that only ever means something. One light theme, one set of tokens, used by every screen on desktop and phone.</p>
+  <div class="pageno">01 · Brand colour</div>
+
+  <div class="card" style="margin-top:26px;display:flex;flex-direction:column;gap:22px">
+    <div class="idrow">
+      <div class="idcard" style="background:var(--navy700);box-shadow:0 14px 28px rgba(0,51,124,.22)">
+        <div class="between"><div class="k">Identity · Action</div><svg class="i" viewBox="0 0 24 24" style="width:22px;height:22px"><path d="M12 5v14M5 12h14"/></svg></div>
+        <div><div class="n">Growmont Navy</div><div class="v">#00337C · 11.9:1 on white · buttons, focus, selection</div></div>
+      </div>
+      <div>
+        <div class="lbl" style="margin-bottom:10px">Navy scale</div>
+        <div class="scale" style="--star:var(--navy700)">
+          <div class="chip" style="background:var(--navy50);border:1px solid var(--border)">50<span>EFF4FB</span></div>
+          <div class="chip" style="background:var(--navy100)">100<span>DCE6F5</span></div>
+          <div class="chip" style="background:var(--navy200)">200<span>B8CCEB</span></div>
+          <div class="chip" style="background:var(--navy300)">300<span>86A7DA</span></div>
+          <div class="chip" style="background:var(--navy400);color:#fff">400<span>4F7DC3</span></div>
+          <div class="chip" style="background:var(--navy500);color:#fff">500<span>2458A8</span></div>
+          <div class="chip" style="background:var(--navy600);color:#fff">600<span>0F4491</span></div>
+          <div class="chip star" style="background:var(--navy700);color:#fff">700<span>00337C</span></div>
+          <div class="chip" style="background:var(--navy800);color:#fff">800<span>002866</span></div>
+          <div class="chip" style="background:var(--navy900);color:#fff">900<span>001C4A</span></div>
+        </div>
+        <div class="roles"><div><b>50</b> selected row, info tint</div><div><b>100</b> hover on selected</div><div><b>400</b> focus ring, chart line 2</div><div><b>700</b> primary button, links, focus border</div><div><b>800 · 900</b> button hover · pressed</div></div>
+      </div>
+    </div>
+
+    <div class="idrow">
+      <div class="idcard" style="background:var(--green800);box-shadow:0 14px 28px rgba(15,74,49,.22)">
+        <div class="between"><div class="k">Identity · Growth</div><svg class="i" viewBox="0 0 24 24" style="width:22px;height:22px"><path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/></svg></div>
+        <div><div class="n">Growmont Green</div><div class="v">#2D8A4E brand · #0F4A31 navigation · money, growth, "won"</div></div>
+      </div>
+      <div>
+        <div class="lbl" style="margin-bottom:10px">Green scale</div>
+        <div class="scale" style="--star:var(--green500)">
+          <div class="chip" style="background:var(--green50);border:1px solid var(--border)">50<span>ECFDF3</span></div>
+          <div class="chip" style="background:var(--green100)">100<span>D3F3DF</span></div>
+          <div class="chip" style="background:var(--green200)">200<span>A8E3BE</span></div>
+          <div class="chip" style="background:var(--green300)">300<span>72CB93</span></div>
+          <div class="chip" style="background:var(--green400);color:#fff">400<span>45AD6D</span></div>
+          <div class="chip star" style="background:var(--green500);color:#fff">500<span>2D8A4E</span></div>
+          <div class="chip" style="background:var(--green600);color:#fff">600<span>246E3F</span></div>
+          <div class="chip" style="background:var(--green700);color:#fff">700<span>185A38</span></div>
+          <div class="chip" style="background:var(--green800);color:#fff">800<span>0F4A31</span></div>
+          <div class="chip" style="background:var(--green900);color:#fff">900<span>092E1E</span></div>
+        </div>
+        <div class="roles"><div><b>50</b> positive tint, "won" pill</div><div><b>300</b> active item on nav</div><div><b>500</b> logo, charts, icons</div><div><b>600</b> money as text (6.2:1)</div><div><b>800 · 900</b> sidebar · bottom bar</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="lbl" style="margin:22px 0 10px">Where it lives</div>
+  <div class="lives">
+    <div class="tile"><span class="btn primary"><svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>New client</span><div class="cap">Primary action · Navy 700</div></div>
+    <div class="tile">
+      <div style="width:200px"><div class="input focus" style="height:36px;font-size:13px">Sharma Textiles|</div><div style="margin-top:8px;height:28px;border-radius:6px;background:var(--navy50);box-shadow:inset 3px 0 0 var(--navy700);font-size:12px;display:flex;align-items:center;padding-left:12px;font-weight:600">Selected row</div></div>
+      <div class="cap">Focus &amp; selection · Navy 700 / 50</div></div>
+    <div class="tile">
+      <div style="background:var(--green800);border-radius:10px;padding:8px;display:flex;gap:6px">
+        <span style="width:34px;height:30px;border-radius:8px;background:rgba(255,255,255,.16);display:flex;align-items:center;justify-content:center;color:#fff"><svg class="i" viewBox="0 0 24 24"><path d="M3 12l9-8 9 8M5 10v10h14V10"/></svg></span>
+        <span style="width:34px;height:30px;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.7)"><svg class="i" viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 8-8"/></svg></span>
+        <span style="width:34px;height:30px;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.7)"><svg class="i" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span>
+        <span style="width:34px;height:30px;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.7)"><svg class="i" viewBox="0 0 24 24"><circle cx="9" cy="8" r="4"/><path d="M2 21c0-4 3-6 7-6s7 2 7 6"/></svg></span>
+      </div>
+      <div class="cap">Sidebar &amp; bottom bar · Green 800</div></div>
+    <div class="tile">
+      <div style="text-align:center"><div class="tnum" style="font-family:Jakarta;font-weight:700;font-size:26px;letter-spacing:-.6px;color:var(--label)">₹12,48,500</div>
+      <div style="margin-top:6px;display:flex;gap:8px;justify-content:center;align-items:center"><span class="pill" style="background:var(--green50);color:#15803D">▲ 12.4%</span><span class="tnum" style="font-size:14px;font-weight:600;color:var(--green600)">+₹1,38,000</span></div></div>
+      <div class="cap">Money &amp; growth · Green 600 / 50</div></div>
+  </div>
+</section>
+
+<!-- ============================ PAGE 2 — PALETTE ============================ -->
+<section class="page">
+  <div class="eyebrow">Growmont CRM visual system</div>
+  <h1>Neutrals &amp; meaning</h1>
+  <p class="lede">Slate greys carry the interface. Colour appears only when it tells the user something: an action, a state, or money.</p>
+  <div class="pageno">02 · Colour</div>
+
+  <div class="row" style="margin-top:26px;align-items:stretch">
+    <div class="card" style="flex:1">
+      <div class="between"><h2>Surfaces &amp; text</h2><span class="hint">Light theme only</span></div>
+      <div class="sw">
+        <div class="s"><i style="background:#F1F5F9"></i><div><b>Canvas</b><em>#F1F5F9 · Window background, row hover</em></div></div>
+        <div class="s"><i style="background:#FFFFFF"></i><div><b>Surface</b><em>#FFFFFF · Cards, modals, app bar</em></div></div>
+        <div class="s"><i style="background:#F8FAFC"></i><div><b>Header</b><em>#F8FAFC · Table heads, modal footers</em></div></div>
+        <div class="s"><i style="background:#E2E8F0"></i><div><b>Border</b><em>#E2E8F0 · Card edges, inputs, dividers</em></div></div>
+        <div class="s"><i style="background:#CBD5E1"></i><div><b>Border strong</b><em>#CBD5E1 · Drag handles, disabled fill</em></div></div>
+        <div class="s"><i style="background:#94A3B8"></i><div><b>Muted</b><em>#94A3B8 · Placeholder &amp; disabled only, 2.6:1</em></div></div>
+        <div class="s"><i style="background:#0F172A"></i><div><b>Label</b><em>#0F172A · Titles, values, 17.9:1</em></div></div>
+        <div class="s"><i style="background:#475569"></i><div><b>Secondary</b><em>#475569 · Body, subtitles, 7.6:1</em></div></div>
+        <div class="s"><i style="background:#64748B"></i><div><b>Caption</b><em>#64748B · Timestamps, helper text, 4.8:1</em></div></div>
+        <div class="s"><i style="background:#00337C"></i><div><b>Link</b><em>#00337C · Inline links &amp; text actions</em></div></div>
+      </div>
+    </div>
+
+    <div class="card" style="flex:1.15">
+      <div class="between"><h2>Status</h2><span class="hint">Dot · tint · text</span></div>
+      <div class="status">
+        <div class="st"><span class="pill" style="background:#ECFDF3;color:#15803D"><i style="background:#16A34A"></i>Won</span><div class="small">Sale closed, payment received, active client</div><div class="dots"><i style="background:#16A34A"></i><i style="background:#ECFDF3"></i><i style="background:#15803D"></i></div></div>
+        <div class="st"><span class="pill" style="background:#FFF7ED;color:#B45309"><i style="background:#F59E0B"></i>Follow-up due</span><div class="small">Needs attention today; nothing is broken yet</div><div class="dots"><i style="background:#F59E0B"></i><i style="background:#FFF7ED"></i><i style="background:#B45309"></i></div></div>
+        <div class="st"><span class="pill" style="background:#FEF2F2;color:#DC2626"><i style="background:#DC2626"></i>Overdue</span><div class="small">Overdue, failed, destructive. Never decoration</div><div class="dots"><i style="background:#DC2626"></i><i style="background:#FEF2F2"></i><i style="background:#B91C1C"></i></div></div>
+        <div class="st"><span class="pill" style="background:#EFF4FB;color:#00337C"><i style="background:#2563EB"></i>New</span><div class="small">New lead, neutral notice, sync in progress</div><div class="dots"><i style="background:#2563EB"></i><i style="background:#EFF4FB"></i><i style="background:#00337C"></i></div></div>
+        <div class="st"><span class="pill" style="background:#FEF9C3;color:#854D0E"><i style="background:#EAB308"></i>Low priority</span><div class="small">Priority: low. Yellow is a dot, never text</div><div class="dots"><i style="background:#EAB308"></i><i style="background:#FEF9C3"></i><i style="background:#854D0E"></i></div></div>
+        <div class="st"><span class="pill" style="background:#FAF5FF;color:#7E22CE"><i style="background:#9333EA"></i>Chat</span><div class="small">Interactions only: calls, chats, meetings</div><div class="dots"><i style="background:#9333EA"></i><i style="background:#FAF5FF"></i><i style="background:#7E22CE"></i></div></div>
+        <div class="st"><span class="pill" style="background:#F1F5F9;color:#475569"><i style="background:#64748B"></i>Inactive</span><div class="small">Archived, transferred, dismissed</div><div class="dots"><i style="background:#64748B"></i><i style="background:#F1F5F9"></i><i style="background:#475569"></i></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:20px">
+    <div class="between"><h2>Charts &amp; monograms</h2><span class="hint">Series order is fixed</span></div>
+    <div style="display:flex;gap:28px;align-items:center;margin-top:16px">
+      <div style="display:flex;gap:8px">
+        <div style="text-align:center"><i style="display:block;width:54px;height:34px;border-radius:8px;background:#00337C"></i><span class="small">1 Navy 700</span></div>
+        <div style="text-align:center"><i style="display:block;width:54px;height:34px;border-radius:8px;background:#2D8A4E"></i><span class="small">2 Green 500</span></div>
+        <div style="text-align:center"><i style="display:block;width:54px;height:34px;border-radius:8px;background:#4F7DC3"></i><span class="small">3 Navy 400</span></div>
+        <div style="text-align:center"><i style="display:block;width:54px;height:34px;border-radius:8px;background:#72CB93"></i><span class="small">4 Green 300</span></div>
+        <div style="text-align:center"><i style="display:block;width:54px;height:34px;border-radius:8px;background:#9333EA"></i><span class="small">5 Purple</span></div>
+        <div style="text-align:center"><i style="display:block;width:54px;height:34px;border-radius:8px;background:#CBD5E1"></i><span class="small">Other</span></div>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center;margin-left:auto">
+        <div class="av" style="background:#DCE6F5;color:#00337C">RM</div>
+        <div class="av" style="background:#D3F3DF;color:#185A38">PS</div>
+        <div class="av" style="background:#FAF5FF;color:#7E22CE">AK</div>
+        <div class="av" style="background:#F1F5F9;color:#475569">VN</div>
+        <div class="small" style="max-width:200px;margin-left:6px">Monograms: 100-tint fill, 700-shade initials. Picked from the name, so a person keeps their colour.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="never">
+    <div><b>Navy acts, green grows</b>Never a green primary button or a navy money figure.</div>
+    <div><b>Red is reserved</b>Only overdue, errors and delete. Not for emphasis.</div>
+    <div><b>No pure black</b>Text tops out at Label #0F172A.</div>
+    <div><b>Muted is not text</b>If someone must read it, it is Caption or darker.</div>
+  </div>
+</section>
+
+<!-- ============================ PAGE 3 — TYPE ============================ -->
+<section class="page">
+  <div class="eyebrow">Growmont CRM visual system</div>
+  <h1>Type</h1>
+  <p class="lede">Plus Jakarta Sans for titles and numbers people glance at. Inter for everything people read. Weight carries hierarchy; size steps down once on phones.</p>
+  <div class="pageno">03 · Typography</div>
+
+  <div class="row" style="margin-top:22px;align-items:stretch">
+    <div class="card" style="flex:1;padding-top:18px;padding-bottom:12px">
+      <div class="trow" style="padding-top:0"><div class="small" style="font-weight:600">Role</div><div class="small" style="font-weight:600">Desktop → Phone</div><div class="small" style="font-weight:600">Sample</div></div>
+      <div class="trow"><div class="r"><b>Page title</b><span>Jakarta 700 · −0.6</span></div><div class="m"><b>32/38 → 24/30</b></div><div style="font-family:Jakarta;font-weight:700;font-size:32px;letter-spacing:-.6px">Good morning, Soham</div></div>
+      <div class="trow"><div class="r"><b>Heading</b><span>Jakarta 700 · −0.4</span></div><div class="m"><b>22/29 → 20/26</b></div><div style="font-family:Jakarta;font-weight:700;font-size:22px;letter-spacing:-.4px">Sharma Textiles Pvt Ltd</div></div>
+      <div class="trow"><div class="r"><b>Section</b><span>Jakarta 700 · −0.3</span></div><div class="m"><b>18/23 → 18/23</b></div><div style="font-family:Jakarta;font-weight:700;font-size:18px;letter-spacing:-.3px">Today's follow-ups</div></div>
+      <div class="trow"><div class="r"><b>Card title</b><span>Jakarta 600 · −0.2</span></div><div class="m"><b>16/22</b></div><div style="font-family:Jakarta;font-weight:600;font-size:16px;letter-spacing:-.2px">Record a sale</div></div>
+      <div class="trow"><div class="r"><b>Item title</b><span>Inter 600</span></div><div class="m"><b>15/20</b></div><div style="font-size:15px;font-weight:600">Rohan Mehta <span style="font-weight:400;color:var(--caption);font-size:13px">Sales · Pune</span></div></div>
+      <div class="trow"><div class="r"><b>Body</b><span>Inter 500</span></div><div class="m"><b>14/20</b></div><div style="font-size:14px;font-weight:500;color:#1E293B">Wants a revised quote for 40 units before Friday.</div></div>
+      <div class="trow"><div class="r"><b>Secondary</b><span>Inter 400</span></div><div class="m"><b>13/19</b></div><div style="font-size:13px;color:var(--secondary)">Last contacted 3 days ago · Warm lead</div></div>
+      <div class="trow"><div class="r"><b>Field label</b><span>Inter 600</span></div><div class="m"><b>12/16</b></div><div style="font-size:12px;font-weight:600;color:var(--secondary)">Phone number</div></div>
+      <div class="trow"><div class="r"><b>Caption</b><span>Inter 400 · Caption grey</span></div><div class="m"><b>12/16</b></div><div style="font-size:12px;color:var(--caption)">Updated 11:41 by Priya</div></div>
+      <div class="trow"><div class="r"><b>Overline</b><span>Inter 700 · +0.6 · caps</span></div><div class="m"><b>11/14</b></div><div style="font-size:11px;font-weight:700;letter-spacing:.6px;color:var(--caption)">TOTAL REVENUE · TABLE HEADERS</div></div>
+      <div class="trow"><div class="r"><b>Metric</b><span>Jakarta 700 · tabular</span></div><div class="m"><b>28/32 → 24/28</b></div><div class="tnum" style="font-family:Jakarta;font-weight:700;font-size:28px;letter-spacing:-.6px">₹12,48,500 · 128 · 42%</div></div>
+      <div class="trow"><div class="r"><b>Amount</b><span>Inter 600 · tabular · Green 600</span></div><div class="m"><b>14/19</b></div><div class="tnum" style="font-size:14px;font-weight:600;color:var(--green600)">₹3,40,000 &nbsp; ₹48,250 &nbsp; ₹1,12,900</div></div>
+    </div>
+
+    <div style="width:330px;display:flex;flex-direction:column;gap:20px">
+      <div class="card">
+        <h2>Two faces</h2>
+        <div class="faces" style="grid-template-columns:1fr">
+          <div class="face"><div class="big" style="font-family:Jakarta;font-weight:700">Aa 128</div><p><b style="color:var(--label)">Plus Jakarta Sans</b> 600–800. Page titles, headings, card titles, KPI numbers. Never body copy.</p></div>
+          <div class="face"><div class="big" style="font-family:Inter;font-weight:600">Aa 128</div><p><b style="color:var(--label)">Inter</b> 400–700. Body, labels, inputs, buttons, tables, badges.</p></div>
+        </div>
+      </div>
+      <div class="card" style="flex:1">
+        <h2>Rules</h2>
+        <div style="font-size:13px;color:var(--secondary);line-height:1.55;margin-top:10px;display:flex;flex-direction:column;gap:8px">
+          <div><b style="color:var(--label)">Figures are tabular, always.</b> Money, counts, dates and phone numbers line up in columns.</div>
+          <div><b style="color:var(--label)">Indian grouping.</b> ₹12,48,500, not ₹1,248,500.</div>
+          <div><b style="color:var(--label)">Nothing below 11.</b> Buttons 14/600, compact 13/600.</div>
+          <div><b style="color:var(--label)">Sentence case</b> everywhere except overlines.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ PAGE 4 — FOUNDATIONS ============================ -->
+<section class="page">
+  <div class="eyebrow">Growmont CRM visual system</div>
+  <h1>Shape, space &amp; depth</h1>
+  <p class="lede">A 4pt grid, shallow corners that keep the product feeling like software, and elevation that only floats what really floats.</p>
+  <div class="pageno">04 · Foundations</div>
+
+  <div class="g2" style="margin-top:24px">
+    <div class="card">
+      <div class="between"><h2>Shape</h2><span class="hint">Controls 8 · cards 10 · modals 12</span></div>
+      <div class="radii">
+        <div><i style="border-radius:4px"></i><b>4</b><span>Bars, swatches</span></div>
+        <div><i style="border-radius:6px"></i><b>6</b><span>Badges, chips</span></div>
+        <div><i style="border-radius:8px"></i><b>8</b><span>Buttons, inputs</span></div>
+        <div><i style="border-radius:10px"></i><b>10</b><span>Cards, tables</span></div>
+        <div><i style="border-radius:12px"></i><b>12</b><span>Modals, sheets</span></div>
+        <div><i style="border-radius:50%"></i><b>Full</b><span>Avatars only</span></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="between"><h2>Space</h2><span class="hint">4 pt grid · no raw numbers</span></div>
+      <div class="space">
+        <div><i style="width:2px;height:2px"></i><b>2</b>xxs</div>
+        <div><i style="width:4px;height:4px"></i><b>4</b>xs</div>
+        <div><i style="width:8px;height:8px"></i><b>8</b>sm</div>
+        <div><i style="width:12px;height:12px"></i><b>12</b>md</div>
+        <div><i style="width:16px;height:16px"></i><b>16</b>lg</div>
+        <div><i style="width:20px;height:20px"></i><b>20</b>xl</div>
+        <div><i style="width:24px;height:24px"></i><b>24</b>xxl</div>
+        <div><i style="width:32px;height:32px"></i><b>32</b>xxxl</div>
+        <div><i style="width:48px;height:48px"></i><b>48</b>huge</div>
+      </div>
+      <div class="small" style="margin-top:14px">8 between related items · 12 between rows · 16 card padding &amp; phone gutter · 24 desktop gutter · 32 between sections</div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:20px">
+    <div class="between"><h2>Depth</h2><span class="hint">Flat and bordered by default. Shadow = it floats</span></div>
+    <div class="depth">
+      <div style="background:transparent;border:1px dashed var(--border-strong)">Canvas<span>#F1F5F9, no shadow</span></div>
+      <div style="border:1px solid var(--border)">Card<span>1px border, no shadow</span></div>
+      <div style="border:1px solid var(--border);box-shadow:0 2px 6px rgba(15,23,42,.06)">Hovered card<span>sm · 0 2 6 · 6%</span></div>
+      <div style="border:1px solid var(--border);box-shadow:0 6px 16px rgba(30,41,59,.08)">Menu, popover<span>md · 0 6 16 · 8%</span></div>
+      <div style="box-shadow:0 12px 32px rgba(15,23,42,.12)">Modal, sheet<span>lg · 0 12 32 · 12%</span></div>
+    </div>
+  </div>
+
+  <div class="g2" style="margin-top:20px;grid-template-columns:1.25fr 1fr">
+    <div class="card">
+      <div class="between"><h2>Sizing</h2><span class="hint">Every control snaps to a height</span></div>
+      <div class="sizes">
+        <div><div class="box" style="width:88px;height:32px">32</div><div class="small" style="margin-top:6px">Compact<br>row actions, chips</div></div>
+        <div><div class="box" style="width:108px;height:40px">40</div><div class="small" style="margin-top:6px">Default<br>buttons, inputs</div></div>
+        <div><div class="box" style="width:128px;height:48px">48</div><div class="small" style="margin-top:6px">Large<br>phone CTAs, login</div></div>
+        <div><div class="box" style="width:44px;height:44px;border-radius:50%">44</div><div class="small" style="margin-top:6px">Min tap<br>target</div></div>
+      </div>
+      <div class="icons">
+        <div><svg class="i" viewBox="0 0 24 24" style="width:14px;height:14px"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><br>14</div>
+        <div><svg class="i" viewBox="0 0 24 24" style="width:16px;height:16px"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><br>16</div>
+        <div><svg class="i" viewBox="0 0 24 24" style="width:18px;height:18px"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><br>18</div>
+        <div><svg class="i" viewBox="0 0 24 24" style="width:20px;height:20px"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><br>20</div>
+        <div><svg class="i" viewBox="0 0 24 24" style="width:24px;height:24px"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><br>24</div>
+        <div class="small" style="text-align:left;margin-left:8px">Icons: 14 with captions · 16 in rows · 18 in buttons · 20 nav &amp; app bar · 24 section icons. Stroke 2, rounded.</div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="between"><h2>Motion</h2><span class="hint">easeOutCubic</span></div>
+      <div class="motion">
+        <div><b>120</b><span>ms · hover, press, toggles</span></div>
+        <div><b>200</b><span>ms · expand, tab switch</span></div>
+        <div><b>320</b><span>ms · sheets, modals</span></div>
+      </div>
+      <div class="small" style="margin-top:14px">Quick and never showy. No bounce, no parallax.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ PAGE 5 — COMPONENTS ============================ -->
+<section class="page">
+  <div class="eyebrow">Growmont CRM visual system</div>
+  <h1>Components</h1>
+  <p class="lede">The building blocks every screen is assembled from. If a screen needs something new, it is made from these tokens first.</p>
+  <div class="pageno">05 · Components</div>
+
+  <div class="g2" style="margin-top:24px;grid-template-columns:1.1fr 1fr">
+    <div class="card">
+      <div class="between"><h2>Buttons</h2><span class="hint">40h · radius 8 · 14/600</span></div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:18px;align-items:center">
+        <span class="btn primary"><svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Record sale</span>
+        <span class="btn outline"><svg class="i" viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg>Export</span>
+        <span class="btn ghost">Cancel</span>
+        <span class="btn danger">Delete</span>
+        <span class="btn disabled">Saving…</span>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px;align-items:center">
+        <span class="btn primary sm">Save</span><span class="btn outline sm">Edit</span>
+        <span class="small">Compact 32h · 13/600 · table rows, dialog footers</span>
+      </div>
+      <div class="small" style="margin-top:12px">One primary per view. Destructive actions confirm in a dialog first.</div>
+    </div>
+    <div class="card">
+      <div class="between"><h2>Inputs</h2><span class="hint">Label above, never floating</span></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-top:18px">
+        <div class="field"><label>Client name</label><div class="input ph">e.g. Sharma Textiles</div><div class="help">Default</div></div>
+        <div class="field"><label>Phone</label><div class="input focus tnum">98220 41|</div><div class="help">Focus · Navy 2px</div></div>
+        <div class="field"><label>GST number</label><div class="input err">27ABCDE</div><div class="help err">Must be 15 characters</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="g2" style="margin-top:20px;grid-template-columns:1.1fr 1fr">
+    <div class="card">
+      <div class="between"><h2>Table</h2><span class="hint">Desktop · becomes cards on phone</span></div>
+      <div class="tbl">
+        <div class="tr h"><div>CLIENT</div><div>OWNER</div><div>STATUS</div><div class="num">VALUE</div></div>
+        <div class="tr"><div><b>Sharma Textiles</b></div><div>Rohan Mehta</div><div><span class="pill" style="background:#ECFDF3;color:#15803D"><i style="background:#16A34A"></i>Won</span></div><div class="num" style="color:var(--green600);font-weight:600">₹3,40,000</div></div>
+        <div class="tr sel"><div><b>Kulkarni Agro</b></div><div>Priya Shah</div><div><span class="pill" style="background:#FFF7ED;color:#B45309"><i style="background:#F59E0B"></i>Follow-up due</span></div><div class="num" style="color:var(--green600);font-weight:600">₹1,12,900</div></div>
+        <div class="tr"><div><b>Deshmukh Motors</b></div><div>Anil Kadam</div><div><span class="pill" style="background:#FEF2F2;color:#DC2626"><i style="background:#DC2626"></i>Overdue</span></div><div class="num" style="color:var(--green600);font-weight:600">₹48,250</div></div>
+      </div>
+      <div class="small" style="margin-top:10px">Header 11/700 caps on #F8FAFC · rows 12×16 padding · numbers right-aligned · selected = Navy 50 + 3px rail</div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:20px">
+      <div class="card">
+        <div class="between"><h2>Card</h2><span class="hint">Radius 10 · 1px border · 16 padding</span></div>
+        <div style="border:1px solid var(--border);border-radius:10px;padding:16px;display:flex;gap:12px;align-items:center;margin-top:14px">
+          <div class="av" style="background:#DCE6F5;color:#00337C">ST</div>
+          <div><div style="font-size:15px;font-weight:600">Sharma Textiles Pvt Ltd</div><div style="font-size:13px;color:var(--secondary)">Rohan Mehta · Pune · 3 days ago</div></div>
+          <div style="margin-left:auto;text-align:right"><div class="tnum" style="font-size:14px;font-weight:600;color:var(--green600)">₹3,40,000</div><span class="pill" style="background:#ECFDF3;color:#15803D;margin-top:4px"><i style="background:#16A34A"></i>Won</span></div>
+        </div>
+      </div>
+      <div class="modal">
+        <div class="mh">Delete follow-up<span style="color:var(--caption);font-family:Inter">✕</span></div>
+        <div class="mb">This removes the follow-up for Kulkarni Agro. The client and their history stay.</div>
+        <div class="mf"><span class="btn outline sm">Cancel</span><span class="btn danger sm">Delete</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="g2" style="margin-top:20px;grid-template-columns:1fr 1fr 1fr">
+    <div class="card" style="padding:20px 24px">
+      <div class="between"><h2>Snackbar</h2><span class="hint">Label on dark · floating</span></div>
+      <div style="margin-top:14px;background:#0F172A;color:#fff;border-radius:8px;padding:12px 14px;font-size:13px;display:flex;justify-content:space-between;align-items:center;box-shadow:0 6px 16px rgba(30,41,59,.16)">Follow-up deleted<span style="color:#A8E3BE;font-weight:600">Undo</span></div>
+      <div class="small" style="margin-top:10px">Confirms what happened. Errors say what to do next.</div>
+    </div>
+    <div class="card" style="padding:20px 24px">
+      <div class="between"><h2>Badges</h2><span class="hint">22h · radius 6 · 11/600</span></div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:14px">
+        <span class="pill" style="background:#ECFDF3;color:#15803D"><i style="background:#16A34A"></i>Won</span>
+        <span class="pill" style="background:#FFF7ED;color:#B45309"><i style="background:#F59E0B"></i>Due today</span>
+        <span class="pill" style="background:#FEF2F2;color:#DC2626"><i style="background:#DC2626"></i>Overdue</span>
+        <span class="pill" style="background:#EFF4FB;color:#00337C"><i style="background:#2563EB"></i>New</span>
+        <span class="pill" style="background:#FAF5FF;color:#7E22CE"><i style="background:#9333EA"></i>Call</span>
+        <span class="pill" style="background:#F1F5F9;color:#475569"><i style="background:#64748B"></i>Transferred</span>
+      </div>
+      <div class="small" style="margin-top:10px">Always a dot plus a word. Colour never works alone.</div>
+    </div>
+    <div class="card" style="padding:20px 24px;display:flex;gap:14px;align-items:center">
+      <div style="width:56px;height:56px;border-radius:14px;background:var(--canvas);display:flex;align-items:center;justify-content:center;color:var(--muted);flex:none"><svg class="i" viewBox="0 0 24 24" style="width:28px;height:28px"><circle cx="9" cy="8" r="4"/><path d="M2 21c0-4 3-6 7-6s7 2 7 6M19 8v6M16 11h6"/></svg></div>
+      <div><div style="font-family:Jakarta;font-weight:600;font-size:15px">No clients yet</div><div class="small" style="margin:3px 0 8px">Empty state: glyph, one line, one action.</div><span class="btn primary sm">Add client</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ PAGE 6 — MOBILE ============================ -->
+<section class="page">
+  <div class="eyebrow">Growmont CRM visual system</div>
+  <h1>On the phone</h1>
+  <p class="lede">Same tokens, rearranged. The sidebar becomes a bottom bar, tables become cards, dialogs become sheets, and every target grows to a thumb.</p>
+  <div class="pageno">06 · Mobile</div>
+
+  <div style="display:flex;gap:28px;margin-top:24px">
+    <!-- phone 1: dashboard -->
+    <div class="phone"><div class="screen">
+      <div class="sb"><span>9:41</span><span>●●● 100%</span></div>
+      <div class="appbar"><img src="file:///C:/Soham/Kamachya_Goshti/Growmont/Growmont_CRM/Growmont_crm-main/flutterapp/assets/images/growmont_logo.png" alt="Growmont"><div class="av" style="width:28px;height:28px;font-size:10px;background:#DCE6F5;color:#00337C">SB</div></div>
+      <div class="mbody">
+        <div class="mt">Good morning, Soham</div>
+        <div class="kpis">
+          <div class="kpi"><div class="o">REVENUE · SEP</div><div class="v">₹12.4L</div><div class="d">▲ 12.4%</div></div>
+          <div class="kpi"><div class="o">ACTIVE CLIENTS</div><div class="v">128</div><div class="d">▲ 6 this week</div></div>
+        </div>
+        <div style="font-family:Jakarta;font-weight:700;font-size:13px;margin-top:2px">Today's follow-ups</div>
+        <div class="li"><div class="av" style="background:#D3F3DF;color:#185A38">KA</div><div><b>Kulkarni Agro</b><span>Call about revised quote</span></div><div class="amt">₹1,12,900<br><span class="pill" style="background:#FFF7ED;color:#B45309;height:16px;font-size:8.5px;padding:0 6px">Due 3 pm</span></div></div>
+        <div class="li"><div class="av" style="background:#DCE6F5;color:#00337C">ST</div><div><b>Sharma Textiles</b><span>Send invoice copy</span></div><div class="amt">₹3,40,000<br><span class="pill" style="background:#ECFDF3;color:#15803D;height:16px;font-size:8.5px;padding:0 6px">Won</span></div></div>
+        <div class="li"><div class="av" style="background:#FAF5FF;color:#7E22CE">DM</div><div><b>Deshmukh Motors</b><span>Payment reminder</span></div><div class="amt">₹48,250<br><span class="pill" style="background:#FEF2F2;color:#DC2626;height:16px;font-size:8.5px;padding:0 6px">Overdue</span></div></div>
+      </div>
+      <div class="bnav">
+        <div class="on"><span class="pillnav"><svg viewBox="0 0 24 24"><path d="M3 12l9-8 9 8M5 10v10h14V10"/></svg></span>Dashboard</div>
+        <div><svg viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 8-8"/></svg>Sales</div>
+        <div><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Chats</div>
+        <div><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="4"/><path d="M2 21c0-4 3-6 7-6s7 2 7 6"/></svg>Clients</div>
+        <div><svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg>More</div>
+      </div>
+    </div></div>
+
+    <!-- phone 2: sheet -->
+    <div class="phone"><div class="screen">
+      <div class="sb"><span>9:41</span><span>●●● 100%</span></div>
+      <div class="appbar"><span style="font-family:Jakarta;font-weight:700;font-size:15px">Clients</span><span class="btn primary sm" style="height:30px;font-size:11px;padding:0 10px">+ New</span></div>
+      <div class="mbody">
+        <div class="li"><div class="av" style="background:#DCE6F5;color:#00337C">ST</div><div><b>Sharma Textiles</b><span>Pune</span></div></div>
+        <div class="li"><div class="av" style="background:#D3F3DF;color:#185A38">KA</div><div><b>Kulkarni Agro</b><span>Nashik</span></div></div>
+      </div>
+      <div class="scrim"></div>
+      <div class="sheet">
+        <div class="handle"></div>
+        <div style="font-family:Jakarta;font-weight:600;font-size:15px;margin-bottom:12px">Record a sale</div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div class="field"><label style="font-size:10.5px">Client</label><div class="input" style="height:40px;font-size:12px">Kulkarni Agro</div></div>
+          <div class="field"><label style="font-size:10.5px">Amount</label><div class="input focus tnum" style="height:40px;font-size:12px">₹1,12,900|</div></div>
+          <div class="field"><label style="font-size:10.5px">Remarks</label><div class="input ph" style="height:40px;font-size:12px">Optional</div></div>
+        </div>
+        <div class="btn primary lg" style="width:100%;justify-content:center;margin-top:14px;font-size:13px">Save sale</div>
+      </div>
+    </div></div>
+
+    <!-- rules -->
+    <div style="flex:1;display:flex;flex-direction:column;gap:12px">
+      <div class="bp">
+        <div><b>&lt; 768</b><span>Phone · bottom bar · 16 gutter</span></div>
+        <div><b>768–899</b><span>Narrow · sidebar · single-pane detail</span></div>
+        <div><b>≥ 900</b><span>Wide · two-pane detail · 24 gutter</span></div>
+      </div>
+      <div class="rules">
+        <div class="rule"><b>Bottom bar, five at most</b><p>Green 800, 62h. Dashboard, Sales, Chats, Clients, More. Profile moves to the app bar.</p></div>
+        <div class="rule"><b>Tables become cards</b><p>Name and one line of context left; one number and one status right. Everything else is in detail.</p></div>
+        <div class="rule"><b>Dialogs become sheets</b><p>Forms rise as bottom sheets, radius 12 top with a drag handle. Short confirms stay dialogs, inset 12.</p></div>
+        <div class="rule"><b>Thumb-sized targets</b><p>44pt minimum. The main action is full-width 48h at the bottom, within reach.</p></div>
+        <div class="rule"><b>Type steps down once</b><p>Page title 32 → 24, metric 28 → 24, heading 22 → 20. Body and labels stay the same.</p></div>
+        <div class="rule"><b>One column</b><p>Form fields stack. KPI tiles go two-up. Nothing scrolls sideways.</p></div>
+        <div class="rule"><b>Landscape is still a phone</b><p>On Android and iOS, a shortest side under 500 keeps the phone layout even when the width passes 768.</p></div>
+        <div class="rule"><b>Respect safe areas</b><p>The bottom bar and sheets sit above the home indicator; nothing hides under the notch or status bar.</p></div>
+        <div class="rule"><b>Sidebar on wide screens</b><p>Green 800 → 900 gradient, 216 wide, collapses to 80 icons-only. Same destinations as the bottom bar.</p></div>
+        <div class="rule"><b>Press, don't hover</b><p>Touch has no hover: every state a mouse user sees on hover must also exist as a pressed or selected state.</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+</body>
+</html>

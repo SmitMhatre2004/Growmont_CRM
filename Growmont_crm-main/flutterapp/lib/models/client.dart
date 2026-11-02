@@ -35,4 +35,20 @@ class Client {
     'employee_id': employeeId,
     if (employeeName != null) 'employee_name': employeeName,
   };
+
+  Client copyWith({
+    String? id,
+    String? name,
+    String? contactNumber,
+    String? employeeId,
+    String? employeeName,
+  }) {
+    return Client(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      contactNumber: contactNumber ?? this.contactNumber,
+      employeeId: employeeId ?? this.employeeId,
+      employeeName: employeeName ?? this.employeeName,
+    );
+  }
 }

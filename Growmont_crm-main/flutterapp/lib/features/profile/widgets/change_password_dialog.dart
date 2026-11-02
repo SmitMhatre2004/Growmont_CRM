@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/config/app_config.dart';
 import '../../../core/providers.dart';
-import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/app_form.dart';
 import '../../../shared/widgets/app_modal_shell.dart';
 import '../../../shared/widgets/inline_error_banner.dart';
 import '../../../shared/widgets/password_form_field.dart';
@@ -76,16 +76,17 @@ class _ChangePasswordDialogState extends ConsumerState<ChangePasswordDialog> {
   Widget build(BuildContext context) {
     return AppModalShell(
       title: 'Change Password',
+      subtitle: 'Other devices will need the new password to sign in.',
+      footer: AppFormActions(
+        submitLabel: 'Change Password',
+        busy: _saving,
+        onSubmit: _submit,
+      ),
       child: Form(
         key: _formKey,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: AppFormColumn(
           children: [
-            if (_error != null) ...[
-              InlineErrorBanner(message: _error!),
-              const SizedBox(height: AppSpacing.md),
-            ],
+            if (_error != null) InlineErrorBanner(message: _error!),
             PasswordFormField(
               controller: _current,
               labelText: 'Current password',
@@ -94,7 +95,6 @@ class _ChangePasswordDialogState extends ConsumerState<ChangePasswordDialog> {
               validator: (v) =>
                   (v == null || v.isEmpty) ? 'Enter your current password' : null,
             ),
-            const SizedBox(height: AppSpacing.md),
             PasswordFormField(
               controller: _new,
               labelText: 'New password',
@@ -109,7 +109,6 @@ class _ChangePasswordDialogState extends ConsumerState<ChangePasswordDialog> {
                 return null;
               },
             ),
-            const SizedBox(height: AppSpacing.md),
             PasswordFormField(
               controller: _confirm,
               labelText: 'Confirm new password',
@@ -117,15 +116,6 @@ class _ChangePasswordDialogState extends ConsumerState<ChangePasswordDialog> {
               onFieldSubmitted: (_) => _submit(),
               validator: (v) =>
                   v != _new.text ? 'Passwords do not match' : null,
-            ),
-            const SizedBox(height: AppSpacing.xxl),
-            SizedBox(
-              width: double.infinity,
-              height: AppSizing.controlLg,
-              child: FilledButton(
-                onPressed: _saving ? null : _submit,
-                child: Text(_saving ? 'Saving...' : 'Change Password'),
-              ),
             ),
           ],
         ),

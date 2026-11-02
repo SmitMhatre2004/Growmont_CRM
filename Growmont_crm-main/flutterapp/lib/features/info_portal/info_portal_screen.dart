@@ -16,6 +16,7 @@ import '../../shared/widgets/toolbar_action_button.dart';
 import '../auth/auth_provider.dart';
 import '../interactions/interactions_excel.dart';
 import '../interactions/widgets/add_interaction_modal.dart';
+import '../interactions/widgets/interaction_detail_modal.dart';
 import '../sales/sales_excel.dart';
 import '../sales/widgets/add_sale_modal.dart';
 
@@ -554,6 +555,20 @@ class _InfoPortalScreenState extends ConsumerState<InfoPortalScreen> {
       barrierDismissible: true,
       builder: (_) =>
           AddInteractionModal(existing: interaction, currentUser: user),
+    );
+    if (saved == true) _load();
+  }
+
+  Future<void> _showInteractionDetail(Interaction interaction) async {
+    final user = ref.read(authProvider).user;
+    final saved = await showDialog<bool>(
+      context: context,
+      barrierDismissible: true,
+      builder: (_) => InteractionDetailModal(
+        interaction: interaction,
+        currentUser: user,
+        onUpdated: _load,
+      ),
     );
     if (saved == true) _load();
   }
@@ -1343,6 +1358,9 @@ class _InfoPortalScreenState extends ConsumerState<InfoPortalScreen> {
                                         );
                                       }
                                     }),
+                                    onTap: () => _showInteractionDetail(
+                                      interactionItems[i],
+                                    ),
                                     onEdit: () =>
                                         _editInteraction(interactionItems[i]),
                                     onDelete: () => _deleteInteraction(
@@ -1737,6 +1755,7 @@ class _InteractionTableRow extends StatefulWidget {
     required this.item,
     required this.selected,
     required this.onSelectChanged,
+    required this.onTap,
     required this.onEdit,
     required this.onDelete,
   });
@@ -1744,6 +1763,7 @@ class _InteractionTableRow extends StatefulWidget {
   final Interaction item;
   final bool selected;
   final ValueChanged<bool?> onSelectChanged;
+  final VoidCallback onTap;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
 
@@ -1836,204 +1856,214 @@ class _InteractionTableRowState extends State<_InteractionTableRow> {
               ),
             ),
 
-            // Client & Contact
+            // Tappable data columns
             Expanded(
-              flex: 4,
-              child: Row(
-                children: [
-                  CircleAvatar(
-                    radius: 16,
-                    backgroundColor: AppColors.primaryBlue.withValues(
-                      alpha: 0.1,
-                    ),
-                    child: Text(
-                      widget.item.clientName.isEmpty
-                          ? '?'
-                          : widget.item.clientName[0].toUpperCase(),
-                      style: const TextStyle(
-                        color: AppColors.primaryBlue,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 13,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: AppSpacing.sm),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          widget.item.clientName.isEmpty
-                              ? '—'
-                              : widget.item.clientName,
-                          style: AppTypography.tableCellStrong,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        if (widget.item.clientContact.isNotEmpty) ...[
-                          const SizedBox(height: AppSpacing.xxs),
-                          Text(
-                            widget.item.clientContact,
-                            style: AppTypography.caption,
-                            overflow: TextOverflow.ellipsis,
+              child: InkWell(
+                onTap: widget.onTap,
+                child: Row(
+                  children: [
+                    // Client & Contact
+                    Expanded(
+                      flex: 4,
+                      child: Row(
+                        children: [
+                          CircleAvatar(
+                            radius: 16,
+                            backgroundColor: AppColors.primaryBlue.withValues(
+                              alpha: 0.1,
+                            ),
+                            child: Text(
+                              widget.item.clientName.isEmpty
+                                  ? '?'
+                                  : widget.item.clientName[0].toUpperCase(),
+                              style: const TextStyle(
+                                color: AppColors.primaryBlue,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 13,
+                              ),
+                            ),
                           ),
-                        ],
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            // Representative
-            Expanded(
-              flex: 3,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.start,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(AppSpacing.xs),
-                    decoration: BoxDecoration(
-                      color: _Palette.headerBg,
-                      borderRadius: BorderRadius.circular(AppRadius.xs),
-                    ),
-                    child: const Icon(
-                      Icons.person_outline,
-                      size: AppSizing.iconXs,
-                      color: _Palette.textSecondary,
-                    ),
-                  ),
-                  const SizedBox(width: AppSpacing.sm),
-                  Flexible(
-                    child: Text(
-                      repName.isNotEmpty ? repName : '—',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                        color: repName.isNotEmpty
-                            ? _Palette.textPrimary
-                            : _Palette.textMuted,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            // Date
-            Expanded(
-              flex: 2,
-              child: Text(
-                AppFormatters.formatDate(widget.item.date),
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: _Palette.textSecondary,
-                  fontWeight: FontWeight.w500,
-                ),
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-
-            // Follow-up
-            Expanded(
-              flex: 3,
-              child: hasFollowUp
-                  ? Column(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(
-                              Icons.calendar_month_outlined,
-                              size: AppSizing.iconXs,
-                              color: AppColors.primaryBlue,
-                            ),
-                            const SizedBox(width: AppSpacing.xs),
-                            Flexible(
-                              child: Text(
-                                AppFormatters.formatDate(
-                                  widget.item.followUpDate,
-                                ),
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                  color: _Palette.textPrimary,
-                                ),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ],
-                        ),
-                        if (widget.item.followUpTime.isNotEmpty) ...[
-                          const SizedBox(height: AppSpacing.xxs),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(
-                                Icons.access_time_outlined,
-                                size: AppSizing.iconXs,
-                                color: _Palette.textMuted,
-                              ),
-                              const SizedBox(width: AppSpacing.xs),
-                              Flexible(
-                                child: Text(
-                                  AppFormatters.formatTime(
-                                    widget.item.followUpTime,
-                                  ),
-                                  style: AppTypography.caption,
+                          const SizedBox(width: AppSpacing.sm),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  widget.item.clientName.isEmpty
+                                      ? '—'
+                                      : widget.item.clientName,
+                                  style: AppTypography.tableCellStrong,
                                   overflow: TextOverflow.ellipsis,
                                 ),
-                              ),
-                            ],
+                                if (widget.item.clientContact.isNotEmpty) ...[
+                                  const SizedBox(height: AppSpacing.xxs),
+                                  Text(
+                                    widget.item.clientContact,
+                                    style: AppTypography.caption,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ],
+                              ],
+                            ),
                           ),
                         ],
-                      ],
-                    )
-                  : const Text(
-                      '—',
-                      textAlign: TextAlign.center,
-                      style: AppTypography.caption,
+                      ),
                     ),
-            ),
 
-            // Priority
-            Expanded(
-              flex: 2,
-              child: Align(
-                alignment: Alignment.center,
-                child: _buildPriorityPill(widget.item.priority),
-              ),
-            ),
+                    // Representative
+                    Expanded(
+                      flex: 3,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.start,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(AppSpacing.xs),
+                            decoration: BoxDecoration(
+                              color: _Palette.headerBg,
+                              borderRadius: BorderRadius.circular(AppRadius.xs),
+                            ),
+                            child: const Icon(
+                              Icons.person_outline,
+                              size: AppSizing.iconXs,
+                              color: _Palette.textSecondary,
+                            ),
+                          ),
+                          const SizedBox(width: AppSpacing.sm),
+                          Flexible(
+                            child: Text(
+                              repName.isNotEmpty ? repName : '—',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                                color: repName.isNotEmpty
+                                    ? _Palette.textPrimary
+                                    : _Palette.textMuted,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
 
-            // Notes
-            Expanded(
-              flex: 4,
-              child: widget.item.discussionNotes.isNotEmpty
-                  ? Tooltip(
-                      message: widget.item.discussionNotes,
+                    // Date
+                    Expanded(
+                      flex: 2,
                       child: Text(
-                        widget.item.discussionNotes,
-                        textAlign: TextAlign.left,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
+                        AppFormatters.formatDate(widget.item.date),
+                        textAlign: TextAlign.center,
                         style: const TextStyle(
                           fontSize: 12,
                           color: _Palette.textSecondary,
-                          height: 1.3,
+                          fontWeight: FontWeight.w500,
                         ),
+                        overflow: TextOverflow.ellipsis,
                       ),
-                    )
-                  : const Text(
-                      '—',
-                      textAlign: TextAlign.left,
-                      style: AppTypography.caption,
                     ),
+
+                    // Follow-up
+                    Expanded(
+                      flex: 3,
+                      child: hasFollowUp
+                          ? Column(
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(
+                                      Icons.calendar_month_outlined,
+                                      size: AppSizing.iconXs,
+                                      color: AppColors.primaryBlue,
+                                    ),
+                                    const SizedBox(width: AppSpacing.xs),
+                                    Flexible(
+                                      child: Text(
+                                        AppFormatters.formatDate(
+                                          widget.item.followUpDate,
+                                        ),
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                          color: _Palette.textPrimary,
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                if (widget.item.followUpTime.isNotEmpty) ...[
+                                  const SizedBox(height: AppSpacing.xxs),
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Icon(
+                                        Icons.access_time_outlined,
+                                        size: AppSizing.iconXs,
+                                        color: _Palette.textMuted,
+                                      ),
+                                      const SizedBox(width: AppSpacing.xs),
+                                      Flexible(
+                                        child: Text(
+                                          AppFormatters.formatTime(
+                                            widget.item.followUpTime,
+                                          ),
+                                          style: AppTypography.caption,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ],
+                            )
+                          : const Text(
+                              '—',
+                              textAlign: TextAlign.center,
+                              style: AppTypography.caption,
+                            ),
+                    ),
+
+                    // Priority
+                    Expanded(
+                      flex: 2,
+                      child: Align(
+                        alignment: Alignment.center,
+                        child: _buildPriorityPill(widget.item.priority),
+                      ),
+                    ),
+
+                    // Notes
+                    Expanded(
+                      flex: 4,
+                      child: widget.item.discussionNotes.isNotEmpty
+                          ? Tooltip(
+                              message: 'Tap to read full notes\n\n${widget.item.discussionNotes}',
+                              child: Text(
+                                widget.item.discussionNotes,
+                                textAlign: TextAlign.left,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: _Palette.textSecondary,
+                                  height: 1.3,
+                                ),
+                              ),
+                            )
+                          : const Text(
+                              '—',
+                              textAlign: TextAlign.left,
+                              style: AppTypography.caption,
+                            ),
+                    ),
+                  ],
+                ),
+              ),
             ),
 
             // Actions

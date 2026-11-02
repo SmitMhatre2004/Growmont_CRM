@@ -62,7 +62,9 @@ class _AppShellState extends ConsumerState<AppShell> {
                 AnimatedContainer(
                   duration: const Duration(milliseconds: 250),
                   curve: Curves.easeInOutCubic,
-                  width: isSidebarCollapsed ? 80 : 195,
+                  width: isSidebarCollapsed
+                      ? AppSizing.sidebarCollapsedWidth
+                      : AppSizing.sidebarWidth,
                   clipBehavior: Clip.hardEdge,
                   decoration: BoxDecoration(
                     color: Colors.white,

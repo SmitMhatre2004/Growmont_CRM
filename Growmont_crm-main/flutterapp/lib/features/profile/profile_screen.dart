@@ -16,14 +16,20 @@ import '../../models/reminder.dart';
 import '../../models/sale.dart';
 import '../../shared/widgets/error_state.dart';
 import '../auth/auth_provider.dart';
+import '../interactions/widgets/interaction_detail_modal.dart';
 import '../reminders/reminders_excel.dart';
 import '../reminders/widgets/add_reminder_modal.dart';
 import 'widgets/account_security_card.dart';
 import 'widgets/data_location_card.dart';
 import 'widgets/sync_status_card.dart';
 import 'widgets/update_card.dart';
+import '../../shared/widgets/monogram.dart';
+import '../../shared/widgets/status_badge.dart';
 
-enum ProfileTab { sales, interactions, reminders, system }
+/// The three record lists at the foot of the profile. Account and system
+/// settings are deliberately not in here: they used to be a fourth tab, which
+/// hid them behind a chip that most people never pressed.
+enum ProfileTab { sales, interactions, reminders }
 
 /// True on the desktop platforms this app ships an installer for — gates
 /// the local data-location card, which has no meaning on mobile/web.
@@ -53,8 +59,24 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   List<Reminder> _reminders = [];
   ProfileTab _tab = ProfileTab.reminders;
   bool _loading = true;
-  bool _showProfilePanel = false;
   String? _error;
+
+  /// Anchors the records section so a deep link like `/profile?tab=reminders`
+  /// can scroll to it instead of dropping the reader at the top of the page.
+  final GlobalKey _recordsKey = GlobalKey();
+
+  void _scrollToRecords() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final ctx = _recordsKey.currentContext;
+      if (ctx == null || !mounted) return;
+      Scrollable.ensureVisible(
+        ctx,
+        duration: AppMotion.slow,
+        curve: AppMotion.curve,
+        alignment: 0.05,
+      );
+    });
+  }
 
   @override
   void initState() {
@@ -62,6 +84,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     if (widget.initialTab == 'reminders') _tab = ProfileTab.reminders;
     if (widget.initialTab == 'interactions') _tab = ProfileTab.interactions;
     if (widget.initialTab == 'productSales') _tab = ProfileTab.sales;
+    // Arriving from "view all in reminders" should land on the list, not at
+    // the top of a page the reader then has to scroll themselves.
+    if (widget.initialTab != null) _scrollToRecords();
     _load();
   }
 
@@ -74,6 +99,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       if (widget.initialTab == 'interactions') _tab = ProfileTab.interactions;
       if (widget.initialTab == 'productSales') _tab = ProfileTab.sales;
       setState(() {});
+      _scrollToRecords();
     }
   }
 
@@ -139,6 +165,19 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       total += double.tryParse(s.amount) ?? 0;
     }
     return total;
+  }
+
+  Future<void> _showInteractionDetail(Interaction item) async {
+    final saved = await showDialog<bool>(
+      context: context,
+      barrierDismissible: true,
+      builder: (_) => InteractionDetailModal(
+        interaction: item,
+        currentUser: ref.read(authProvider).user,
+        onUpdated: _load,
+      ),
+    );
+    if (saved == true) _load();
   }
 
   Future<void> _deleteReminder(dynamic id) async {
@@ -258,349 +297,257 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       );
     }
 
+    // One screen, one scroll. Everything that used to sit behind the "My Info"
+    // toggle or the "System" chip is now simply on the page, in the order
+    // someone reads it: who you are, then your account, then your records.
     final isMobile = AppLayout.isMobile(context);
-    final isWide = !isMobile;
-    final size = MediaQuery.sizeOf(context);
-    final isShort = size.height < 450;
-    final isLandscapeOrWide = size.width >= 500;
+    final gutter = isMobile ? AppSpacing.lg : AppSpacing.xxl;
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final showSideBySide =
-            isWide || (_showProfilePanel && constraints.maxWidth >= 650);
+    EdgeInsets band(double top, [double bottom = 0]) =>
+        EdgeInsets.fromLTRB(gutter, top, gutter, bottom);
 
-        Widget titleAndActions;
-        if (isWide || isLandscapeOrWide) {
-          titleAndActions = Row(
-            children: [
-              Text(
-                'Profile',
-                style: isWide
-                    ? AppTypography.pageTitle
-                    : AppTypography.pageTitleMobile,
-              ),
-              const Spacer(),
-              if (!isWide) ...[
-                OutlinedButton.icon(
-                  onPressed: () =>
-                      setState(() => _showProfilePanel = !_showProfilePanel),
-                  icon: const Icon(
-                    Icons.person_outline,
-                    size: AppSizing.iconMd,
-                  ),
-                  label: Text(_showProfilePanel ? 'Hide Info' : 'My Info'),
-                  style: OutlinedButton.styleFrom(
-                    visualDensity: isShort ? VisualDensity.compact : null,
-                    padding: isShort
-                        ? const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 6,
-                          )
-                        : null,
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.sm),
-              ],
-              FilledButton.icon(
-                onPressed: () => _showReminderModal(),
-                icon: Icon(
-                  Icons.add,
-                  size: isWide ? AppSizing.iconLg : AppSizing.iconMd,
-                ),
-                label: const Text('Add Reminder'),
-                style: FilledButton.styleFrom(
-                  visualDensity: isShort ? VisualDensity.compact : null,
-                  padding: isShort
-                      ? const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 6,
-                        )
-                      : null,
-                ),
-              ),
-            ],
-          );
-        } else {
-          titleAndActions = Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('Profile', style: AppTypography.pageTitleMobile),
-              const SizedBox(height: AppSpacing.md),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: () => setState(
-                        () => _showProfilePanel = !_showProfilePanel,
-                      ),
-                      icon: const Icon(
-                        Icons.person_outline,
-                        size: AppSizing.iconMd,
-                      ),
-                      label: Text(_showProfilePanel ? 'Hide Info' : 'My Info'),
-                      style: OutlinedButton.styleFrom(),
-                    ),
-                  ),
-                  const SizedBox(width: AppSpacing.sm),
-                  Expanded(
-                    child: FilledButton.icon(
-                      onPressed: () => _showReminderModal(),
-                      icon: const Icon(Icons.add, size: AppSizing.iconMd),
-                      label: const Text('Add Reminder'),
-                      style: FilledButton.styleFrom(),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          );
-        }
-
-        final content = Padding(
-          padding: EdgeInsets.fromLTRB(
-            isWide ? 24 : (isShort ? 12 : 16),
-            isShort ? 6 : (isWide ? 16 : 10),
-            isWide ? 24 : (isShort ? 12 : 16),
-            isShort ? 6 : (isWide ? 16 : 12),
+    return RefreshIndicator(
+      onRefresh: _load,
+      color: AppColors.primaryBlue,
+      child: CustomScrollView(
+        slivers: [
+          SliverPadding(
+            padding: band(isMobile ? AppSpacing.lg : AppSpacing.xl),
+            sliver: SliverToBoxAdapter(child: _pageHeader(isMobile)),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              titleAndActions,
-              SizedBox(height: isShort ? AppSpacing.sm : AppSpacing.lg),
-              Expanded(
-                child: showSideBySide
-                    ? Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          SizedBox(
-                            width: 280,
-                            child: _ProfileInfoPanel(
-                              employee: _employee!,
-                              salesCount: _sales.length,
-                              interactionsCount: _interactions.length,
-                              remindersCount: _reminders.length,
-                              totalSales: _totalSalesAmount,
-                            ),
-                          ),
-                          const SizedBox(width: AppSpacing.lg),
-                          Expanded(child: _tabContent(isShort: isShort)),
-                        ],
-                      )
-                    : (_showProfilePanel
-                        ? _ProfileInfoPanel(
-                            employee: _employee!,
-                            salesCount: _sales.length,
-                            interactionsCount: _interactions.length,
-                            remindersCount: _reminders.length,
-                            totalSales: _totalSalesAmount,
-                          )
-                        : _tabContent(isShort: isShort)),
+          SliverPadding(
+            padding: band(AppSpacing.lg),
+            sliver: SliverToBoxAdapter(
+              child: _ProfileIdentityCard(
+                employee: _employee!,
+                salesCount: _sales.length,
+                interactionsCount: _interactions.length,
+                remindersCount: _reminders.length,
+                totalSales: _totalSalesAmount,
+                isMobile: isMobile,
               ),
-            ],
-          ),
-        );
-
-        final minComfortHeight = showSideBySide ? 320.0 : 280.0;
-
-        if (constraints.maxHeight.isFinite &&
-            constraints.maxHeight < minComfortHeight) {
-          return SingleChildScrollView(
-            child: SizedBox(
-              height: minComfortHeight,
-              child: content,
             ),
-          );
-        }
-
-        return content;
-      },
+          ),
+          SliverPadding(
+            padding: band(AppSpacing.xxxl),
+            sliver: SliverToBoxAdapter(child: _accountSection(isMobile)),
+          ),
+          SliverPadding(
+            padding: band(AppSpacing.xxxl, AppSpacing.md),
+            sliver: SliverToBoxAdapter(child: _recordsHeader(isMobile)),
+          ),
+          SliverPadding(
+            padding: band(0, AppSpacing.xxxl),
+            sliver: _recordsSliver(),
+          ),
+        ],
+      ),
     );
   }
 
-  Widget _reminderImportExportRow({bool isShort = false}) {
+  /// The page title. Reminders are created from the dashboard; this screen
+  /// reads and edits what is already there.
+  Widget _pageHeader(bool isMobile) {
+    return Text(
+      'Profile',
+      style: isMobile
+          ? AppTypography.pageTitleMobile
+          : AppTypography.pageTitle,
+    );
+  }
+
+  /// A section heading on the canvas: 18/23, with optional trailing actions.
+  Widget _sectionHeader(String title, {String? subtitle, Widget? trailing}) {
     return Padding(
-      padding: EdgeInsets.fromLTRB(
-        AppSpacing.md,
-        0,
-        AppSpacing.md,
-        isShort ? AppSpacing.xs : AppSpacing.md,
-      ),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            OutlinedButton.icon(
-              onPressed: _exportReminders,
-              icon: Icon(
-                Icons.download_outlined,
-                size: isShort ? AppSizing.iconSm : AppSizing.iconMd,
-              ),
-              label: const Text('Export'),
-              style: OutlinedButton.styleFrom(
-                visualDensity: isShort ? VisualDensity.compact : null,
-                padding: isShort
-                    ? const EdgeInsets.symmetric(horizontal: 10, vertical: 4)
-                    : null,
-                foregroundColor: AppColors.textPrimary,
-                side: const BorderSide(color: AppColors.border),
-                backgroundColor: AppColors.surface,
-              ),
-            ),
-            const SizedBox(width: AppSpacing.sm),
-            OutlinedButton.icon(
-              onPressed: _importReminders,
-              icon: Icon(
-                Icons.upload_outlined,
-                size: isShort ? AppSizing.iconSm : AppSizing.iconMd,
-              ),
-              label: const Text('Import'),
-              style: OutlinedButton.styleFrom(
-                visualDensity: isShort ? VisualDensity.compact : null,
-                padding: isShort
-                    ? const EdgeInsets.symmetric(horizontal: 10, vertical: 4)
-                    : null,
-                foregroundColor: AppColors.textPrimary,
-                side: const BorderSide(color: AppColors.border),
-                backgroundColor: AppColors.surface,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _tabContent({bool isShort = false}) {
-    return Card(
-      child: Column(
+      padding: const EdgeInsets.only(bottom: AppSpacing.md),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            padding: EdgeInsets.symmetric(
-              horizontal: AppSpacing.md,
-              vertical: isShort ? AppSpacing.xs : AppSpacing.md,
-            ),
-            child: Row(
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _tabChip('Product Sales', ProfileTab.sales, _sales.length,
-                    isShort: isShort),
-                _tabChip(
-                  'Interactions',
-                  ProfileTab.interactions,
-                  _interactions.length,
-                  isShort: isShort,
-                ),
-                _tabChip('Reminders', ProfileTab.reminders, _reminders.length,
-                    isShort: isShort),
-                _tabChip('System', ProfileTab.system, 0,
-                    showCount: false, isShort: isShort),
+                Text(title, style: AppTypography.sectionTitle),
+                if (subtitle != null) ...[
+                  const SizedBox(height: AppSpacing.xxs),
+                  Text(subtitle, style: AppTypography.caption),
+                ],
               ],
             ),
           ),
-          if (_tab == ProfileTab.reminders)
-            _reminderImportExportRow(isShort: isShort),
-          const Divider(height: 1),
-          Expanded(
-            child: RefreshIndicator(
-              onRefresh: _load,
-              color: AppColors.primaryGreen,
-              child: switch (_tab) {
-                ProfileTab.sales => _salesTab(),
-                ProfileTab.interactions => _interactionsTab(),
-                ProfileTab.reminders => _remindersTab(),
-                ProfileTab.system => _systemTab(),
-              },
-            ),
-          ),
+          ?trailing,
         ],
       ),
     );
   }
 
-  Widget _systemTab() {
-    return ListView(
-      physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.all(AppSpacing.lg),
+  /// Account and system settings. These were the "System" tab; on a phone that
+  /// chip scrolled off the end of the row, so the cards were effectively
+  /// invisible. They are now a plain section of the page.
+  Widget _accountSection(bool isMobile) {
+    final cards = <Widget>[
+      const AccountSecurityCard(),
+      if (_canSelfUpdate) const UpdateCard(),
+      if (_isDesktop) const DataLocationCard(),
+      const SyncStatusCard(),
+    ];
+
+    Widget body;
+    if (isMobile || cards.length < 2) {
+      body = Column(
+        children: [
+          for (var i = 0; i < cards.length; i++) ...[
+            if (i > 0) const SizedBox(height: AppSpacing.md),
+            cards[i],
+          ],
+        ],
+      );
+    } else {
+      // Two columns on anything wider than a phone, so a desktop window does
+      // not show four full-width cards stacked down a long page.
+      final left = <Widget>[];
+      final right = <Widget>[];
+      for (var i = 0; i < cards.length; i++) {
+        (i.isEven ? left : right).add(cards[i]);
+      }
+      Widget column(List<Widget> items) => Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (var i = 0; i < items.length; i++) ...[
+            if (i > 0) const SizedBox(height: AppSpacing.md),
+            items[i],
+          ],
+        ],
+      );
+      body = Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(child: column(left)),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(child: column(right)),
+        ],
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const AccountSecurityCard(),
-        const SizedBox(height: AppSpacing.lg),
-        if (_canSelfUpdate) ...[
-          const UpdateCard(),
-          const SizedBox(height: AppSpacing.lg),
+        _sectionHeader(
+          'Account and system',
+          subtitle: 'Password, updates and how this device syncs.',
+        ),
+        body,
+      ],
+    );
+  }
+
+  /// Heading, segmented control and the reminder import/export actions.
+  Widget _recordsHeader(bool isMobile) {
+    return Column(
+      key: _recordsKey,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _sectionHeader(
+          'Your records',
+          subtitle: 'Everything logged against your name.',
+          trailing: (!isMobile && _tab == ProfileTab.reminders)
+              ? _reminderImportExportRow()
+              : null,
+        ),
+        _RecordSegments(
+          selected: _tab,
+          counts: {
+            ProfileTab.sales: _sales.length,
+            ProfileTab.interactions: _interactions.length,
+            ProfileTab.reminders: _reminders.length,
+          },
+          onSelect: (tab) => setState(() => _tab = tab),
+        ),
+        if (isMobile && _tab == ProfileTab.reminders) ...[
+          const SizedBox(height: AppSpacing.md),
+          _reminderImportExportRow(),
         ],
-        if (_isDesktop) ...[
-          const DataLocationCard(),
-          const SizedBox(height: AppSpacing.lg),
-        ],
-        const SyncStatusCard(),
+      ],
+    );
+  }
+
+  /// The selected record list, as a card-shaped sliver so it stays lazy inside
+  /// the page scroll however many rows it holds.
+  Widget _recordsSliver() {
+    final sliver = switch (_tab) {
+      ProfileTab.sales => _salesSliver(),
+      ProfileTab.interactions => _interactionsSliver(),
+      ProfileTab.reminders => _remindersSliver(),
+    };
+    return DecoratedSliver(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: AppRadius.brLg,
+        border: Border.all(color: AppColors.border),
+      ),
+      sliver: SliverPadding(
+        padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+        sliver: sliver,
+      ),
+    );
+  }
+
+  Widget _reminderImportExportRow() {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        OutlinedButton.icon(
+          onPressed: _exportReminders,
+          icon: const Icon(Icons.download_outlined, size: AppSizing.iconMd),
+          label: const Text('Export'),
+          style: OutlinedButton.styleFrom(
+            minimumSize: const Size(0, AppSizing.controlSm),
+            textStyle: AppTypography.buttonSmall,
+            foregroundColor: AppColors.textPrimary,
+          ),
+        ),
+        const SizedBox(width: AppSpacing.sm),
+        OutlinedButton.icon(
+          onPressed: _importReminders,
+          icon: const Icon(Icons.upload_outlined, size: AppSizing.iconMd),
+          label: const Text('Import'),
+          style: OutlinedButton.styleFrom(
+            minimumSize: const Size(0, AppSizing.controlSm),
+            textStyle: AppTypography.buttonSmall,
+            foregroundColor: AppColors.textPrimary,
+          ),
+        ),
       ],
     );
   }
 
   Widget _emptyState(IconData icon, String message) {
-    return LayoutBuilder(
-      builder: (context, constraints) => ListView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        children: [
-          SizedBox(
-            height:
-                constraints.maxHeight > 140.0 ? constraints.maxHeight : 140.0,
-            child: Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    icon,
-                    size: AppSizing.iconDisplay,
-                    color: AppColors.textMuted,
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                  Text(message, style: AppTypography.itemSubtitle),
-                ],
+    return SliverToBoxAdapter(
+      child: SizedBox(
+        height: 180,
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                icon,
+                size: AppSizing.iconEmptyState,
+                color: AppColors.borderStrong,
               ),
-            ),
+              const SizedBox(height: AppSpacing.md),
+              Text(message, style: AppTypography.itemSubtitle),
+            ],
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _tabChip(
-    String label,
-    ProfileTab tab,
-    int count, {
-    bool showCount = true,
-    bool isShort = false,
-  }) {
-    final selected = _tab == tab;
-    return Padding(
-      padding: const EdgeInsets.only(right: AppSpacing.sm),
-      child: FilterChip(
-        visualDensity: isShort ? VisualDensity.compact : null,
-        materialTapTargetSize:
-            isShort ? MaterialTapTargetSize.shrinkWrap : null,
-        label: Text(showCount ? '$label ($count)' : label),
-        selected: selected,
-        onSelected: (_) => setState(() => _tab = tab),
-        selectedColor: AppColors.primaryGreen,
-        labelStyle: TextStyle(
-          fontSize: isShort ? 12 : null,
-          color: selected ? Colors.white : AppColors.textSecondary,
         ),
-        checkmarkColor: Colors.white,
       ),
     );
   }
 
-  Widget _salesTab() {
+  Widget _salesSliver() {
     if (_sales.isEmpty) {
       return _emptyState(Icons.shopping_bag_outlined, 'No sales records found');
     }
-    return ListView.separated(
-      physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.all(AppSpacing.lg),
+    return SliverList.separated(
       itemCount: _sales.length,
       separatorBuilder: (context, index) =>
           const Divider(height: 1, color: AppColors.border),
@@ -625,14 +572,14 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 decoration: BoxDecoration(
                   color: AppColors.surfaceSelected,
                   borderRadius: BorderRadius.circular(AppRadius.sm),
-                  border: Border.all(color: AppAccents.blueTint),
+                  border: Border.all(color: AppPalette.navy200),
                 ),
                 child: Text(
                   prod,
                   style: const TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
-                    color: AppAccents.blueLabel,
+                    color: AppColors.primaryBlue,
                   ),
                 ),
               ),
@@ -674,13 +621,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
-  Widget _interactionsTab() {
+  Widget _interactionsSliver() {
     if (_interactions.isEmpty) {
       return _emptyState(Icons.forum_outlined, 'No interactions found');
     }
-    return ListView.separated(
-      physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.all(AppSpacing.lg),
+    return SliverList.separated(
       itemCount: _interactions.length,
       separatorBuilder: (context, index) =>
           const Divider(height: 1, color: AppColors.border),
@@ -695,6 +640,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             horizontal: AppSpacing.lg,
             vertical: AppSpacing.xs,
           ),
+          onTap: () => _showInteractionDetail(item),
           title: Text(item.clientName, style: AppTypography.itemTitle),
           subtitle: Padding(
             padding: const EdgeInsets.only(top: AppSpacing.xs),
@@ -724,7 +670,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 const SizedBox(width: AppSpacing.xs),
                 Flexible(
                   child: Text(
-                    'Follow-up: ${AppFormatters.formatDate(item.followUpDate)}',
+                    item.followUpDate.isEmpty
+                        ? 'No follow-up'
+                        : 'Follow-up: ${AppFormatters.formatDate(item.followUpDate)}',
                     style: AppTypography.caption,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -732,39 +680,20 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               ],
             ),
           ),
-          trailing: Container(
+          trailing: SizedBox(
             width: 72,
-            alignment: Alignment.center,
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.xs,
-              vertical: AppSpacing.xs,
-            ),
-            decoration: BoxDecoration(
-              color: priorityBackgroundColor(item.priority),
-              borderRadius: BorderRadius.circular(AppRadius.sm),
-            ),
-            child: Text(
-              priorityLabel,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-                color: priorityTextColor(item.priority),
-              ),
-            ),
+            child: Center(child: PriorityBadge(priority: priorityLabel)),
           ),
         );
       },
     );
   }
 
-  Widget _remindersTab() {
+  Widget _remindersSliver() {
     if (_reminders.isEmpty) {
       return _emptyState(Icons.notifications_outlined, 'No reminders found');
     }
-    return ListView.separated(
-      physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.all(AppSpacing.lg),
+    return SliverList.separated(
       itemCount: _reminders.length,
       separatorBuilder: (context, index) =>
           const Divider(height: 1, color: AppColors.border),
@@ -780,10 +709,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             radius: 18,
             backgroundColor: isCorp
                 ? AppColors.surfaceSelected
-                : AppAccents.purpleSoft,
+                : AppColors.chatSoft,
             child: Icon(
               isCorp ? Icons.business : Icons.person,
-              color: isCorp ? AppColors.info : AppAccents.purpleBase,
+              color: isCorp ? AppColors.info : AppColors.chat,
               size: AppSizing.iconMd,
             ),
           ),
@@ -826,24 +755,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               ? Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Container(
+                    SizedBox(
                       width: 72,
-                      alignment: Alignment.center,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: AppSpacing.xs,
-                        vertical: AppSpacing.xxs,
-                      ),
-                      decoration: BoxDecoration(
-                        color: priorityBackgroundColor(r.priority),
-                        borderRadius: BorderRadius.circular(AppRadius.sm),
-                      ),
-                      child: Text(
-                        r.priority.replaceAll(' Priority', ''),
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: priorityTextColor(r.priority),
+                      child: Center(
+                        child: PriorityBadge(
+                          priority: r.priority.replaceAll(' Priority', ''),
                         ),
                       ),
                     ),
@@ -897,24 +813,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               : Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Container(
+                    SizedBox(
                       width: 72,
-                      alignment: Alignment.center,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: AppSpacing.xs,
-                        vertical: AppSpacing.xs,
-                      ),
-                      decoration: BoxDecoration(
-                        color: priorityBackgroundColor(r.priority),
-                        borderRadius: BorderRadius.circular(AppRadius.sm),
-                      ),
-                      child: Text(
-                        r.priority.replaceAll(' Priority', ''),
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: priorityTextColor(r.priority),
+                      child: Center(
+                        child: PriorityBadge(
+                          priority: r.priority.replaceAll(' Priority', ''),
                         ),
                       ),
                     ),
@@ -945,13 +848,118 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   }
 }
 
-class _ProfileInfoPanel extends StatelessWidget {
-  const _ProfileInfoPanel({
+/// The record-list switch: three equal segments on one track.
+///
+/// This used to be a horizontally scrolling row of chips, which on a phone put
+/// the last entry off screen. Equal segments mean every list is one tap away
+/// at any width.
+class _RecordSegments extends StatelessWidget {
+  const _RecordSegments({
+    required this.selected,
+    required this.counts,
+    required this.onSelect,
+  });
+
+  final ProfileTab selected;
+  final Map<ProfileTab, int> counts;
+  final ValueChanged<ProfileTab> onSelect;
+
+  static const _labels = {
+    ProfileTab.sales: 'Sales',
+    ProfileTab.interactions: 'Chats',
+    ProfileTab.reminders: 'Reminders',
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: AppSizing.controlMd,
+      padding: const EdgeInsets.all(AppSpacing.xs),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceHeader,
+        borderRadius: AppRadius.brMd,
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        children: [
+          for (final tab in ProfileTab.values)
+            Expanded(
+              child: _Segment(
+                label: _labels[tab]!,
+                count: counts[tab] ?? 0,
+                isSelected: tab == selected,
+                onTap: () => onSelect(tab),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Segment extends StatelessWidget {
+  const _Segment({
+    required this.label,
+    required this.count,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  final String label;
+  final int count;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      selected: isSelected,
+      button: true,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: AppRadius.brSm,
+        child: AnimatedContainer(
+          duration: AppMotion.fast,
+          curve: AppMotion.curve,
+          decoration: BoxDecoration(
+            color: isSelected ? AppColors.surface : Colors.transparent,
+            borderRadius: AppRadius.brSm,
+            border: Border.all(
+              color: isSelected ? AppColors.border : Colors.transparent,
+            ),
+            boxShadow: isSelected ? AppShadows.xs : null,
+          ),
+          alignment: Alignment.center,
+          child: Text(
+            // The count is part of the label so the segment says how much is
+            // behind it before you press it.
+            count > 0 ? '$label  $count' : label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AppTypography.buttonSmall.copyWith(
+              color: isSelected ? AppColors.primaryBlue : AppColors.textCaption,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Who you are, what you have done, and your details - all of it on screen
+/// from the moment the page opens.
+///
+/// This replaces the old panel that lived behind a "My Info" toggle. Hiding a
+/// person's own details behind a button made the profile screen open on a list
+/// of reminders and nothing else, which read as an empty page on a phone.
+class _ProfileIdentityCard extends StatelessWidget {
+  const _ProfileIdentityCard({
     required this.employee,
     required this.salesCount,
     required this.interactionsCount,
     required this.remindersCount,
     required this.totalSales,
+    required this.isMobile,
   });
 
   final Employee employee;
@@ -959,195 +967,209 @@ class _ProfileInfoPanel extends StatelessWidget {
   final int interactionsCount;
   final int remindersCount;
   final double totalSales;
+  final bool isMobile;
 
   @override
   Widget build(BuildContext context) {
-    final isAdmin = employee.role.toLowerCase() == 'admin';
     final avatarUrl = AppConfig.mediaUrl(employee.avatar);
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-        side: const BorderSide(color: AppColors.border),
+
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: AppRadius.brLg,
+        border: Border.all(color: AppColors.border),
       ),
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(AppSpacing.xl),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                CircleAvatar(
-                  radius: 30,
-                  backgroundColor: AppColors.primaryGreen.withValues(
-                    alpha: 0.12,
-                  ),
-                  backgroundImage: avatarUrl.isNotEmpty
-                      ? NetworkImage(avatarUrl)
-                      : null,
-                  child: avatarUrl.isEmpty
-                      ? Text(
-                          employee.initials,
-                          style: AppTypography.sectionTitle.copyWith(
-                            color: AppColors.primaryGreen,
-                          ),
-                        )
-                      : null,
-                ),
-                const SizedBox(width: AppSpacing.lg),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(employee.name, style: AppTypography.itemTitle),
-                      const SizedBox(height: AppSpacing.xs),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: AppSpacing.sm,
-                          vertical: AppSpacing.xxs,
-                        ),
-                        decoration: BoxDecoration(
-                          color: isAdmin
-                              ? AppColors.surfaceSelected
-                              : AppAccents.greenTint,
-                          borderRadius: BorderRadius.circular(AppRadius.xs),
-                          border: Border.all(
-                            color: isAdmin
-                                ? AppAccents.blueBorder
-                                : AppAccents.greenBorder,
-                          ),
-                        ),
-                        child: Text(
-                          employee.role.toUpperCase(),
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 0.3,
-                            color: isAdmin
-                                ? AppAccents.blueStrong
-                                : AppAccents.greenTeal,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: AppSpacing.xl),
-            const Text('ACTIVITY', style: AppTypography.overline),
-            const SizedBox(height: AppSpacing.md),
-            Row(
-              children: [
-                Expanded(
-                  child: _statTile(
-                    'Sales',
-                    '$salesCount',
-                    AppColors.success,
-                    AppAccents.greenSoft,
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                Expanded(
-                  child: _statTile(
-                    'Interactions',
-                    '$interactionsCount',
-                    AppAccents.purpleBase,
-                    AppAccents.purpleSoft,
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                Expanded(
-                  child: _statTile(
-                    'Reminders',
-                    '$remindersCount',
-                    AppColors.info,
-                    AppColors.surfaceSelected,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: AppSpacing.md),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.md,
-                vertical: AppSpacing.md,
+      padding: EdgeInsets.all(isMobile ? AppSpacing.lg : AppSpacing.xl),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _identityRow(avatarUrl),
+          const SizedBox(height: AppSpacing.xl),
+          _activity(),
+          const SizedBox(height: AppSpacing.xl),
+          const Divider(height: 1),
+          const SizedBox(height: AppSpacing.xl),
+          const Text('YOUR DETAILS', style: AppTypography.overline),
+          const SizedBox(height: AppSpacing.md),
+          _details(),
+        ],
+      ),
+    );
+  }
+
+  /// Avatar, name, role and the two things people actually need to read back
+  /// to someone: their email and their mobile number.
+  Widget _identityRow(String avatarUrl) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Monogram(
+          name: employee.name,
+          size: isMobile ? AppSizing.avatarMd + 8 : AppSizing.avatarLg,
+          imageUrl: avatarUrl,
+        ),
+        const SizedBox(width: AppSpacing.lg),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                employee.name,
+                style: isMobile
+                    ? AppTypography.headingLargeMobile
+                    : AppTypography.headingLarge,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
               ),
-              decoration: BoxDecoration(
-                color: AppAccents.greenSoft,
-                borderRadius: BorderRadius.circular(AppRadius.md),
-                border: Border.all(color: AppAccents.greenBorderSoft),
+              const SizedBox(height: AppSpacing.xs),
+              Text(
+                employee.email,
+                style: AppTypography.caption,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    'TOTAL SALES',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 0.6,
-                      color: AppAccents.greenDeep,
-                    ),
-                  ),
-                  Text(
-                    AppFormatters.formatAmount(totalSales.toString()),
-                    style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: AppAccents.greenStrong,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: AppSpacing.xl),
-            const Text('MAIN INFO', style: AppTypography.overline),
-            const SizedBox(height: AppSpacing.md),
-            _infoField('Gender', employee.genderDisplay),
-            _infoField('Birthday', AppFormatters.formatDate(employee.dob)),
-            const SizedBox(height: AppSpacing.xl),
-            const Text('CONTACT INFO', style: AppTypography.overline),
-            const SizedBox(height: AppSpacing.md),
-            _infoField('Email', employee.email),
-            _infoField(
-              'Mobile',
-              employee.mobileNo.isNotEmpty ? employee.mobileNo : 'Not provided',
-            ),
-          ],
+            ],
+          ),
+        ),
+        const SizedBox(width: AppSpacing.sm),
+        _roleBadge(),
+      ],
+    );
+  }
+
+  /// Admin is a navy badge, everyone else green: the same pair used in the
+  /// employees list, so a role reads the same wherever it appears.
+  Widget _roleBadge() {
+    final isAdmin = employee.role.toLowerCase() == 'admin';
+    return Container(
+      height: 22,
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: isAdmin
+            ? AppColors.surfaceSelected
+            : AppColors.primaryGreenSoft,
+        borderRadius: AppRadius.brSm,
+        border: Border.all(
+          color: isAdmin ? AppPalette.navy200 : AppColors.primaryGreenBorder,
+        ),
+      ),
+      child: Text(
+        employee.role.toUpperCase(),
+        style: AppTypography.overline.copyWith(
+          color: isAdmin ? AppColors.primaryBlue : AppColors.primaryGreenDark,
         ),
       ),
     );
   }
 
-  Widget _statTile(String label, String value, Color accent, Color bg) {
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.sm,
-        vertical: AppSpacing.sm,
+  /// Three counts and the money they add up to.
+  Widget _activity() {
+    final tiles = [
+      _statTile('Sales', '$salesCount', AppStatus.won),
+      _statTile('Chats', '$interactionsCount', AppStatus.chat),
+      _statTile('Reminders', '$remindersCount', AppStatus.fresh),
+    ];
+
+    return Column(
+      children: [
+        Row(
+          children: [
+            for (var i = 0; i < tiles.length; i++) ...[
+              if (i > 0) const SizedBox(width: AppSpacing.sm),
+              Expanded(child: tiles[i]),
+            ],
+          ],
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.md,
+            vertical: AppSpacing.md,
+          ),
+          decoration: BoxDecoration(
+            color: AppColors.primaryGreenSoft,
+            borderRadius: AppRadius.brMd,
+            border: Border.all(color: AppColors.primaryGreenBorder),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'TOTAL SALES',
+                style: AppTypography.overline.copyWith(
+                  color: AppPalette.green700,
+                ),
+              ),
+              Text(
+                AppFormatters.formatAmount(totalSales.toString()),
+                style: AppTypography.amountLarge,
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Two columns on anything wider than a phone; one column on a phone, where
+  /// nothing scrolls sideways.
+  Widget _details() {
+    final fields = [
+      ('Gender', employee.genderDisplay),
+      ('Birthday', AppFormatters.formatDate(employee.dob)),
+      ('Email', employee.email),
+      (
+        'Mobile',
+        employee.mobileNo.isNotEmpty ? employee.mobileNo : 'Not provided',
       ),
+    ];
+
+    if (isMobile) {
+      return Column(
+        children: [
+          for (var i = 0; i < fields.length; i++) ...[
+            if (i > 0) const SizedBox(height: AppSpacing.md),
+            _infoField(fields[i].$1, fields[i].$2),
+          ],
+        ],
+      );
+    }
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final columnWidth = (constraints.maxWidth - AppSpacing.md) / 2;
+        return Wrap(
+          spacing: AppSpacing.md,
+          runSpacing: AppSpacing.md,
+          children: [
+            for (final f in fields)
+              SizedBox(width: columnWidth, child: _infoField(f.$1, f.$2)),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _statTile(String label, String value, StatusTone tone) {
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(AppRadius.md),
-        border: Border.all(color: accent.withValues(alpha: 0.2)),
+        color: tone.tint,
+        borderRadius: AppRadius.brMd,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             value,
-            style: AppTypography.metricMedium.copyWith(color: accent),
+            style: AppTypography.metricMedium.copyWith(color: tone.text),
           ),
           const SizedBox(height: AppSpacing.xxs),
           Text(
             label,
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0.3,
-              color: accent.withValues(alpha: 0.85),
-            ),
+            style: AppTypography.overline.copyWith(color: tone.text),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
@@ -1156,36 +1178,29 @@ class _ProfileInfoPanel extends StatelessWidget {
     );
   }
 
+  /// A label above its value, the way every other field in the product reads.
   Widget _infoField(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: AppSpacing.md),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(label, style: AppTypography.captionSemibold),
-          const SizedBox(height: AppSpacing.xs),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.md,
-              vertical: AppSpacing.md,
-            ),
-            decoration: BoxDecoration(
-              color: AppColors.surfaceHeader,
-              borderRadius: BorderRadius.circular(AppRadius.md),
-              border: Border.all(color: AppColors.border),
-            ),
-            child: Text(
-              value,
-              style: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
-                color: AppColors.textPrimary,
-              ),
-            ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label.toUpperCase(), style: AppTypography.overline),
+        const SizedBox(height: AppSpacing.xs),
+        Container(
+          width: double.infinity,
+          constraints: const BoxConstraints(minHeight: AppSizing.controlMd),
+          alignment: Alignment.centerLeft,
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.md,
+            vertical: AppSpacing.sm,
           ),
-        ],
-      ),
+          decoration: BoxDecoration(
+            color: AppColors.surfaceHeader,
+            borderRadius: AppRadius.brMd,
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Text(value, style: AppTypography.fieldValue),
+        ),
+      ],
     );
   }
 }

@@ -301,7 +301,7 @@ class _VersionBadge extends StatelessWidget {
               label,
               style: AppTypography.caption.copyWith(
                 color: Colors.white60,
-                fontSize: 10,
+                fontSize: 11,
               ),
             ),
             Text(

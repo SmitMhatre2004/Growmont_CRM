@@ -13,9 +13,11 @@ import '../../models/reminder.dart';
 import '../../models/sale.dart';
 import '../auth/auth_provider.dart';
 import '../interactions/widgets/add_interaction_modal.dart';
+import '../interactions/widgets/interaction_detail_modal.dart';
 import '../sales/widgets/add_sale_modal.dart';
 import '../reminders/widgets/add_reminder_modal.dart';
 import '../../shared/widgets/error_state.dart';
+import '../../shared/widgets/status_badge.dart';
 import 'todo_widget.dart';
 import 'widgets/analytics_section.dart';
 
@@ -416,70 +418,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   void _showInteractionDetails(Interaction i) {
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Row(
-          children: [
-            const Icon(
-              Icons.calendar_today,
-              color: AppColors.primaryBlue,
-              size: AppSizing.iconLg,
-            ),
-            const SizedBox(width: AppSpacing.sm),
-            Expanded(
-              child: Text(i.clientName, style: AppTypography.sectionTitle),
-            ),
-          ],
-        ),
-        content: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _detailRow('Contact:', i.clientContact),
-              _detailRow(
-                'Follow-up Date:',
-                '${AppFormatters.formatDate(i.followUpDate)} at ${AppFormatters.formatTime(i.followUpTime)}',
-              ),
-              _detailRow('Interaction Date:', AppFormatters.formatDate(i.date)),
-              _detailRow('Priority:', i.priorityDisplay ?? i.priority),
-              if (i.employeeName != null && i.employeeName!.isNotEmpty)
-                _detailRow('Assigned Staff:', i.employeeName!),
-              if (i.discussionNotes.isNotEmpty) ...[
-                const SizedBox(height: AppSpacing.sm),
-                const Text(
-                  'Discussion Notes:',
-                  style: AppTypography.captionSemibold,
-                ),
-                const SizedBox(height: AppSpacing.xs),
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(AppSpacing.sm),
-                  decoration: BoxDecoration(
-                    color: AppColors.surfaceHeader,
-                    borderRadius: BorderRadius.circular(AppRadius.xs),
-                  ),
-                  child: Text(i.discussionNotes, style: AppTypography.caption),
-                ),
-              ],
-            ],
-          ),
-        ),
-        actions: [
-          IconButton(
-            tooltip: 'Copy Contact',
-            icon: const Icon(Icons.copy, size: AppSizing.iconMd),
-            onPressed: () {
-              Clipboard.setData(ClipboardData(text: i.clientContact));
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Contact "${i.clientContact}" copied!')),
-              );
-            },
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Close'),
-          ),
-        ],
+      barrierDismissible: true,
+      builder: (ctx) => InteractionDetailModal(
+        interaction: i,
+        currentUser: ref.read(authProvider).user,
       ),
     );
   }
@@ -910,9 +852,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         onTap: () => context.push('/profile?tab=reminders'),
                         child: Text(
                           '${sortedReminders.length} reminder(s) • View all in reminders tab →',
+                          // A text action, so navy rather than green.
                           style: TextStyle(
                             fontSize: 11,
-                            color: AppColors.primaryGreen,
+                            color: AppColors.link,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -923,9 +866,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         ),
         const SizedBox(height: AppSpacing.sm),
         _cardShell(
-          color: const Color.fromARGB(255, 254, 237, 84),
-          borderColor: const Color(0xFFEAB308),
-          borderWidth: 1.5,
           child: Padding(
             padding: const EdgeInsets.all(AppSpacing.md),
             child: TodoWidget(userId: user?.id),
@@ -1163,20 +1103,22 @@ class _InteractionTile extends StatelessWidget {
           ),
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                AppFormatters.formatDate(interaction.followUpDate),
-                style: const TextStyle(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 11,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-              Text(
-                AppFormatters.formatTime(interaction.followUpTime),
-                style: AppTypography.caption,
-              ),
-            ],
+            children: interaction.followUpDate.isEmpty
+                ? const [Text('No follow-up', style: AppTypography.caption)]
+                : [
+                    Text(
+                      AppFormatters.formatDate(interaction.followUpDate),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 11,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    Text(
+                      AppFormatters.formatTime(interaction.followUpTime),
+                      style: AppTypography.caption,
+                    ),
+                  ],
           ),
           const SizedBox(width: AppSpacing.xs),
           _PriorityChip(
@@ -1795,28 +1737,23 @@ class _PriorityChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return SizedBox(
       width: 72,
-      alignment: Alignment.center,
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.xs,
-        vertical: AppSpacing.xs,
-      ),
-      decoration: BoxDecoration(
-        color: priorityBackgroundColor(priority),
-        borderRadius: BorderRadius.circular(AppRadius.sm),
-      ),
-      child: Text(
-        label,
-        textAlign: TextAlign.center,
-        style: TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w700,
-          color: priorityTextColor(priority),
-          letterSpacing: 0.3,
-        ),
-      ),
+      child: Center(child: StatusBadge(label: label, tone: _toneFor(priority))),
     );
+  }
+
+  static StatusTone _toneFor(String priority) {
+    switch (priority.toUpperCase()) {
+      case 'HIGH':
+        return AppStatus.overdue;
+      case 'MEDIUM':
+        return AppStatus.followUp;
+      case 'LOW':
+        return AppStatus.lowPriority;
+      default:
+        return AppStatus.inactive;
+    }
   }
 }
 

@@ -3,9 +3,11 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 
 import '../../core/config/app_config.dart';
+import 'app_form.dart';
 
 /// A password input with a show/hide toggle and the app's minimum-length
-/// rule. Used wherever a password is set or confirmed.
+/// rule, labelled like every other form field. Used wherever a password is
+/// set or confirmed.
 class PasswordFormField extends StatefulWidget {
   const PasswordFormField({
     super.key,
@@ -55,24 +57,27 @@ class _PasswordFormFieldState extends State<PasswordFormField> {
 
   @override
   Widget build(BuildContext context) {
-    return TextFormField(
-      controller: widget.controller,
-      obscureText: _obscure,
-      autofocus: widget.autofocus,
-      autocorrect: false,
-      enableSuggestions: false,
-      textInputAction: widget.textInputAction,
-      onFieldSubmitted: widget.onFieldSubmitted,
-      decoration: InputDecoration(
-        labelText: widget.labelText,
-        helperText: widget.helperText,
-        suffixIcon: IconButton(
-          tooltip: _obscure ? 'Show password' : 'Hide password',
-          icon: Icon(_obscure ? Icons.visibility_off : Icons.visibility),
-          onPressed: () => setState(() => _obscure = !_obscure),
+    return AppFormField(
+      label: widget.labelText,
+      child: TextFormField(
+        controller: widget.controller,
+        obscureText: _obscure,
+        autofocus: widget.autofocus,
+        autocorrect: false,
+        enableSuggestions: false,
+        textInputAction: widget.textInputAction,
+        onFieldSubmitted: widget.onFieldSubmitted,
+        decoration: InputDecoration(
+          helperText: widget.helperText,
+          suffixIconConstraints: const BoxConstraints(minWidth: 40),
+          suffixIcon: IconButton(
+            tooltip: _obscure ? 'Show password' : 'Hide password',
+            icon: Icon(_obscure ? Icons.visibility_off : Icons.visibility),
+            onPressed: () => setState(() => _obscure = !_obscure),
+          ),
         ),
+        validator: widget.validator ?? PasswordFormField.validateNew,
       ),
-      validator: widget.validator ?? PasswordFormField.validateNew,
     );
   }
 }

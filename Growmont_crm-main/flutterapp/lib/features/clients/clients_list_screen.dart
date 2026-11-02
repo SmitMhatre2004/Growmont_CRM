@@ -8,6 +8,7 @@ import '../../models/client.dart';
 import '../../shared/widgets/error_state.dart';
 import '../auth/auth_provider.dart';
 import 'widgets/add_client_modal.dart';
+import 'widgets/transfer_client_modal.dart';
 
 class ClientsListScreen extends ConsumerStatefulWidget {
   const ClientsListScreen({super.key});
@@ -128,6 +129,18 @@ class _ClientsListScreenState extends ConsumerState<ClientsListScreen> {
     if (saved == true) _load();
   }
 
+  Future<void> _transfer(Client client) async {
+    final transferred = await showDialog<bool>(
+      context: context,
+      barrierDismissible: true,
+      builder: (_) => TransferClientModal(
+        client: client,
+        currentUser: ref.read(authProvider).user,
+      ),
+    );
+    if (transferred == true) _load();
+  }
+
   @override
   Widget build(BuildContext context) {
     final isAdmin = ref.watch(authProvider).user?.isAdmin == true;
@@ -156,10 +169,7 @@ class _ClientsListScreenState extends ConsumerState<ClientsListScreen> {
         if (constraints.maxHeight.isFinite &&
             constraints.maxHeight < minComfortHeight) {
           return SingleChildScrollView(
-            child: SizedBox(
-              height: minComfortHeight,
-              child: content,
-            ),
+            child: SizedBox(height: minComfortHeight, child: content),
           );
         }
 
@@ -176,8 +186,8 @@ class _ClientsListScreenState extends ConsumerState<ClientsListScreen> {
       style: isShort
           ? AppTypography.pageTitleMobile.copyWith(fontSize: 18)
           : (isMobile
-              ? AppTypography.pageTitleMobile
-              : AppTypography.pageTitle),
+                ? AppTypography.pageTitleMobile
+                : AppTypography.pageTitle),
       overflow: TextOverflow.ellipsis,
     );
     final addButton = SizedBox(
@@ -257,7 +267,10 @@ class _ClientsListScreenState extends ConsumerState<ClientsListScreen> {
           decoration: InputDecoration(
             isDense: true,
             hintText: 'Search by name, contact or employee...',
-            hintStyle: const TextStyle(fontSize: 13, color: AppColors.textMuted),
+            hintStyle: const TextStyle(
+              fontSize: 13,
+              color: AppColors.textMuted,
+            ),
             prefixIcon: const Icon(
               Icons.search,
               color: AppColors.textMuted,
@@ -363,6 +376,7 @@ class _ClientsListScreenState extends ConsumerState<ClientsListScreen> {
                   canDelete: isAdmin,
                   onOpen: () => context.push('/clients/${client.id}'),
                   onEdit: () => _showModal(client: client),
+                  onTransfer: () => _transfer(client),
                   onDelete: () => _delete(client),
                 );
               },
@@ -384,7 +398,9 @@ class _ClientsListScreenState extends ConsumerState<ClientsListScreen> {
         return SingleChildScrollView(
           child: ConstrainedBox(
             constraints: BoxConstraints(
-              minHeight: constraints.maxHeight.isFinite ? constraints.maxHeight : 0,
+              minHeight: constraints.maxHeight.isFinite
+                  ? constraints.maxHeight
+                  : 0,
             ),
             child: Center(
               child: Padding(
@@ -459,6 +475,7 @@ class _ClientRow extends StatelessWidget {
     required this.canDelete,
     required this.onOpen,
     required this.onEdit,
+    required this.onTransfer,
     required this.onDelete,
   });
 
@@ -469,6 +486,7 @@ class _ClientRow extends StatelessWidget {
   final bool canDelete;
   final VoidCallback onOpen;
   final VoidCallback onEdit;
+  final VoidCallback onTransfer;
   final VoidCallback onDelete;
 
   @override
@@ -491,7 +509,7 @@ class _ClientRow extends StatelessWidget {
                 style: const TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
-                  color: AppAccents.blueStrong,
+                  color: AppColors.primaryBlue,
                 ),
               ),
             ),
@@ -522,7 +540,8 @@ class _ClientRow extends StatelessWidget {
                       ),
                     ],
                   ),
-                  if (showOwner && (client.employeeName?.isNotEmpty ?? false)) ...[
+                  if (showOwner &&
+                      (client.employeeName?.isNotEmpty ?? false)) ...[
                     const SizedBox(height: AppSpacing.xs),
                     Container(
                       padding: const EdgeInsets.symmetric(
@@ -530,16 +549,16 @@ class _ClientRow extends StatelessWidget {
                         vertical: AppSpacing.xxs,
                       ),
                       decoration: BoxDecoration(
-                        color: AppAccents.greenTint,
+                        color: AppColors.primaryGreenSoft,
                         borderRadius: BorderRadius.circular(AppRadius.xs),
-                        border: Border.all(color: AppAccents.greenBorder),
+                        border: Border.all(color: AppColors.primaryGreenBorder),
                       ),
                       child: Text(
                         client.employeeName!,
                         style: const TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
-                          color: AppAccents.greenTeal,
+                          color: AppColors.primaryGreenDark,
                         ),
                       ),
                     ),
@@ -558,6 +577,7 @@ class _ClientRow extends StatelessWidget {
                 tooltip: 'Manage client',
                 onSelected: (val) {
                   if (val == 'edit') onEdit();
+                  if (val == 'transfer') onTransfer();
                   if (val == 'delete') onDelete();
                 },
                 itemBuilder: (ctx) => [
@@ -576,6 +596,21 @@ class _ClientRow extends StatelessWidget {
                         ],
                       ),
                     ),
+                  if (canEdit)
+                    const PopupMenuItem(
+                      value: 'transfer',
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.swap_horiz_rounded,
+                            size: AppSizing.iconSm,
+                            color: AppColors.primaryGreen,
+                          ),
+                          SizedBox(width: AppSpacing.sm),
+                          Text('Transfer', style: TextStyle(fontSize: 13)),
+                        ],
+                      ),
+                    ),
                   if (canDelete)
                     const PopupMenuItem(
                       value: 'delete',
@@ -589,7 +624,10 @@ class _ClientRow extends StatelessWidget {
                           SizedBox(width: AppSpacing.sm),
                           Text(
                             'Delete',
-                            style: TextStyle(fontSize: 13, color: AppColors.danger),
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: AppColors.danger,
+                            ),
                           ),
                         ],
                       ),

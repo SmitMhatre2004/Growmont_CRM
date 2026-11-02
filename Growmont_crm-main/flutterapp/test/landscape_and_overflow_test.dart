@@ -335,6 +335,29 @@ void main() {
   });
 
   group('ProfileScreen landscape tests', () {
+    // The profile screen keeps live cards on screen at all times now - sync
+    // status, update check - and those show a spinner while their request is
+    // in flight. In a test that request never resolves, so the tree never
+    // goes quiet and pumpAndSettle would wait forever. Pumping a fixed number
+    // of frames is enough to lay the page out and catch an overflow.
+    Future<void> settleEnough(WidgetTester tester) async {
+      for (var i = 0; i < 5; i++) {
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+    }
+
+    Widget harness() => ProviderScope(
+      overrides: [
+        authProvider.overrideWith(() => _FakeAdminAuthNotifier()),
+        apiServiceProvider.overrideWithValue(_FakeFirestoreService()),
+        tokenStorageProvider.overrideWithValue(_FakeTokenStorage()),
+      ],
+      child: MaterialApp(
+        theme: AppTheme.light,
+        home: const Scaffold(body: ProfileScreen()),
+      ),
+    );
+
     for (final size in landscapeSizes) {
       testWidgets(
         'ProfileScreen renders at ${size.width}x${size.height} without overflow',
@@ -343,125 +366,50 @@ void main() {
           tester.view.devicePixelRatio = 1.0;
           addTearDown(tester.view.reset);
 
-          await tester.pumpWidget(
-            ProviderScope(
-              overrides: [
-                authProvider.overrideWith(() => _FakeAdminAuthNotifier()),
-                apiServiceProvider.overrideWithValue(_FakeFirestoreService()),
-                tokenStorageProvider.overrideWithValue(_FakeTokenStorage()),
-              ],
-              child: MaterialApp(
-                theme: AppTheme.light,
-                home: const Scaffold(
-                  body: ProfileScreen(),
-                ),
-              ),
-            ),
-          );
-
-          await tester.pumpAndSettle();
+          await tester.pumpWidget(harness());
+          await settleEnough(tester);
           expect(tester.takeException(), isNull);
         },
       );
     }
 
     testWidgets(
-      'ProfileScreen on Reminders tab at 882.3x113.2 renders without overflow',
+      'ProfileScreen switches record segments without overflow',
       (WidgetTester tester) async {
         tester.view.physicalSize = const Size(882.3, 113.2);
         tester.view.devicePixelRatio = 1.0;
         addTearDown(tester.view.reset);
 
-        await tester.pumpWidget(
-          ProviderScope(
-            overrides: [
-              authProvider.overrideWith(() => _FakeAdminAuthNotifier()),
-              apiServiceProvider.overrideWithValue(_FakeFirestoreService()),
-              tokenStorageProvider.overrideWithValue(_FakeTokenStorage()),
-            ],
-            child: MaterialApp(
-              theme: AppTheme.light,
-              home: const Scaffold(
-                body: ProfileScreen(),
-              ),
-            ),
-          ),
-        );
+        await tester.pumpWidget(harness());
+        await settleEnough(tester);
 
-        await tester.pumpAndSettle();
-        final remindersChip = find.textContaining('Reminders');
-        expect(remindersChip, findsOneWidget);
-        await tester.tap(remindersChip);
-        await tester.pumpAndSettle();
-
-        expect(tester.takeException(), isNull);
-      },
-    );
-
-    testWidgets(
-      'ProfileScreen with My Info toggled at 882.3x113.2 renders without overflow',
-      (WidgetTester tester) async {
-        tester.view.physicalSize = const Size(882.3, 113.2);
-        tester.view.devicePixelRatio = 1.0;
-        addTearDown(tester.view.reset);
-
-        await tester.pumpWidget(
-          ProviderScope(
-            overrides: [
-              authProvider.overrideWith(() => _FakeAdminAuthNotifier()),
-              apiServiceProvider.overrideWithValue(_FakeFirestoreService()),
-              tokenStorageProvider.overrideWithValue(_FakeTokenStorage()),
-            ],
-            child: MaterialApp(
-              theme: AppTheme.light,
-              home: const Scaffold(
-                body: ProfileScreen(),
-              ),
-            ),
-          ),
-        );
-
-        await tester.pumpAndSettle();
-        final myInfoBtn = find.text('My Info');
-        if (myInfoBtn.evaluate().isNotEmpty) {
-          await tester.tap(myInfoBtn);
-          await tester.pumpAndSettle();
+        // Every segment is reachable in one tap: the control no longer
+        // scrolls sideways, so nothing hides off the right edge.
+        for (final label in ['Sales', 'Chats', 'Reminders']) {
+          final segment = find.textContaining(label);
+          expect(segment, findsWidgets, reason: '$label segment is on screen');
+          await tester.tap(segment.first, warnIfMissed: false);
+          await settleEnough(tester);
+          expect(tester.takeException(), isNull);
         }
-
-        expect(tester.takeException(), isNull);
       },
     );
 
     testWidgets(
-      'ProfileScreen with My Info toggled at 379.4x728.0 (portrait) renders without overflow',
+      'ProfileScreen shows my details without any toggle',
       (WidgetTester tester) async {
         tester.view.physicalSize = const Size(379.4, 728.0);
         tester.view.devicePixelRatio = 1.0;
         addTearDown(tester.view.reset);
 
-        await tester.pumpWidget(
-          ProviderScope(
-            overrides: [
-              authProvider.overrideWith(() => _FakeAdminAuthNotifier()),
-              apiServiceProvider.overrideWithValue(_FakeFirestoreService()),
-              tokenStorageProvider.overrideWithValue(_FakeTokenStorage()),
-            ],
-            child: MaterialApp(
-              theme: AppTheme.light,
-              home: const Scaffold(
-                body: ProfileScreen(),
-              ),
-            ),
-          ),
-        );
+        await tester.pumpWidget(harness());
+        await settleEnough(tester);
 
-        await tester.pumpAndSettle();
-        final myInfoBtn = find.text('My Info');
-        if (myInfoBtn.evaluate().isNotEmpty) {
-          await tester.tap(myInfoBtn);
-          await tester.pumpAndSettle();
-        }
-
+        // The details used to sit behind a "My Info" button. They are now on
+        // the page from the moment it opens, and that button is gone.
+        expect(find.text('My Info'), findsNothing);
+        expect(find.text('YOUR DETAILS'), findsOneWidget);
+        expect(find.text('Account and system'), findsOneWidget);
         expect(tester.takeException(), isNull);
       },
     );

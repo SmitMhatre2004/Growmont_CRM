@@ -38,9 +38,9 @@ class AppSidebar extends ConsumerWidget {
         final bool isCollapsed =
             (isCompact ?? ref.watch(sidebarCollapsedProvider));
 
-        // t interpolates continuously: 0.0 when collapsed (width <= 80px) to 1.0 when expanded (width >= 195px).
+        // t interpolates continuously: 0.0 when collapsed (width <= 80px) to 1.0 when expanded (width >= 215px).
         // This drives the physical, dynamic movement of icons across the sidebar during width transitions.
-        final double t = ((constraints.maxWidth - 80) / (195 - 80)).clamp(
+        final double t = ((constraints.maxWidth - 80) / (215 - 80)).clamp(
           0.0,
           1.0,
         );
@@ -51,7 +51,7 @@ class AppSidebar extends ConsumerWidget {
         // without swinging to the right and then left.
         final bool isAppShellInset =
             (constraints.maxWidth <= 79.0) ||
-            ((constraints.maxWidth - 194.0).abs() < 1.0);
+            ((constraints.maxWidth - 214.0).abs() < 1.0);
         final double collapsedTargetWidth = isAppShellInset ? 79.0 : 80.0;
 
         // Each glyph is centred by measuring in from the sidebar edge: the
@@ -112,13 +112,17 @@ class AppSidebar extends ConsumerWidget {
             ),
         ];
 
-        // Growmont Theme Colors - Side Nav Color: #0f4a31
+        // The navigation surface is Green 800 falling to Green 900, the
+        // same gradient the phone bottom bar sits on.
         final Color bgColor = isDarkMode
             ? AppColors.sidebarBgDeep
             : AppColors.sidebarBg;
         final Color textColor = Colors.white;
         final Color subTextColor = Colors.white70;
-        final Color activeColor = Colors.white;
+        // Green 300 is the active item on navigation. It marks the icon and
+        // the rail; the label stays white, which holds up better than a mid
+        // green would at 14pt on this background.
+        final Color activeColor = AppColors.navActive;
         final Color activeBgColor = Colors.white.withValues(alpha: 0.2);
         final Color activeBorderColor = Colors.white.withValues(alpha: 0.35);
         final Color profileCardBg = Colors.white.withValues(alpha: 0.1);
@@ -228,7 +232,7 @@ class AppSidebar extends ConsumerWidget {
                                 children: [
                                   CircleAvatar(
                                     radius: 15,
-                                    backgroundColor: AppAccents.indigoBase,
+                                    backgroundColor: AppPalette.green600,
                                     backgroundImage: avatarUrl.isNotEmpty
                                         ? NetworkImage(avatarUrl)
                                         : null,
@@ -250,7 +254,7 @@ class AppSidebar extends ConsumerWidget {
                                       width: 8,
                                       height: 8,
                                       decoration: BoxDecoration(
-                                        color: AppAccents.greenBright,
+                                        color: AppColors.navActive,
                                         shape: BoxShape.circle,
                                         border: Border.all(
                                           color: bgColor,
@@ -383,7 +387,13 @@ class AppSidebar extends ConsumerWidget {
         );
 
         return Container(
-          color: bgColor,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [bgColor, AppColors.sidebarBgDeep],
+            ),
+          ),
           child: SafeArea(
             child: ClipRect(
               child: Column(
@@ -488,7 +498,7 @@ class AppSidebar extends ConsumerWidget {
                         width: 3.5,
                         height: isActive ? 18 : 0,
                         decoration: BoxDecoration(
-                          color: AppAccents.greenBright, // brandGreen
+                          color: AppColors.navActive, // brandGreen
                           borderRadius: BorderRadius.circular(AppRadius.xs),
                         ),
                       ),

@@ -25,6 +25,8 @@ class SyncEngine extends ChangeNotifier {
   static const List<String> collections = [
     'employees',
     'clients',
+    'client_transfers',
+    'transfer_reasons',
     'sales',
     'interactions',
     'reminders',
@@ -35,9 +37,38 @@ class SyncEngine extends ChangeNotifier {
 
   FirebaseFirestore? _firestore;
   String? _uid;
+  bool _isAdmin = false;
   bool _started = false;
   bool _draining = false;
   bool _backedUpThisSession = false;
+
+  // Firestore rejects an unfiltered collection query outright whenever its
+  // security rule depends on resource.data and the query has no matching
+  // where-clause — it can't prove every possible result would pass, so it
+  // denies the whole request rather than filtering per-document. clients,
+  // sales, and interactions are all owner-scoped this way, so a non-admin
+  // must filter by the same field the rule checks; an admin's rule branch
+  // doesn't touch resource.data at all, so an admin can query unfiltered.
+  static const Map<String, String> _ownerFields = {
+    'clients': 'employee_id',
+    'sales': 'sales_rep_id',
+    'interactions': 'employee_id',
+  };
+
+  Query<Map<String, dynamic>> _queryFor(
+    FirebaseFirestore fs,
+    String collection,
+    String uid,
+  ) {
+    if (collection == 'reminders') {
+      return fs.collection('reminders').where('employee_id', isEqualTo: uid);
+    }
+    final ownerField = _ownerFields[collection];
+    if (ownerField != null && !_isAdmin) {
+      return fs.collection(collection).where(ownerField, isEqualTo: uid);
+    }
+    return fs.collection(collection);
+  }
 
   final List<StreamSubscription<QuerySnapshot<Map<String, dynamic>>>>
       _listeners = [];
@@ -63,15 +94,16 @@ class SyncEngine extends ChangeNotifier {
     _uid = uid;
     _started = true;
 
+    final ownDoc = await fs.collection('employees').doc(uid).get();
+    _isAdmin = ownDoc.data()?['role'] == 'ADMIN';
+
     if (!_backedUpThisSession) {
       await LocalDatabase.instance.createPreSyncBackup();
       _backedUpThisSession = true;
     }
 
     for (final collection in collections) {
-      final query = collection == 'reminders'
-          ? fs.collection('reminders').where('employee_id', isEqualTo: uid)
-          : fs.collection(collection);
+      final query = _queryFor(fs, collection, uid);
 
       final sub = query.snapshots().listen(
         (snapshot) => _onSnapshot(collection, snapshot),
@@ -180,9 +212,7 @@ class SyncEngine extends ChangeNotifier {
 
     for (final collection in collections) {
       try {
-        final query = collection == 'reminders'
-            ? fs.collection('reminders').where('employee_id', isEqualTo: uid)
-            : fs.collection(collection);
+        final query = _queryFor(fs, collection, uid);
         final snapshot = await query.get();
         for (final doc in snapshot.docs) {
           await LocalStore.instance.putRemote(collection, doc.id, toJsonSafe(doc.data()));
@@ -208,6 +238,7 @@ class SyncEngine extends ChangeNotifier {
     _connectivitySub = null;
     _firestore = null;
     _uid = null;
+    _isAdmin = false;
     _started = false;
   }
 }

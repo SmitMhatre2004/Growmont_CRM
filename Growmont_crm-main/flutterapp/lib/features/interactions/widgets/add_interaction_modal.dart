@@ -7,6 +7,7 @@ import '../../../models/client.dart';
 import '../../../models/employee.dart';
 import '../../../models/interaction.dart';
 import '../../../models/user.dart';
+import '../../../shared/widgets/app_form.dart';
 import '../../../shared/widgets/app_modal_shell.dart';
 
 class AddInteractionModal extends ConsumerStatefulWidget {
@@ -23,6 +24,7 @@ class AddInteractionModal extends ConsumerStatefulWidget {
 class _AddInteractionModalState extends ConsumerState<AddInteractionModal> {
   final _formKey = GlobalKey<FormState>();
   late DateTime _date;
+  late bool _hasFollowUp;
   late DateTime _followUpDate;
   late TimeOfDay _followUpTime;
   late TextEditingController _notes;
@@ -40,8 +42,14 @@ class _AddInteractionModalState extends ConsumerState<AddInteractionModal> {
     super.initState();
     final e = widget.existing;
     _date = e != null ? DateTime.parse(e.date) : DateTime.now();
-    _followUpDate = e != null ? DateTime.parse(e.followUpDate) : DateTime.now();
-    final timeParts = (e?.followUpTime ?? '10:00:00').split(':');
+    // Follow-up is optional: off by default, on only when editing an
+    // interaction that already has one.
+    final existingFollowUp = DateTime.tryParse(e?.followUpDate ?? '');
+    _hasFollowUp = existingFollowUp != null;
+    _followUpDate = existingFollowUp ?? DateTime.now();
+    final existingTime = e?.followUpTime ?? '';
+    final timeParts = (existingTime.isNotEmpty ? existingTime : '10:00:00')
+        .split(':');
     _followUpTime = TimeOfDay(
       hour: int.tryParse(timeParts[0]) ?? 10,
       minute: int.tryParse(timeParts[1]) ?? 0,
@@ -118,7 +126,7 @@ class _AddInteractionModalState extends ConsumerState<AddInteractionModal> {
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
-    if (_followUpDate.isBefore(_date)) {
+    if (_hasFollowUp && _followUpDate.isBefore(_date)) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Follow-up date cannot be before interaction date'),
@@ -147,8 +155,12 @@ class _AddInteractionModalState extends ConsumerState<AddInteractionModal> {
       'client_contact': client.contactNumber,
       'employee': _employeeId,
       'employee_name': ?employeeName,
-      'follow_up_date': AppFormatters.toApiDate(_followUpDate),
-      'follow_up_time': AppFormatters.toApiTime(_followUpTime),
+      'follow_up_date': _hasFollowUp
+          ? AppFormatters.toApiDate(_followUpDate)
+          : null,
+      'follow_up_time': _hasFollowUp
+          ? AppFormatters.toApiTime(_followUpTime)
+          : null,
       'priority': _priority,
       'discussion_notes': _notes.text.trim(),
     };
@@ -179,153 +191,144 @@ class _AddInteractionModalState extends ConsumerState<AddInteractionModal> {
   Widget build(BuildContext context) {
     return AppModalShell(
       title: widget.existing != null ? 'Edit Interaction' : 'Add Interaction',
+      footer: AppFormActions(
+        submitLabel: 'Save Interaction',
+        busy: _loading,
+        onSubmit: _submit,
+      ),
       child: Form(
         key: _formKey,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: AppFormColumn(
+          gap: kFormSectionGap,
           children: [
-            DropdownButtonFormField<String>(
-              isExpanded: true,
-              key: ValueKey(
-                'interaction_client_${_clientId}_${_clients.length}',
-              ),
-              initialValue: _clients.any((c) => c.id == _clientId)
-                  ? _clientId
-                  : null,
-              decoration: InputDecoration(
-                labelText: 'Client *',
-                helperText: _loadingClients
-                    ? 'Loading clients...'
-                    : (_employeeId != null && _clients.isEmpty)
-                    ? 'No clients assigned to this employee'
-                    : null,
-              ),
-              items: _clients
-                  .map(
-                    (c) => DropdownMenuItem(
-                      value: c.id,
-                      child: Text(
-                        c.contactNumber.isNotEmpty
-                            ? '${c.name} (${c.contactNumber})'
-                            : c.name,
-                      ),
-                    ),
-                  )
-                  .toList(),
-              onChanged: (v) => setState(() => _clientId = v),
-              validator: (v) => v == null || v.isEmpty ? 'Required' : null,
-            ),
-            const SizedBox(height: AppSpacing.md),
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              title: const Text('Interaction Date *'),
-              subtitle: Text(
-                AppFormatters.formatDate(AppFormatters.toApiDate(_date)),
-              ),
-              trailing: const Icon(
-                Icons.calendar_today,
-                size: AppSizing.iconMd,
-              ),
-              onTap: () async {
-                final d = await showDatePicker(
-                  context: context,
-                  initialDate: _date,
-                  firstDate: DateTime(2000),
-                  lastDate: DateTime(2100),
-                );
-                if (d != null) setState(() => _date = d);
-              },
-            ),
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              title: const Text('Follow-up Date *'),
-              subtitle: Text(
-                AppFormatters.formatDate(
-                  AppFormatters.toApiDate(_followUpDate),
+            AppFormSection(
+              title: 'Client',
+              children: [
+                AppFormField(
+                  label: 'Employee',
+                  child: _isEmployee
+                      ? AppReadOnlyField(value: widget.currentUser?.name ?? '')
+                      : AppDropdownField<String>(
+                          key: ValueKey(
+                            'employee_${_employeeId}_${_employees.length}',
+                          ),
+                          value: _employees.any((e) => e.id == _employeeId)
+                              ? _employeeId
+                              : null,
+                          hint: 'Select employee',
+                          items: [
+                            for (final e in _employees)
+                              DropdownMenuItem(
+                                value: e.id,
+                                child: Text(
+                                  e.name,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                          ],
+                          onChanged: (v) {
+                            setState(() => _employeeId = v);
+                            _loadClientsFor(v);
+                          },
+                          validator: (v) => v == null || v.isEmpty
+                              ? 'Select an employee'
+                              : null,
+                        ),
                 ),
-              ),
-              trailing: const Icon(Icons.event, size: AppSizing.iconMd),
-              onTap: () async {
-                final d = await showDatePicker(
-                  context: context,
-                  initialDate: _followUpDate,
-                  firstDate: DateTime(2000),
-                  lastDate: DateTime(2100),
-                );
-                if (d != null) setState(() => _followUpDate = d);
-              },
-            ),
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              title: const Text('Follow-up Time *'),
-              subtitle: Text(_followUpTime.format(context)),
-              trailing: const Icon(Icons.access_time, size: AppSizing.iconMd),
-              onTap: () async {
-                final t = await showTimePicker(
-                  context: context,
-                  initialTime: _followUpTime,
-                );
-                if (t != null) setState(() => _followUpTime = t);
-              },
-            ),
-            const SizedBox(height: AppSpacing.md),
-            if (_isEmployee)
-              TextFormField(
-                initialValue: widget.currentUser?.name,
-                readOnly: true,
-                decoration: const InputDecoration(labelText: 'Employee'),
-              )
-            else
-              DropdownButtonFormField<String>(
-                key: ValueKey('employee_${_employeeId}_${_employees.length}'),
-                isExpanded: true,
-                initialValue: _employees.any((e) => e.id == _employeeId)
-                    ? _employeeId
-                    : null,
-                decoration: const InputDecoration(labelText: 'Employee *'),
-                items: _employees
-                    .map(
-                      (e) => DropdownMenuItem(
-                        value: e.id,
-                        child: Text(e.name, overflow: TextOverflow.ellipsis),
-                      ),
-                    )
-                    .toList(),
-                onChanged: (v) {
-                  setState(() => _employeeId = v);
-                  _loadClientsFor(v);
-                },
-                validator: (v) => v == null || v.isEmpty ? 'Required' : null,
-              ),
-            const SizedBox(height: AppSpacing.lg),
-            DropdownButtonFormField<String>(
-              initialValue: _priority,
-              isExpanded: true,
-              decoration: const InputDecoration(labelText: 'Priority'),
-              items: priorityChoices
-                  .map(
-                    (c) => DropdownMenuItem(
-                      value: c.$1,
-                      child: Text(c.$2, overflow: TextOverflow.ellipsis),
+                AppFormField(
+                  label: 'Client',
+                  child: AppDropdownField<String>(
+                    key: ValueKey(
+                      'interaction_client_${_clientId}_${_clients.length}',
                     ),
-                  )
-                  .toList(),
-              onChanged: (v) => setState(() => _priority = v!),
+                    value: _clients.any((c) => c.id == _clientId)
+                        ? _clientId
+                        : null,
+                    hint: 'Select client',
+                    helperText: _loadingClients
+                        ? 'Loading clients...'
+                        : (_employeeId != null && _clients.isEmpty)
+                        ? 'No clients assigned to this employee'
+                        : null,
+                    items: [
+                      for (final c in _clients)
+                        DropdownMenuItem(
+                          value: c.id,
+                          child: Text(
+                            c.contactNumber.isNotEmpty
+                                ? '${c.name} (${c.contactNumber})'
+                                : c.name,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                    ],
+                    onChanged: (v) => setState(() => _clientId = v),
+                    validator: (v) =>
+                        v == null || v.isEmpty ? 'Select a client' : null,
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: AppSpacing.lg),
-            TextFormField(
-              controller: _notes,
-              maxLines: 3,
-              decoration: const InputDecoration(labelText: 'Discussion Notes'),
+            AppFormSection(
+              title: 'Interaction',
+              children: [
+                modalFieldPair(
+                  context,
+                  AppFormField(
+                    label: 'Interaction date',
+                    child: AppDateField(
+                      value: _date,
+                      onChanged: (d) => setState(() => _date = d),
+                    ),
+                  ),
+                  AppFormField(
+                    label: 'Priority',
+                    child: AppDropdownField<String>(
+                      value: _priority,
+                      items: choiceItems(priorityChoices),
+                      onChanged: (v) => setState(() => _priority = v!),
+                    ),
+                  ),
+                ),
+                AppFormField(
+                  label: 'Discussion notes',
+                  optional: true,
+                  child: TextFormField(
+                    controller: _notes,
+                    minLines: 4,
+                    maxLines: 8,
+                    textCapitalization: TextCapitalization.sentences,
+                    decoration: const InputDecoration(
+                      hintText: 'What was discussed, decisions, next steps',
+                    ),
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: AppSpacing.xxl),
-            SizedBox(
-              width: double.infinity,
-              height: AppSizing.controlLg,
-              child: FilledButton(
-                onPressed: _loading ? null : _submit,
-                child: Text(_loading ? 'Saving...' : 'Save Interaction'),
+            AppToggleSection(
+              title: 'Follow-up',
+              subtitle: 'Set a date to follow up with this client',
+              value: _hasFollowUp,
+              onChanged: (v) => setState(() {
+                _hasFollowUp = v;
+                if (v && _followUpDate.isBefore(_date)) _followUpDate = _date;
+              }),
+              child: modalFieldPair(
+                context,
+                AppFormField(
+                  label: 'Follow-up date',
+                  child: AppDateField(
+                    value: _followUpDate,
+                    onChanged: (d) => setState(() => _followUpDate = d),
+                  ),
+                ),
+                AppFormField(
+                  label: 'Follow-up time',
+                  child: AppTimeField(
+                    value: _followUpTime,
+                    onChanged: (t) => setState(() => _followUpTime = t),
+                  ),
+                ),
               ),
             ),
           ],

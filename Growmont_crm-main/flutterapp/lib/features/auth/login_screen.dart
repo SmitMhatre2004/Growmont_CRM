@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/theme/app_theme.dart';
+import '../../shared/widgets/app_form.dart';
+import '../../shared/widgets/app_modal_shell.dart';
 import '../legal/legal_screen.dart';
 import 'auth_provider.dart';
 
@@ -285,40 +287,23 @@ class _ResetPasswordDialogState extends State<_ResetPasswordDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('Reset password'),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            "Enter your work email and we'll send you a link to choose a "
-            'new password. You can also ask an administrator to set one '
-            'for you.',
-          ),
-          const SizedBox(height: AppSpacing.lg),
-          TextField(
-            controller: _controller,
-            autofocus: true,
-            keyboardType: TextInputType.emailAddress,
-            decoration: const InputDecoration(
-              hintText: 'Username / Email',
-              prefixIcon: Icon(Icons.email_outlined),
-            ),
-            onSubmitted: (v) => Navigator.pop(context, v.trim()),
-          ),
-        ],
+    void send() => Navigator.pop(context, _controller.text.trim());
+    return AppModalShell(
+      title: 'Reset Password',
+      subtitle:
+          "We'll email you a link to choose a new password. You can also "
+          'ask an administrator to set one for you.',
+      footer: AppFormActions(submitLabel: 'Send Link', onSubmit: send),
+      child: AppFormField(
+        label: 'Work email',
+        child: TextField(
+          controller: _controller,
+          autofocus: true,
+          keyboardType: TextInputType.emailAddress,
+          decoration: const InputDecoration(hintText: 'Username / Email'),
+          onSubmitted: (_) => send(),
+        ),
       ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Cancel'),
-        ),
-        FilledButton(
-          onPressed: () => Navigator.pop(context, _controller.text.trim()),
-          child: const Text('Send link'),
-        ),
-      ],
     );
   }
 }

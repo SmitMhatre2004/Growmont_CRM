@@ -59,13 +59,20 @@ class AppBottomNav extends StatelessWidget {
 
     return Container(
       decoration: const BoxDecoration(
-        color: AppColors.sidebarBg,
+        // The same Green 800 -> 900 surface as the desktop sidebar, so the two
+        // navigation surfaces read as one component.
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [AppColors.sidebarBg, AppColors.sidebarBgDeep],
+        ),
         boxShadow: AppShadows.md,
       ),
+      // Sits above the home indicator; nothing hides under it.
       child: SafeArea(
         top: false,
         child: SizedBox(
-          height: 62,
+          height: AppSizing.bottomBarHeight,
           child: Row(
             children: [
               for (var i = 0; i < items.length; i++)
@@ -103,7 +110,10 @@ class _NavCell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = isSelected ? Colors.white : Colors.white70;
+    // Green 300 marks the active destination, matching the sidebar. The
+    // label stays white so it holds its contrast at 11pt.
+    final iconColor = isSelected ? AppColors.navActive : Colors.white70;
+    final labelColor = isSelected ? Colors.white : Colors.white70;
 
     return InkWell(
       onTap: onTap,
@@ -130,7 +140,7 @@ class _NavCell extends StatelessWidget {
                 child: Icon(
                   isSelected ? item.activeIcon : item.icon,
                   size: AppSizing.iconLg,
-                  color: color,
+                  color: iconColor,
                 ),
               ),
               const SizedBox(height: AppSpacing.xxs),
@@ -147,7 +157,7 @@ class _NavCell extends StatelessWidget {
                     fontSize: 11,
                     height: 1.1,
                     fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                    color: color,
+                    color: labelColor,
                   ),
                 ),
               ),

@@ -9,89 +9,323 @@ export 'design_tokens.dart';
 /// -----------------------------------------------------------------------------
 /// COLOR
 /// -----------------------------------------------------------------------------
+/// Two brand colours with fixed jobs, quiet slate neutrals, and status colour
+/// that only ever means something.
+///
+///   * Navy acts.   Buttons, links, focus, selection. Never a money figure.
+///   * Green grows. Navigation, logo, money, growth, "won". Never a primary
+///     button.
+///   * Slate carries the interface. Colour appears only when it tells the user
+///     something: an action, a state, or money.
+///
+/// One light theme, one set of tokens, used by every screen on desktop and
+/// phone. Red is reserved for overdue, errors and delete - never emphasis.
+/// Text tops out at [AppColors.textPrimary]; there is no pure black.
+
+/// The two brand ramps, 50 -> 900.
+///
+/// Screens use the semantic names in [AppColors], [AppStatus] and [AppChart].
+/// Reach into a ramp step directly only when defining a new token here.
+class AppPalette {
+  AppPalette._();
+
+  // --------------------------------------------------------- GROWMONT NAVY --
+  // Identity - action. 700 is the brand navy: 11.9:1 on white.
+  /// Selected row, info tint.
+  static const navy50 = Color(0xFFEFF4FB);
+
+  /// Hover on a selected row.
+  static const navy100 = Color(0xFFDCE6F5);
+
+  /// Border on a navy-tinted surface.
+  static const navy200 = Color(0xFFB8CCEB);
+  static const navy300 = Color(0xFF86A7DA);
+
+  /// Focus ring, chart series 3.
+  static const navy400 = Color(0xFF4F7DC3);
+  static const navy500 = Color(0xFF2458A8);
+  static const navy600 = Color(0xFF0F4491);
+
+  /// THE brand navy. Primary button, links, focus border, chart series 1.
+  static const navy700 = Color(0xFF00337C);
+
+  /// Primary button hover.
+  static const navy800 = Color(0xFF002866);
+
+  /// Primary button pressed.
+  static const navy900 = Color(0xFF001C4A);
+
+  // -------------------------------------------------------- GROWMONT GREEN --
+  // Identity - growth. 500 is the brand green.
+  /// Positive tint, the "won" pill.
+  static const green50 = Color(0xFFECFDF3);
+  static const green100 = Color(0xFFD3F3DF);
+
+  /// Border on a green-tinted surface.
+  static const green200 = Color(0xFFA8E3BE);
+
+  /// Active item on navigation, chart series 4.
+  static const green300 = Color(0xFF72CB93);
+  static const green400 = Color(0xFF45AD6D);
+
+  /// THE brand green. Logo, charts, icons, chart series 2.
+  static const green500 = Color(0xFF2D8A4E);
+
+  /// Money as text - 6.2:1 on white.
+  static const green600 = Color(0xFF246E3F);
+  static const green700 = Color(0xFF185A38);
+
+  /// Sidebar and bottom bar.
+  static const green800 = Color(0xFF0F4A31);
+
+  /// Sidebar gradient end.
+  static const green900 = Color(0xFF092E1E);
+
+  // ----------------------------------------------------------------- SLATE --
+  static const slate50 = Color(0xFFF8FAFC);
+  static const slate100 = Color(0xFFF1F5F9);
+  static const slate200 = Color(0xFFE2E8F0);
+  static const slate300 = Color(0xFFCBD5E1);
+  static const slate400 = Color(0xFF94A3B8);
+  static const slate500 = Color(0xFF64748B);
+  static const slate600 = Color(0xFF475569);
+  static const slate800 = Color(0xFF1E293B);
+  static const slate900 = Color(0xFF0F172A);
+
+  // ---------------------------------------------------------------- PURPLE --
+  // The one hue outside the brand ramps: interactions only.
+  static const purple = Color(0xFF9333EA);
+  static const purpleText = Color(0xFF7E22CE);
+  static const purpleTint = Color(0xFFFAF5FF);
+}
+
 class AppColors {
   AppColors._();
 
-  // Brand
-  static const primaryBlue = Color(0xFF00337C);
-  static const primaryGreen = Color(0xFF2D8A4E);
-  static const primaryGreenDark = Color(0xFF246E3F);
-  static const primaryGreenSoft = Color(0xFFECFDF3);
+  // ----------------------------------------------------------------- BRAND --
+  /// Navy 700. Primary buttons, links, focus, selection.
+  static const primaryBlue = AppPalette.navy700;
 
-  // Chrome
-  static const background = Color(0xFFF1F5F9);
-  static const sidebarBg = Color(0xFF0F4A31);
-  static const sidebarBgDeep = Color(0xFF092E1E); // gradient end
+  /// Navy 800 / 900 - primary button hover and pressed.
+  static const primaryBlueHover = AppPalette.navy800;
+  static const primaryBluePressed = AppPalette.navy900;
+
+  /// Green 500. Logo, charts, icons.
+  static const primaryGreen = AppPalette.green500;
+
+  /// Green 600. Money as text, and the only green that carries a label.
+  static const primaryGreenDark = AppPalette.green600;
+
+  /// Green 50. Positive tint, the "won" pill.
+  static const primaryGreenSoft = AppPalette.green50;
+
+  /// Green 200. Border on a green-tinted surface.
+  static const primaryGreenBorder = AppPalette.green200;
+
+  /// Green 600. Money, totals, positive deltas. Never navy.
+  static const money = AppPalette.green600;
+
+  // ---------------------------------------------------------------- CHROME --
+  static const background = AppPalette.slate100;
+
+  /// Green 800 -> 900. Sidebar and bottom bar.
+  static const sidebarBg = AppPalette.green800;
+  static const sidebarBgDeep = AppPalette.green900;
   static const sidebarText = Color(0xFFFFFFFF);
 
-  // Surfaces
-  static const surface = Color(0xFFFFFFFF);
-  static const surfaceHeader = Color(0xFFF8FAFC); // Slate 50 - table/panel head
-  static const surfaceHover = Color(0xFFF1F5F9); // Slate 100 - row hover
-  static const surfaceSelected = Color(0xFFEFF6FF); // Blue 50 - selected row
-  static const surfaceSunken = Color(0xFFF8FAFC);
+  /// Green 300. The active destination in the sidebar and bottom bar.
+  static const navActive = AppPalette.green300;
 
-  // Text
-  static const textPrimary = Color(0xFF0F172A); // Slate 900 - titles, values
-  static const textSecondary = Color(0xFF475569); // Slate 600 - body, subtitles
-  static const textMuted = Color(0xFF94A3B8); // Slate 400 - captions, hints
+  // -------------------------------------------------------------- SURFACES --
+  /// Cards, modals, app bar.
+  static const surface = Color(0xFFFFFFFF);
+
+  /// Table heads, modal footers.
+  static const surfaceHeader = AppPalette.slate50;
+
+  /// Row hover - the canvas colour, one step down from the surface.
+  static const surfaceHover = AppPalette.slate100;
+
+  /// Navy 50. Selected row (paired with a 3px navy rail) and info tint.
+  static const surfaceSelected = AppPalette.navy50;
+
+  /// Navy 100. Hover on an already-selected row.
+  static const surfaceSelectedHover = AppPalette.navy100;
+  static const surfaceSunken = AppPalette.slate50;
+
+  // ------------------------------------------------------------------ TEXT --
+  /// Titles and values. 17.9:1. The darkest text in the product.
+  static const textPrimary = AppPalette.slate900;
+
+  /// Body and subtitles. 7.6:1.
+  static const textSecondary = AppPalette.slate600;
+
+  /// Timestamps and helper text. 4.8:1. The lightest readable text.
+  static const textCaption = AppPalette.slate500;
+
+  /// Placeholder and disabled only - 2.6:1. If someone must read it, it is
+  /// [textCaption] or darker.
+  static const textMuted = AppPalette.slate400;
   static const textOnDark = Color(0xFFFFFFFF);
 
-  // Lines
-  static const border = Color(0xFFE2E8F0); // Slate 200
-  static const borderStrong = Color(0xFFCBD5E1); // Slate 300
-  static const divider = Color(0xFFF1F5F9); // Slate 100
+  /// Inline links and text actions.
+  static const link = AppPalette.navy700;
 
-  // Status
+  // ----------------------------------------------------------------- LINES --
+  /// Card edges, inputs, dividers.
+  static const border = AppPalette.slate200;
+
+  /// Drag handles, disabled fill.
+  static const borderStrong = AppPalette.slate300;
+  static const divider = AppPalette.slate100;
+
+  /// Navy 400 - the focus ring. The focus *border* is navy 700.
+  static const focusRing = AppPalette.navy400;
+
+  // ---------------------------------------------------------------- STATUS --
+  // Flat aliases onto [AppStatus], for the many call sites that need only one
+  // of the three tones. Status colour never decorates: each means one thing.
+  /// Overdue, failed, destructive.
   static const danger = Color(0xFFDC2626);
   static const dangerSoft = Color(0xFFFEF2F2);
+
+  /// Needs attention today; nothing is broken yet.
   static const warning = Color(0xFFB45309);
   static const warningSoft = Color(0xFFFFF7ED);
-  static const success = Color(0xFF16A34A);
-  static const successSoft = Color(0xFFECFDF3);
-  static const info = Color(0xFF2563EB);
-  static const infoSoft = Color(0xFFEFF6FF);
-  static const yellow = Color(0xFFEAB308); // priority: LOW - vibrant yellow
+
+  /// Sale closed, payment received, active client.
+  static const success = AppPalette.green600;
+  static const successSoft = AppPalette.green50;
+
+  /// New lead, neutral notice, sync in progress.
+  static const info = AppPalette.navy700;
+  static const infoSoft = AppPalette.navy50;
+
+  /// Priority: low. Yellow is a dot, never text - the word is [yellowText].
+  static const yellow = Color(0xFFEAB308);
+  static const yellowText = Color(0xFF854D0E);
   static const yellowSoft = Color(0xFFFEF9C3);
-  static const neutral = Color(0xFF64748B);
-  static const neutralSoft = Color(0xFFF1F5F9);
+
+  /// Interactions only: calls, chats, meetings.
+  static const chat = AppPalette.purple;
+  static const chatText = AppPalette.purpleText;
+  static const chatSoft = AppPalette.purpleTint;
+
+  /// Archived, transferred, dismissed.
+  static const neutral = AppPalette.slate500;
+  static const neutralSoft = AppPalette.slate100;
 }
 
-/// Accent ramps for stat tiles, avatar monograms and chart series.
-///
-/// These are the only colours outside [AppColors] that may appear in a screen,
-/// and they exist so those surfaces stay a coherent family instead of a drift
-/// of one-off hex values. Each ramp reads: deep -> base -> border -> tint.
-class AppAccents {
-  AppAccents._();
+/// A status is always three colours: a dot, the tint behind it, and the text on
+/// top. Colour never works alone - a badge is always a dot plus a word.
+@immutable
+class StatusTone {
+  const StatusTone({required this.dot, required this.tint, required this.text});
 
-  // Blue - the default accent, and the chart series ramp.
-  static const blueDeep = Color(0xFF1E3A8A);
-  static const blueStrong = Color(0xFF1D4ED8);
-  static const blueBase = Color(0xFF2563EB);
-  static const blueLabel = Color(0xFF1E40AF);
-  static const blueMid = Color(0xFF3B82F6);
-  static const blueLight = Color(0xFF60A5FA);
-  static const blueMuted = Color(0xFF93C5FD);
-  static const blueBorder = Color(0xFFBFDBFE);
-  static const blueTint = Color(0xFFDBEAFE);
-  static const blueSoft = Color(0xFFEFF6FF);
+  /// The dot. The most saturated of the three.
+  final Color dot;
 
-  // Green - revenue, positive deltas, "active" states.
-  static const greenDeep = Color(0xFF166534);
-  static const greenStrong = Color(0xFF15803D);
-  static const greenTeal = Color(0xFF047857);
-  static const greenBase = Color(0xFF16A34A);
-  static const greenBright = Color(0xFF4ADE80);
-  static const greenBorder = Color(0xFFA7F3D0);
-  static const greenBorderSoft = Color(0xFFBBF7D0);
-  static const greenTint = Color(0xFFECFDF5);
-  static const greenSoft = Color(0xFFF0FDF4);
+  /// The pill background.
+  final Color tint;
 
-  // Purple - interactions / chats.
-  static const purpleBase = Color(0xFF9333EA);
-  static const purpleSoft = Color(0xFFFAF5FF);
-  static const indigoBase = Color(0xFF6366F1);
+  /// The label, and the border when one is drawn.
+  final Color text;
+}
+
+/// The seven states the product can be in. Nothing else earns colour.
+class AppStatus {
+  AppStatus._();
+
+  /// Sale closed, payment received, active client.
+  static const won = StatusTone(
+    dot: AppPalette.green500,
+    tint: AppPalette.green50,
+    text: AppPalette.green600,
+  );
+
+  /// Needs attention today; nothing is broken yet.
+  static const followUp = StatusTone(
+    dot: Color(0xFFF59E0B),
+    tint: Color(0xFFFFF7ED),
+    text: Color(0xFFB45309),
+  );
+
+  /// Overdue, failed, destructive. Never decoration.
+  static const overdue = StatusTone(
+    dot: Color(0xFFEF4444),
+    tint: Color(0xFFFEF2F2),
+    text: Color(0xFFDC2626),
+  );
+
+  /// New lead, neutral notice, sync in progress.
+  static const fresh = StatusTone(
+    dot: AppPalette.navy500,
+    tint: AppPalette.navy50,
+    text: AppPalette.navy700,
+  );
+
+  /// Priority: low. The yellow is the dot; the word is brown.
+  static const lowPriority = StatusTone(
+    dot: Color(0xFFEAB308),
+    tint: Color(0xFFFEF9C3),
+    text: Color(0xFF854D0E),
+  );
+
+  /// Interactions only: calls, chats, meetings.
+  static const chat = StatusTone(
+    dot: AppPalette.purple,
+    tint: AppPalette.purpleTint,
+    text: AppPalette.purpleText,
+  );
+
+  /// Archived, transferred, dismissed.
+  static const inactive = StatusTone(
+    dot: AppPalette.slate500,
+    tint: AppPalette.slate100,
+    text: AppPalette.slate600,
+  );
+}
+
+/// Chart series and avatar monograms.
+class AppChart {
+  AppChart._();
+
+  /// Series order is fixed, so a measure keeps its colour across every chart.
+  static const List<Color> series = [
+    AppPalette.navy700,
+    AppPalette.green500,
+    AppPalette.navy400,
+    AppPalette.green300,
+    AppPalette.purple,
+  ];
+
+  /// Everything past the fifth series collapses into one grey.
+  static const other = AppPalette.slate300;
+
+  /// The colour for series [index], falling back to [other] past the fifth.
+  static Color seriesAt(int index) =>
+      index < series.length ? series[index] : other;
+
+  /// Monogram ramps: a 100-shade fill under 700-shade initials.
+  static const List<(Color fill, Color ink)> monograms = [
+    (AppPalette.navy100, AppPalette.navy700),
+    (AppPalette.green100, AppPalette.green700),
+    (Color(0xFFEDE9FE), Color(0xFF6D28D9)),
+    (Color(0xFFFEF3C7), Color(0xFF92400E)),
+    (Color(0xFFE0F2FE), Color(0xFF075985)),
+  ];
+
+  /// A stable monogram pair for [name] - picked from the name, so a person
+  /// keeps their colour everywhere they appear.
+  static (Color fill, Color ink) monogramFor(String name) {
+    final key = name.trim().toUpperCase();
+    if (key.isEmpty) return monograms.first;
+    var hash = 0;
+    for (final unit in key.codeUnits) {
+      hash = (hash * 31 + unit) & 0x7FFFFFFF;
+    }
+    return monograms[hash % monograms.length];
+  }
 }
 
 /// -----------------------------------------------------------------------------
@@ -121,54 +355,64 @@ class AppTypography {
   static const List<FontFeature> tabular = [FontFeature.tabularFigures()];
 
   // ---------------------------------------------------------------- DISPLAY --
-  /// 32/700 - page title, desktop
+  /// 32/38 700 - page title, desktop
   static const TextStyle pageTitle = TextStyle(
     fontFamily: display,
     fontSize: 32,
     fontWeight: FontWeight.w700,
     color: AppColors.textPrimary,
     letterSpacing: -0.6,
-    height: 1.2,
+    height: 38 / 32,
   );
 
-  /// 24/700 - page title, mobile
+  /// 24/30 700 - page title, phone. The scale steps down exactly once.
   static const TextStyle pageTitleMobile = TextStyle(
     fontFamily: display,
     fontSize: 24,
     fontWeight: FontWeight.w700,
     color: AppColors.textPrimary,
-    letterSpacing: -0.4,
-    height: 1.25,
+    letterSpacing: -0.6,
+    height: 30 / 24,
   );
 
-  /// 22/700 - major heading inside a page
+  /// 22/29 700 - major heading inside a page
   static const TextStyle headingLarge = TextStyle(
     fontFamily: display,
     fontSize: 22,
     fontWeight: FontWeight.w700,
     color: AppColors.textPrimary,
     letterSpacing: -0.4,
-    height: 1.3,
+    height: 29 / 22,
   );
 
-  /// 18/700 - section heading (Clients, Sales, Reminders)
+  /// 20/26 700 - major heading, phone
+  static const TextStyle headingLargeMobile = TextStyle(
+    fontFamily: display,
+    fontSize: 20,
+    fontWeight: FontWeight.w700,
+    color: AppColors.textPrimary,
+    letterSpacing: -0.4,
+    height: 26 / 20,
+  );
+
+  /// 18/23 700 - section heading (Clients, Sales, Reminders). Same on phone.
   static const TextStyle sectionTitle = TextStyle(
     fontFamily: display,
     fontSize: 18,
     fontWeight: FontWeight.w700,
     color: AppColors.textPrimary,
     letterSpacing: -0.3,
-    height: 1.3,
+    height: 23 / 18,
   );
 
-  /// 16/600 - card & modal title
+  /// 16/22 600 - card & modal title
   static const TextStyle cardTitle = TextStyle(
     fontFamily: display,
     fontSize: 16,
     fontWeight: FontWeight.w600,
     color: AppColors.textPrimary,
     letterSpacing: -0.2,
-    height: 1.35,
+    height: 22 / 16,
   );
 
   // ------------------------------------------------------------------- TEXT --
@@ -190,40 +434,40 @@ class AppTypography {
     height: 1.45,
   );
 
-  /// 15/600 - list item title, client name, row subject
+  /// 15/20 600 - list item title, client name, row subject
   static const TextStyle itemTitle = TextStyle(
     fontFamily: text,
     fontSize: 15,
     fontWeight: FontWeight.w600,
     color: AppColors.textPrimary,
-    height: 1.35,
+    height: 20 / 15,
   );
 
-  /// 13/400 - list item subtitle, contact info, secondary attributes
+  /// 13/19 400 - list item subtitle, contact info, secondary attributes
   static const TextStyle itemSubtitle = TextStyle(
     fontFamily: text,
     fontSize: 13,
     fontWeight: FontWeight.w400,
     color: AppColors.textSecondary,
-    height: 1.4,
+    height: 19 / 13,
   );
 
-  /// 14/500 - primary body copy
+  /// 14/20 500 - primary body copy
   static const TextStyle bodyPrimary = TextStyle(
     fontFamily: text,
     fontSize: 14,
     fontWeight: FontWeight.w500,
-    color: Color(0xFF1E293B),
-    height: 1.45,
+    color: AppColors.textPrimary,
+    height: 20 / 14,
   );
 
-  /// 13/400 - secondary body copy, descriptions
+  /// 13/19 400 - secondary body copy, descriptions
   static const TextStyle bodySecondary = TextStyle(
     fontFamily: text,
     fontSize: 13,
     fontWeight: FontWeight.w400,
     color: AppColors.textSecondary,
-    height: 1.45,
+    height: 19 / 13,
   );
 
   /// 14/500 - the value half of a label/value pair
@@ -235,13 +479,14 @@ class AppTypography {
     height: 1.4,
   );
 
-  /// 12/600 - the label half of a label/value pair, form field labels
+  /// 12/16 600 - the label half of a label/value pair, and form field labels.
+  /// A label sits above its input, never floating inside it.
   static const TextStyle fieldLabel = TextStyle(
     fontFamily: text,
     fontSize: 12,
     fontWeight: FontWeight.w600,
     color: AppColors.textSecondary,
-    height: 1.35,
+    height: 16 / 12,
   );
 
   /// 14/600 - button text. One size for every standard button in the app.
@@ -272,42 +517,45 @@ class AppTypography {
   );
 
   // ------------------------------------------------------------- SMALL TEXT --
-  /// 12/400 - captions, timestamps, helper text
+  /// 12/16 400 - captions, timestamps, helper text. Caption grey, never
+  /// muted: muted is for placeholders and disabled text only.
   static const TextStyle caption = TextStyle(
     fontFamily: text,
     fontSize: 12,
     fontWeight: FontWeight.w400,
-    color: AppColors.textMuted,
-    height: 1.35,
+    color: AppColors.textCaption,
+    height: 16 / 12,
   );
 
-  /// 12/600 - emphasised caption
+  /// 12/16 600 - emphasised caption
   static const TextStyle captionSemibold = TextStyle(
     fontFamily: text,
     fontSize: 12,
     fontWeight: FontWeight.w600,
     color: AppColors.textSecondary,
-    height: 1.35,
+    height: 16 / 12,
   );
 
-  /// 11/700 - overline / mini category header. Pair with .toUpperCase().
+  /// 11/14 700 +0.6 - overline. The one role that is not sentence case: pair
+  /// it with .toUpperCase().
   static const TextStyle overline = TextStyle(
     fontFamily: text,
     fontSize: 11,
     fontWeight: FontWeight.w700,
-    color: Color(0xFF64748B),
+    color: AppColors.textCaption,
     letterSpacing: 0.6,
-    height: 1.3,
+    height: 14 / 11,
   );
 
-  /// 11/700 - table column header. Pair with .toUpperCase().
+  /// 11/14 700 +0.6 - table column header: an overline on a header surface.
+  /// Pair with .toUpperCase().
   static const TextStyle tableHeader = TextStyle(
     fontFamily: text,
     fontSize: 11,
     fontWeight: FontWeight.w700,
-    color: Color(0xFF475569),
-    letterSpacing: 0.5,
-    height: 1.3,
+    color: AppColors.textCaption,
+    letterSpacing: 0.6,
+    height: 14 / 11,
   );
 
   /// 13/400 - a cell of text in a data table
@@ -348,25 +596,25 @@ class AppTypography {
   );
 
   // ---------------------------------------------------------------- NUMBERS --
-  /// 28/700 tabular - hero KPI
+  /// 28/32 700 tabular - hero KPI, desktop
   static const TextStyle metricHero = TextStyle(
     fontFamily: display,
     fontSize: 28,
     fontWeight: FontWeight.w700,
     color: AppColors.textPrimary,
     letterSpacing: -0.6,
-    height: 1.15,
+    height: 32 / 28,
     fontFeatures: tabular,
   );
 
-  /// 24/700 tabular - large KPI
+  /// 24/28 700 tabular - the hero KPI on a phone, and the large KPI anywhere.
   static const TextStyle metricLarge = TextStyle(
     fontFamily: display,
     fontSize: 24,
     fontWeight: FontWeight.w700,
     color: AppColors.textPrimary,
     letterSpacing: -0.5,
-    height: 1.15,
+    height: 28 / 24,
     fontFeatures: tabular,
   );
 
@@ -381,33 +629,34 @@ class AppTypography {
     fontFeatures: tabular,
   );
 
-  /// 11/600 - KPI caption under a number. Pair with .toUpperCase().
+  /// 11/14 700 +0.6 - the overline above a KPI. Pair with .toUpperCase().
   static const TextStyle metricLabel = TextStyle(
     fontFamily: text,
     fontSize: 11,
-    fontWeight: FontWeight.w600,
-    color: Color(0xFF64748B),
-    letterSpacing: 0.5,
-    height: 1.3,
+    fontWeight: FontWeight.w700,
+    color: AppColors.textCaption,
+    letterSpacing: 0.6,
+    height: 14 / 11,
   );
 
-  /// 14/600 tabular green - currency amount in a row
+  /// 14/19 600 tabular, Green 600 - money in a row. Money is always green
+  /// text, never navy.
   static const TextStyle amount = TextStyle(
     fontFamily: text,
     fontSize: 14,
     fontWeight: FontWeight.w600,
-    color: AppColors.primaryGreen,
-    height: 1.35,
+    color: AppColors.money,
+    height: 19 / 14,
     fontFeatures: tabular,
   );
 
-  /// 15/700 tabular - a prominent total
+  /// 15/20 700 tabular, Green 600 - a prominent total
   static const TextStyle amountLarge = TextStyle(
     fontFamily: text,
     fontSize: 15,
     fontWeight: FontWeight.w700,
-    color: AppColors.primaryGreen,
-    height: 1.3,
+    color: AppColors.money,
+    height: 20 / 15,
     fontFeatures: tabular,
   );
 }
@@ -421,6 +670,23 @@ class AppTheme {
   static const _controlShape = RoundedRectangleBorder(
     borderRadius: AppRadius.brMd,
   );
+
+  /// Navy 700 at rest, 800 on hover, 900 pressed. Applied to the two filled
+  /// button families so the primary action darkens the same way everywhere.
+  static final WidgetStateProperty<Color> _primaryFill =
+      WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.disabled)) {
+          return AppColors.borderStrong;
+        }
+        if (states.contains(WidgetState.pressed)) {
+          return AppColors.primaryBluePressed;
+        }
+        if (states.contains(WidgetState.hovered) ||
+            states.contains(WidgetState.focused)) {
+          return AppColors.primaryBlueHover;
+        }
+        return AppColors.primaryBlue;
+      });
 
   /// Horizontal padding for a standard button. Vertical padding is deliberately
   /// absent - height is owned by [AppSizing] so every button matches exactly.
@@ -445,6 +711,12 @@ class AppTheme {
       fontFamily: AppTypography.text,
       scaffoldBackgroundColor: AppColors.background,
       visualDensity: VisualDensity.standard,
+      // Focus is navy, everywhere: the ring outside the control is Navy 400,
+      // the border of a focused input is Navy 700.
+      focusColor: AppColors.focusRing,
+      hoverColor: AppColors.surfaceHover,
+      highlightColor: Colors.transparent,
+      splashFactory: InkSparkle.splashFactory,
 
       // ----------------------------------------------------------------- TEXT --
       textTheme: const TextTheme(
@@ -525,40 +797,48 @@ class AppTheme {
         ),
         helperStyle: AppTypography.caption,
         errorStyle: AppTypography.caption.copyWith(color: AppColors.danger),
-        prefixIconColor: AppColors.textMuted,
-        suffixIconColor: AppColors.textMuted,
+        prefixIconColor: AppColors.textCaption,
+        suffixIconColor: AppColors.textCaption,
       ),
 
       // -------------------------------------------------------------- BUTTONS --
       // Every button is 40h / radius 8 / 14-600 label. Compact variants opt in
       // to 32h explicitly via AppSizing.controlSm.
       filledButtonTheme: FilledButtonThemeData(
-        style: FilledButton.styleFrom(
-          backgroundColor: AppColors.primaryBlue,
-          foregroundColor: Colors.white,
-          disabledBackgroundColor: AppColors.borderStrong,
-          disabledForegroundColor: Colors.white,
-          minimumSize: const Size(0, AppSizing.controlMd),
-          padding: _buttonPadding,
-          shape: _controlShape,
-          textStyle: AppTypography.button,
-          elevation: 0,
-          iconSize: AppSizing.iconMd,
-          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        ),
+        style:
+            FilledButton.styleFrom(
+              foregroundColor: Colors.white,
+              disabledForegroundColor: Colors.white,
+              minimumSize: const Size(0, AppSizing.controlMd),
+              padding: _buttonPadding,
+              shape: _controlShape,
+              textStyle: AppTypography.button,
+              elevation: 0,
+              iconSize: AppSizing.iconMd,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ).copyWith(
+              backgroundColor: _primaryFill,
+              // The fill already darkens on hover and press; a translucent
+              // overlay on top of it would only muddy the step.
+              overlayColor: const WidgetStatePropertyAll(Colors.transparent),
+            ),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.primaryBlue,
-          foregroundColor: Colors.white,
-          minimumSize: const Size(0, AppSizing.controlMd),
-          padding: _buttonPadding,
-          shape: _controlShape,
-          textStyle: AppTypography.button,
-          elevation: 0,
-          iconSize: AppSizing.iconMd,
-          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        ),
+        style:
+            ElevatedButton.styleFrom(
+              foregroundColor: Colors.white,
+              disabledForegroundColor: Colors.white,
+              minimumSize: const Size(0, AppSizing.controlMd),
+              padding: _buttonPadding,
+              shape: _controlShape,
+              textStyle: AppTypography.button,
+              elevation: 0,
+              iconSize: AppSizing.iconMd,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ).copyWith(
+              backgroundColor: _primaryFill,
+              overlayColor: const WidgetStatePropertyAll(Colors.transparent),
+            ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
@@ -576,7 +856,8 @@ class AppTheme {
       ),
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
-          foregroundColor: AppColors.textSecondary,
+          // A text button is a text action, and text actions are navy.
+          foregroundColor: AppColors.link,
           disabledForegroundColor: AppColors.textMuted,
           minimumSize: const Size(0, AppSizing.controlMd),
           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
@@ -688,7 +969,7 @@ class AppTheme {
         contentTextStyle: AppTypography.bodySecondary.copyWith(
           color: Colors.white,
         ),
-        actionTextColor: AppColors.primaryGreenSoft,
+        actionTextColor: AppColors.navActive,
         behavior: SnackBarBehavior.floating,
         elevation: 3,
         insetPadding: const EdgeInsets.all(AppSpacing.lg),
@@ -727,7 +1008,8 @@ class AppTheme {
         minVerticalPadding: AppSpacing.md,
       ),
       tabBarTheme: const TabBarThemeData(
-        labelColor: AppColors.primaryGreen,
+        // Switching tabs is an action, and actions are navy.
+        labelColor: AppColors.primaryBlue,
         unselectedLabelColor: AppColors.textSecondary,
         labelStyle: AppTypography.button,
         unselectedLabelStyle: AppTypography.button,
@@ -738,8 +1020,9 @@ class AppTheme {
         shape: const RoundedRectangleBorder(borderRadius: AppRadius.brXs),
         side: const BorderSide(color: AppColors.borderStrong, width: 1.5),
         fillColor: WidgetStateProperty.resolveWith(
+          // Ticking a box is a selection, and selection is navy.
           (s) => s.contains(WidgetState.selected)
-              ? AppColors.primaryGreen
+              ? AppColors.primaryBlue
               : Colors.transparent,
         ),
         visualDensity: VisualDensity.compact,
@@ -752,19 +1035,19 @@ class AppTheme {
         ),
         trackColor: WidgetStateProperty.resolveWith(
           (s) => s.contains(WidgetState.selected)
-              ? AppColors.primaryGreen
+              ? AppColors.primaryBlue
               : AppColors.border,
         ),
       ),
       radioTheme: RadioThemeData(
         fillColor: WidgetStateProperty.resolveWith(
           (s) => s.contains(WidgetState.selected)
-              ? AppColors.primaryGreen
+              ? AppColors.primaryBlue
               : AppColors.borderStrong,
         ),
       ),
       progressIndicatorTheme: const ProgressIndicatorThemeData(
-        color: AppColors.primaryGreen,
+        color: AppColors.primaryBlue,
         linearTrackColor: AppColors.border,
         circularTrackColor: AppColors.border,
       ),
@@ -832,6 +1115,13 @@ class AppFormatters {
     return '$displayHour:$minute $ampm';
   }
 
+  static String formatDateTime(String? isoString) {
+    if (isoString == null || isoString.isEmpty) return '—';
+    final dt = DateTime.tryParse(isoString);
+    if (dt == null) return isoString;
+    return DateFormat('dd MMM yyyy, hh:mm a').format(dt.toLocal());
+  }
+
   static String toApiDate(DateTime date) {
     return DateFormat('yyyy-MM-dd').format(date);
   }
@@ -861,9 +1151,24 @@ Color priorityTextColor(String priority) {
     case 'MEDIUM':
       return AppColors.warning;
     case 'LOW':
-      return AppColors.yellow;
+      // Yellow is a dot, never text: the word is brown.
+      return AppColors.yellowText;
     default:
       return AppColors.neutral;
+  }
+}
+
+/// The dot colour for a priority, which is where the yellow actually lives.
+Color priorityDotColor(String priority) {
+  switch (priority.toUpperCase()) {
+    case 'HIGH':
+      return AppStatus.overdue.dot;
+    case 'MEDIUM':
+      return AppStatus.followUp.dot;
+    case 'LOW':
+      return AppStatus.lowPriority.dot;
+    default:
+      return AppStatus.inactive.dot;
   }
 }
 

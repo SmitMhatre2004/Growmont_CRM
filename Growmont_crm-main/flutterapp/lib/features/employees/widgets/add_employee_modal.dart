@@ -9,6 +9,7 @@ import '../../../core/config/app_config.dart';
 import '../../../core/providers.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../models/employee.dart';
+import '../../../shared/widgets/app_form.dart';
 import '../../../shared/widgets/app_modal_shell.dart';
 import '../../../shared/widgets/password_form_field.dart';
 import '../../auth/auth_provider.dart';
@@ -173,134 +174,151 @@ class _AddEmployeeModalState extends ConsumerState<AddEmployeeModal> {
   Widget build(BuildContext context) {
     return AppModalShell(
       title: widget.existing != null ? 'Edit Employee' : 'Add Employee',
+      footer: AppFormActions(
+        submitLabel: 'Save Employee',
+        busy: _loading,
+        onSubmit: _submit,
+      ),
       child: Form(
         key: _formKey,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: AppFormColumn(
+          gap: kFormSectionGap,
           children: [
             Center(
-              child: GestureDetector(
-                onTap: _pickAvatar,
-                child: CircleAvatar(
-                  radius: 40,
-                  child: _avatarBytes != null
-                      ? ClipOval(
-                          child: Image.memory(
-                            _avatarBytes!,
-                            width: 80,
-                            height: 80,
-                            fit: BoxFit.cover,
-                          ),
-                        )
-                      : const Icon(
-                          Icons.camera_alt,
-                          size: AppSizing.iconDisplay,
-                        ),
+              child: Column(
+                children: [
+                  InkWell(
+                    onTap: _pickAvatar,
+                    customBorder: const CircleBorder(),
+                    child: CircleAvatar(
+                      radius: AppSizing.avatarXl / 2,
+                      backgroundColor: AppColors.surfaceHeader,
+                      child: _avatarBytes != null
+                          ? ClipOval(
+                              child: Image.memory(
+                                _avatarBytes!,
+                                width: AppSizing.avatarXl,
+                                height: AppSizing.avatarXl,
+                                fit: BoxFit.cover,
+                              ),
+                            )
+                          : const Icon(
+                              Icons.add_a_photo_outlined,
+                              size: AppSizing.iconXl,
+                              color: AppColors.textCaption,
+                            ),
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  TextButton(
+                    onPressed: _pickAvatar,
+                    child: Text(
+                      _avatarBytes != null ? 'Change photo' : 'Upload photo',
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            AppFormSection(
+              title: 'Profile',
+              children: [
+                AppFormField(
+                  label: 'Full name',
+                  child: TextFormField(
+                    controller: _name,
+                    textCapitalization: TextCapitalization.words,
+                    decoration: const InputDecoration(hintText: 'Full name'),
+                    validator: (v) => (v == null || v.trim().isEmpty)
+                        ? 'Enter a name'
+                        : null,
+                  ),
                 ),
-              ),
-            ),
-            const SizedBox(height: AppSpacing.lg),
-            TextFormField(
-              controller: _name,
-              decoration: const InputDecoration(labelText: 'Name *'),
-              validator: (v) =>
-                  (v == null || v.trim().isEmpty) ? 'Required' : null,
-            ),
-            const SizedBox(height: AppSpacing.md),
-            TextFormField(
-              controller: _email,
-              enabled: !_isSelf,
-              decoration: InputDecoration(
-                labelText: 'Email *',
-                helperText: _isSelf
-                    ? 'Ask another admin to change your sign-in email'
-                    : widget.existing != null
-                    ? 'This is the address they log in with'
-                    : 'Username is enough — $kAllowedEmailDomain '
-                          'is added automatically',
-              ),
-              keyboardType: TextInputType.emailAddress,
-              validator: _validateEmail,
-            ),
-            const SizedBox(height: AppSpacing.md),
-            TextFormField(
-              controller: _mobile,
-              decoration: const InputDecoration(labelText: 'Mobile *'),
-              keyboardType: TextInputType.phone,
-              validator: (v) =>
-                  (v == null || v.trim().isEmpty) ? 'Required' : null,
-            ),
-            const SizedBox(height: AppSpacing.md),
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              title: const Text('Date of Birth *'),
-              subtitle: Text(
-                AppFormatters.formatDate(AppFormatters.toApiDate(_dob)),
-              ),
-              trailing: const Icon(
-                Icons.calendar_today,
-                size: AppSizing.iconMd,
-              ),
-              onTap: () async {
-                final d = await showDatePicker(
-                  context: context,
-                  initialDate: _dob,
-                  firstDate: DateTime(1950),
-                  lastDate: DateTime.now(),
-                );
-                if (d != null) setState(() => _dob = d);
-              },
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            DropdownButtonFormField<String>(
-              initialValue: _gender,
-              isExpanded: true,
-              decoration: const InputDecoration(labelText: 'Gender'),
-              items: const [
-                DropdownMenuItem(value: 'M', child: Text('Male')),
-                DropdownMenuItem(value: 'F', child: Text('Female')),
-                DropdownMenuItem(value: 'O', child: Text('Other')),
-              ],
-              onChanged: (v) => setState(() => _gender = v!),
-            ),
-            const SizedBox(height: AppSpacing.md),
-            DropdownButtonFormField<String>(
-              initialValue: _role,
-              isExpanded: true,
-              decoration: InputDecoration(
-                labelText: 'Role',
-                helperText: _isSelf
-                    ? 'Ask another admin to change your role'
-                    : _role == 'ADMIN'
-                    ? 'Admins manage accounts and see every record'
-                    : null,
-              ),
-              items: const [
-                DropdownMenuItem(value: 'EMPLOYEE', child: Text('Employee')),
-                DropdownMenuItem(value: 'ADMIN', child: Text('Admin')),
-              ],
-              onChanged: _isSelf ? null : (v) => setState(() => _role = v!),
-            ),
-            if (widget.existing == null) ...[
-              const SizedBox(height: AppSpacing.md),
-              PasswordFormField(
-                controller: _password,
-                labelText: 'Password *',
-                helperText: 'At least $kMinPasswordLength characters',
-              ),
-            ],
-            const SizedBox(height: AppSpacing.xxl),
-            SizedBox(
-              width: double.infinity,
-              height: AppSizing.controlLg,
-              child: FilledButton(
-                onPressed: _loading ? null : _submit,
-                style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.primaryBlue,
+                AppFormField(
+                  label: 'Email',
+                  child: TextFormField(
+                    controller: _email,
+                    enabled: !_isSelf,
+                    keyboardType: TextInputType.emailAddress,
+                    decoration: InputDecoration(
+                      hintText: 'username',
+                      helperMaxLines: 2,
+                      helperText: _isSelf
+                          ? 'Ask another admin to change your sign-in email'
+                          : widget.existing != null
+                          ? 'This is the address they log in with'
+                          : 'Username is enough — $kAllowedEmailDomain '
+                                'is added automatically',
+                    ),
+                    validator: _validateEmail,
+                  ),
                 ),
-                child: Text(_loading ? 'Saving...' : 'Save Employee'),
-              ),
+                modalFieldPair(
+                  context,
+                  AppFormField(
+                    label: 'Mobile number',
+                    child: TextFormField(
+                      controller: _mobile,
+                      keyboardType: TextInputType.phone,
+                      decoration: const InputDecoration(
+                        hintText: 'Mobile number',
+                      ),
+                      validator: (v) => (v == null || v.trim().isEmpty)
+                          ? 'Enter a mobile number'
+                          : null,
+                    ),
+                  ),
+                  AppFormField(
+                    label: 'Date of birth',
+                    child: AppDateField(
+                      value: _dob,
+                      firstDate: DateTime(1950),
+                      lastDate: DateTime.now(),
+                      onChanged: (d) => setState(() => _dob = d),
+                    ),
+                  ),
+                ),
+                AppFormField(
+                  label: 'Gender',
+                  child: AppDropdownField<String>(
+                    value: _gender,
+                    items: choiceItems(const [
+                      ('M', 'Male'),
+                      ('F', 'Female'),
+                      ('O', 'Other'),
+                    ]),
+                    onChanged: (v) => setState(() => _gender = v!),
+                  ),
+                ),
+              ],
+            ),
+            AppFormSection(
+              title: 'Access',
+              children: [
+                AppFormField(
+                  label: 'Role',
+                  child: AppDropdownField<String>(
+                    value: _role,
+                    helperText: _isSelf
+                        ? 'Ask another admin to change your role'
+                        : _role == 'ADMIN'
+                        ? 'Admins manage accounts and see every record'
+                        : null,
+                    items: choiceItems(const [
+                      ('EMPLOYEE', 'Employee'),
+                      ('ADMIN', 'Admin'),
+                    ]),
+                    onChanged: _isSelf
+                        ? null
+                        : (v) => setState(() => _role = v!),
+                  ),
+                ),
+                if (widget.existing == null)
+                  PasswordFormField(
+                    controller: _password,
+                    labelText: 'Password',
+                    helperText: 'At least $kMinPasswordLength characters',
+                  ),
+              ],
             ),
           ],
         ),

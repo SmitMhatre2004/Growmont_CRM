@@ -15,6 +15,7 @@
 import 'dart:async';
 
 import '../../models/client.dart';
+import '../../models/client_transfer.dart';
 import '../../models/employee.dart';
 import '../../models/interaction.dart';
 import '../../models/reminder.dart';
@@ -106,7 +107,19 @@ class CrmRepository extends FirestoreService {
   @override
   Future<List<Employee>> getEmployees() async {
     final docs = await _store.all('employees');
-    final employees = docs.map(Employee.fromJson).toList()
+    final clientDocs = await _store.all('clients');
+    final saleDocs = await _store.all('sales');
+    final interactionDocs = await _store.all('interactions');
+
+    final employees = docs.map((d) {
+      final raw = Employee.fromJson(d);
+      return _populateEmployeeCounts(
+        raw,
+        clientDocs: clientDocs,
+        saleDocs: saleDocs,
+        interactionDocs: interactionDocs,
+      );
+    }).toList()
       ..sort((a, b) => a.name.compareTo(b.name));
     return employees;
   }
@@ -115,13 +128,75 @@ class CrmRepository extends FirestoreService {
   Future<Employee> getEmployee(dynamic id) async {
     final docId = id.toString();
     final local = await _store.byId('employees', docId);
-    if (local != null) return Employee.fromJson(local);
-
-    final fetched = await _fetchAndCache('employees', docId);
-    if (fetched == null) {
-      throw Exception('Employee not found');
+    Employee raw;
+    if (local != null) {
+      raw = Employee.fromJson(local);
+    } else {
+      final fetched = await _fetchAndCache('employees', docId);
+      if (fetched == null) {
+        throw Exception('Employee not found');
+      }
+      raw = Employee.fromJson(fetched);
     }
-    return Employee.fromJson(fetched);
+
+    final clientDocs = await _store.all('clients');
+    final saleDocs = await _store.all('sales');
+    final interactionDocs = await _store.all('interactions');
+    return _populateEmployeeCounts(
+      raw,
+      clientDocs: clientDocs,
+      saleDocs: saleDocs,
+      interactionDocs: interactionDocs,
+    );
+  }
+
+  Employee _populateEmployeeCounts(
+    Employee emp, {
+    required List<Map<String, dynamic>> clientDocs,
+    required List<Map<String, dynamic>> saleDocs,
+    required List<Map<String, dynamic>> interactionDocs,
+  }) {
+    final empId = emp.id.trim();
+    final empEmail = emp.email.trim().toLowerCase();
+    final empName = emp.name.trim().toLowerCase();
+
+    final clientCount = clientDocs.where((c) {
+      final eid = (c['employee_id'] ?? '').toString().trim();
+      final ename = (c['employee_name'] ?? '').toString().trim().toLowerCase();
+      final hasMatchingId = eid.isNotEmpty && (eid == empId || eid.toLowerCase() == empEmail);
+      final hasMatchingName = ename.isNotEmpty && ename == empName;
+      final rawEmployees = c['employees'];
+      final inList = rawEmployees is List && rawEmployees.map((e) => e.toString()).contains(empId);
+      return hasMatchingId || hasMatchingName || inList;
+    }).length;
+
+    final saleCount = saleDocs.where((s) {
+      final sRepId = (s['sales_rep_id'] ?? '').toString().trim();
+      final sRep = (s['sales_rep'] ?? '').toString().trim();
+      final sRepName = (s['sales_rep_name'] ?? '').toString().trim().toLowerCase();
+      final hasMatchingId = (sRepId.isNotEmpty && (sRepId == empId || sRepId.toLowerCase() == empEmail)) ||
+          (sRep.isNotEmpty && (sRep == empId || sRep.toLowerCase() == empEmail));
+      final hasMatchingName = (sRepName.isNotEmpty && sRepName == empName) ||
+          (sRep.isNotEmpty && sRep.toLowerCase() == empName);
+      return hasMatchingId || hasMatchingName;
+    }).length;
+
+    final chatCount = interactionDocs.where((i) {
+      final iEmpId = (i['employee_id'] ?? '').toString().trim();
+      final iEmp = (i['employee'] ?? '').toString().trim();
+      final iEmpName = (i['employee_name'] ?? '').toString().trim().toLowerCase();
+      final hasMatchingId = (iEmpId.isNotEmpty && (iEmpId == empId || iEmpId.toLowerCase() == empEmail)) ||
+          (iEmp.isNotEmpty && (iEmp == empId || iEmp.toLowerCase() == empEmail));
+      final hasMatchingName = (iEmpName.isNotEmpty && iEmpName == empName) ||
+          (iEmp.isNotEmpty && iEmp.toLowerCase() == empName);
+      return hasMatchingId || hasMatchingName;
+    }).length;
+
+    return emp.copyWith(
+      clientsCount: clientCount > 0 ? clientCount : emp.clientsCount,
+      salesCount: saleCount > 0 ? saleCount : emp.salesCount,
+      interactionsCount: chatCount > 0 ? chatCount : emp.interactionsCount,
+    );
   }
 
   @override
@@ -251,6 +326,93 @@ class CrmRepository extends FirestoreService {
   @override
   Future<void> deleteClient(dynamic id) async {
     await _store.deleteLocal('clients', id.toString());
+    _drain();
+  }
+
+  @override
+  Future<List<ClientTransfer>> getClientTransfers(String clientId) async {
+    final docs = await _store.all('client_transfers');
+    final list = docs
+        .map(ClientTransfer.fromJson)
+        .where((t) => t.clientId == clientId)
+        .toList();
+    list.sort((a, b) => b.transferredAt.compareTo(a.transferredAt));
+    return list;
+  }
+
+  @override
+  Future<ClientTransfer> transferClient({
+    required String clientId,
+    required String clientName,
+    required String fromEmployeeId,
+    required String fromEmployeeName,
+    required String toEmployeeId,
+    required String toEmployeeName,
+    required String transferredById,
+    required String transferredByName,
+    required String transferredByRole,
+    String reason = '',
+    String notes = '',
+  }) async {
+    final id = firestore.collection('client_transfers').doc().id;
+    final now = DateTime.now().toUtc().toIso8601String();
+    final rawData = {
+      'id': id,
+      'client_id': clientId,
+      'client_name': clientName,
+      'from_employee_id': fromEmployeeId,
+      'from_employee_name': fromEmployeeName,
+      'to_employee_id': toEmployeeId,
+      'to_employee_name': toEmployeeName,
+      'transferred_by_id': transferredById,
+      'transferred_by_name': transferredByName,
+      'transferred_by_role': transferredByRole,
+      'transferred_at': now,
+      'reason': reason,
+      'notes': notes,
+    };
+    final payload = PayloadNormalizer.forCollection(
+      'client_transfers',
+      rawData,
+      isCreate: true,
+      currentUid: currentUid,
+    );
+    await _store.putLocal('client_transfers', id, payload);
+
+    await updateClient(clientId, {
+      'employee_id': toEmployeeId,
+      'employee_name': toEmployeeName,
+    });
+
+    _drain();
+    return ClientTransfer.fromJson(payload, id);
+  }
+
+  @override
+  Future<List<String>> getTransferReasons() async {
+    try {
+      final docs = await _store.all('transfer_reasons');
+      final saved = docs
+          .map((d) => (d['name'] ?? d['id'] ?? '').toString())
+          .where((name) => name.trim().isNotEmpty)
+          .toList();
+      return saved.toSet().toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  @override
+  Future<void> saveTransferReason(String reason) async {
+    final trimmed = reason.trim();
+    if (trimmed.isEmpty) return;
+    final id = firestore.collection('transfer_reasons').doc().id;
+    final payload = {
+      'id': id,
+      'name': trimmed,
+      'created_at': DateTime.now().toUtc().toIso8601String(),
+    };
+    await _store.putLocal('transfer_reasons', id, payload);
     _drain();
   }
 

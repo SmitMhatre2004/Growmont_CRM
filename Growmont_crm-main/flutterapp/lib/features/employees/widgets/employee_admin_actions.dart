@@ -6,6 +6,7 @@ import '../../../core/config/app_config.dart';
 import '../../../core/providers.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../models/employee.dart';
+import '../../../shared/widgets/app_form.dart';
 import '../../../shared/widgets/app_modal_shell.dart';
 import '../../../shared/widgets/inline_error_banner.dart';
 import '../../../shared/widgets/password_form_field.dart';
@@ -377,25 +378,22 @@ class _SetPasswordDialogState extends ConsumerState<_SetPasswordDialog> {
   @override
   Widget build(BuildContext context) {
     final emp = widget.employee;
+    final who = emp.name.isNotEmpty ? emp.name : emp.email;
     return AppModalShell(
       title: 'Set New Password',
+      subtitle:
+          'For $who (${emp.email}). They will be signed out on every device '
+          'and must log in with the new password.',
+      footer: AppFormActions(
+        submitLabel: 'Set Password',
+        busy: _saving,
+        onSubmit: _submit,
+      ),
       child: Form(
         key: _formKey,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: AppFormColumn(
           children: [
-            Text(
-              'For ${emp.name.isNotEmpty ? emp.name : emp.email} '
-              '(${emp.email}). They will be signed out on every device and '
-              'must log in with the new password.',
-              style: AppTypography.bodySecondary,
-            ),
-            const SizedBox(height: AppSpacing.lg),
-            if (_error != null) ...[
-              InlineErrorBanner(message: _error!),
-              const SizedBox(height: AppSpacing.md),
-            ],
+            if (_error != null) InlineErrorBanner(message: _error!),
             PasswordFormField(
               controller: _password,
               labelText: 'New password',
@@ -403,7 +401,6 @@ class _SetPasswordDialogState extends ConsumerState<_SetPasswordDialog> {
               autofocus: true,
               textInputAction: TextInputAction.next,
             ),
-            const SizedBox(height: AppSpacing.md),
             PasswordFormField(
               controller: _confirm,
               labelText: 'Confirm new password',
@@ -412,57 +409,54 @@ class _SetPasswordDialogState extends ConsumerState<_SetPasswordDialog> {
               validator: (v) =>
                   v != _password.text ? 'Passwords do not match' : null,
             ),
-            const SizedBox(height: AppSpacing.sm),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: TextButton.icon(
-                onPressed: _saving ? null : _generate,
-                icon: const Icon(Icons.auto_awesome_outlined, size: 18),
-                label: const Text('Generate a strong password'),
-              ),
-            ),
-            if (_generated != null && _generated == _password.text)
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.only(left: AppSpacing.md),
-                decoration: BoxDecoration(
-                  color: AppColors.surfaceHeader,
-                  borderRadius: AppRadius.brMd,
-                  border: Border.all(color: AppColors.border),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton.icon(
+                    onPressed: _saving ? null : _generate,
+                    icon: const Icon(Icons.auto_awesome_outlined),
+                    label: const Text('Generate a strong password'),
+                  ),
                 ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: SelectableText(
-                        _generated!,
-                        style: const TextStyle(
-                          fontFamily: 'monospace',
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
+                if (_generated != null && _generated == _password.text) ...[
+                  const SizedBox(height: AppSpacing.sm),
+                  Container(
+                    padding: const EdgeInsets.only(left: AppSpacing.md),
+                    decoration: BoxDecoration(
+                      color: AppColors.surfaceHeader,
+                      borderRadius: AppRadius.brMd,
+                      border: Border.all(color: AppColors.border),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: SelectableText(
+                            _generated!,
+                            style: AppTypography.input.copyWith(
+                              fontFamily: 'monospace',
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                         ),
-                      ),
+                        IconButton(
+                          tooltip: 'Copy',
+                          icon: const Icon(Icons.copy_outlined),
+                          onPressed: () {
+                            Clipboard.setData(
+                              ClipboardData(text: _generated!),
+                            );
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Password copied')),
+                            );
+                          },
+                        ),
+                      ],
                     ),
-                    IconButton(
-                      tooltip: 'Copy',
-                      icon: const Icon(Icons.copy_outlined, size: 18),
-                      onPressed: () {
-                        Clipboard.setData(ClipboardData(text: _generated!));
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Password copied')),
-                        );
-                      },
-                    ),
-                  ],
-                ),
-              ),
-            const SizedBox(height: AppSpacing.xxl),
-            SizedBox(
-              width: double.infinity,
-              height: AppSizing.controlLg,
-              child: FilledButton(
-                onPressed: _saving ? null : _submit,
-                child: Text(_saving ? 'Saving...' : 'Set Password'),
-              ),
+                  ),
+                ],
+              ],
             ),
           ],
         ),

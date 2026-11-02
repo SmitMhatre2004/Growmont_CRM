@@ -2,7 +2,7 @@ import admin from 'firebase-admin';
 import fs from 'fs';
 import path from 'path';
 
-// Credential-resolution block (from scripts/migrate.js)
+// Credential-resolution block
 if (!admin.apps.length) {
   const serviceAccountPath = process.env.GOOGLE_APPLICATION_CREDENTIALS || path.resolve('./serviceAccountKey.json');
   if (fs.existsSync(serviceAccountPath)) {

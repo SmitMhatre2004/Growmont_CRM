@@ -117,7 +117,7 @@ class _TodoWidgetState extends ConsumerState<TodoWidget> {
               children: [
                 const Icon(
                   Icons.sticky_note_2_outlined,
-                  color: Color(0xFFCA8A04),
+                  color: AppColors.textCaption,
                   size: AppSizing.iconMd,
                 ),
                 const SizedBox(width: AppSpacing.xs),
@@ -146,7 +146,7 @@ class _TodoWidgetState extends ConsumerState<TodoWidget> {
                           const Icon(
                             Icons.access_time,
                             size: AppSizing.iconXs,
-                            color: Color(0xFFCA8A04),
+                            color: AppColors.link,
                           ),
                           if (showTextLabel) ...[
                             const SizedBox(width: AppSpacing.xxs),
@@ -154,7 +154,7 @@ class _TodoWidgetState extends ConsumerState<TodoWidget> {
                               '+Time',
                               style: TextStyle(
                                 fontSize: 11,
-                                color: Color(0xFFCA8A04),
+                                color: AppColors.link,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
@@ -195,31 +195,31 @@ class _TodoWidgetState extends ConsumerState<TodoWidget> {
         TextField(
           controller: _controller,
           maxLines: 6,
-          style: const TextStyle(
-            fontSize: 13,
-            color: Color(0xFF292524),
-            height: 1.45,
-          ),
+          // An ordinary input on an ordinary card: the notes pad is not a
+          // state, so it does not get to own a colour.
+          style: AppTypography.bodySecondary,
           decoration: InputDecoration(
             hintText: 'Write your notes here...',
-            hintStyle: TextStyle(
-              fontSize: 13,
-              color: const Color(0xFF854D0E).withValues(alpha: 0.6),
+            hintStyle: AppTypography.bodySecondary.copyWith(
+              color: AppColors.textMuted,
             ),
             filled: true,
-            fillColor: const Color(0xFFFEF9C3),
+            fillColor: AppColors.surface,
             contentPadding: const EdgeInsets.all(AppSpacing.md),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(AppRadius.sm),
-              borderSide: const BorderSide(color: Color(0xFFFDE047)),
+            border: const OutlineInputBorder(
+              borderRadius: AppRadius.brMd,
+              borderSide: BorderSide(color: AppColors.border),
             ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(AppRadius.sm),
-              borderSide: const BorderSide(color: Color(0xFFFDE047)),
+            enabledBorder: const OutlineInputBorder(
+              borderRadius: AppRadius.brMd,
+              borderSide: BorderSide(color: AppColors.border),
             ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(AppRadius.sm),
-              borderSide: const BorderSide(color: Color(0xFFEAB308), width: 1.5),
+            focusedBorder: const OutlineInputBorder(
+              borderRadius: AppRadius.brMd,
+              borderSide: BorderSide(
+                color: AppColors.primaryBlue,
+                width: AppSizing.borderWidthFocus,
+              ),
             ),
           ),
           onChanged: _saveNotes,

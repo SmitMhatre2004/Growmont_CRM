@@ -24,7 +24,7 @@ void main() {
   testWidgets('AppSidebar renders at various widths without RenderFlex overflow', (
     WidgetTester tester,
   ) async {
-    for (final width in [80.0, 100.0, 140.0, 160.0, 195.0]) {
+    for (final width in [80.0, 100.0, 140.0, 160.0, 195.0, 215.0]) {
       for (final isCompact in [true, false, null]) {
         final router = GoRouter(
           initialLocation: '/dashboard',

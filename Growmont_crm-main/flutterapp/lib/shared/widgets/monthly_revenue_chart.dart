@@ -50,8 +50,9 @@ List<({String label, double rupees})> monthlyRevenue(
   ];
 }
 
-/// Blue to match the dashboard's chart palette.
-const _defaultBarColor = AppColors.info;
+/// Chart series 1. The series order is fixed across the product, so revenue
+/// is navy in every chart that draws it.
+final _defaultBarColor = AppChart.seriesAt(0);
 
 /// Bar chart of booked revenue per month, shared by the dashboard and the
 /// employee detail screen.
@@ -61,14 +62,16 @@ class MonthlyRevenueChart extends StatelessWidget {
     required this.sales,
     this.months = 6,
     this.height = 190,
-    this.barColor = _defaultBarColor,
+    this.barColor,
     this.emptyMessage = 'No sales in this period',
   });
 
   final List<Sale> sales;
   final int months;
   final double height;
-  final Color barColor;
+
+  /// Defaults to chart series 1.
+  final Color? barColor;
   final String emptyMessage;
 
   @override
@@ -164,7 +167,7 @@ class MonthlyRevenueChart extends StatelessWidget {
           ),
           barTouchData: BarTouchData(
             touchTooltipData: BarTouchTooltipData(
-              getTooltipColor: (_) => const Color(0xFF0F172A),
+              getTooltipColor: (_) => AppColors.textPrimary,
               tooltipRoundedRadius: AppRadius.md,
               tooltipPadding: const EdgeInsets.symmetric(
                 horizontal: AppSpacing.sm,
@@ -175,10 +178,10 @@ class MonthlyRevenueChart extends StatelessWidget {
                 return BarTooltipItem(
                   '${item.label}\n',
                   const TextStyle(
-                    color: Color(0xFF94A3B8),
+                    color: AppColors.borderStrong,
                     fontWeight: FontWeight.w500,
                     fontSize: 11,
-                    height: 1.3,
+                    height: 14 / 11,
                   ),
                   children: [
                     TextSpan(
@@ -202,7 +205,7 @@ class MonthlyRevenueChart extends StatelessWidget {
                   BarChartRodData(
                     toY: series[i].rupees,
                     width: 18,
-                    color: barColor,
+                    color: barColor ?? _defaultBarColor,
                     borderRadius: const BorderRadius.vertical(
                       top: Radius.circular(4),
                     ),

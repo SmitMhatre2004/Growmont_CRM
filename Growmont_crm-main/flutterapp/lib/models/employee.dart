@@ -132,7 +132,14 @@ class Employee {
     return Employee.fromJson(doc.data() as Map<String, dynamic>? ?? {}, doc.id);
   }
 
-  Employee copyWith({String? name, String? email, String? avatar}) {
+  Employee copyWith({
+    String? name,
+    String? email,
+    String? avatar,
+    int? clientsCount,
+    int? salesCount,
+    int? interactionsCount,
+  }) {
     return Employee(
       id: id,
       name: name ?? this.name,
@@ -142,9 +149,9 @@ class Employee {
       dob: dob,
       avatar: avatar ?? this.avatar,
       role: role,
-      clientsCount: clientsCount,
-      salesCount: salesCount,
-      interactionsCount: interactionsCount,
+      clientsCount: clientsCount ?? this.clientsCount,
+      salesCount: salesCount ?? this.salesCount,
+      interactionsCount: interactionsCount ?? this.interactionsCount,
       status: status,
       accessExpiresAt: accessExpiresAt,
       requestedAt: requestedAt,

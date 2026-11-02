@@ -136,8 +136,12 @@ class AppSizing {
   static const double avatarXl = 96;
 
   // Layout
-  static const double sidebarWidth = 260;
-  static const double sidebarCollapsedWidth = 72;
+  /// Expanded sidebar. Collapses to [sidebarCollapsedWidth], icons only.
+  static const double sidebarWidth = 216;
+  static const double sidebarCollapsedWidth = 80;
+
+  /// The phone bottom bar, above the safe-area inset.
+  static const double bottomBarHeight = 62;
   static const double modalMaxWidth = 560;
   static const double contentMaxWidth = 1400;
   static const double borderWidth = 1;
@@ -148,9 +152,11 @@ class AppSizing {
 class AppLayout {
   AppLayout._();
 
-  /// Below this width the UI switches to its compact/mobile arrangement.
+  /// Below 768 the UI is a phone: bottom bar, cards instead of tables, a 16pt
+  /// gutter. From 768 it gains the sidebar but stays single-pane. From 900 it
+  /// is wide: two-pane detail views and a 24pt gutter.
   static const double mobileBreakpoint = 768;
-  static const double tabletBreakpoint = 1100;
+  static const double wideBreakpoint = 900;
 
   static bool isMobile(BuildContext context) {
     final size = MediaQuery.sizeOf(context);
@@ -164,11 +170,16 @@ class AppLayout {
     return size.width < mobileBreakpoint;
   }
 
-  static bool isTablet(BuildContext context) {
+  /// 768-899: the sidebar is back, but detail views stay single-pane.
+  static bool isNarrow(BuildContext context) {
     final size = MediaQuery.sizeOf(context);
-    return !isMobile(context) &&
-        size.width >= mobileBreakpoint &&
-        size.width < tabletBreakpoint;
+    return !isMobile(context) && size.width < wideBreakpoint;
+  }
+
+  /// 900 and up: two-pane detail views, 24pt gutter.
+  static bool isWide(BuildContext context) {
+    final size = MediaQuery.sizeOf(context);
+    return !isMobile(context) && size.width >= wideBreakpoint;
   }
 
   /// Horizontal gutter for a screen's scrollable body.

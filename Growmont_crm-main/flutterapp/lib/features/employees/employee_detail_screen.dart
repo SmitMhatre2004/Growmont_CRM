@@ -2,11 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'dart:math' as math;
+
 import '../../core/providers.dart';
 import '../../core/config/app_config.dart';
 import '../../core/theme/app_theme.dart';
 import '../../models/client.dart';
 import '../../models/employee.dart';
+import '../../models/interaction.dart';
 import '../../models/sale.dart';
 import '../../shared/widgets/error_state.dart';
 import '../../shared/widgets/monthly_revenue_chart.dart';
@@ -28,6 +31,7 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
   Employee? _employee;
   List<Client> _clients = [];
   List<Sale> _sales = [];
+  List<Interaction> _interactions = [];
   bool _loading = true;
   String? _error;
 
@@ -48,12 +52,25 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
         api.getEmployee(widget.employeeId),
         api.getEmployeeClients(widget.employeeId),
         api.getEmployeeSales(widget.employeeId),
+        api.getInteractions(),
       ]);
       if (mounted) {
+        final emp = results[0] as Employee;
+        final allInteractions = results[3] as List<Interaction>;
+        final empInteractions = allInteractions.where((i) {
+          final idMatches = (i.employeeId != null && i.employeeId!.isNotEmpty && i.employeeId == emp.id) ||
+              (i.employee.isNotEmpty && i.employee == emp.id);
+          final nameMatches = (i.employeeName != null && i.employeeName!.trim().isNotEmpty &&
+              i.employeeName!.trim().toLowerCase() == emp.name.trim().toLowerCase()) ||
+              i.employee.trim().toLowerCase() == emp.name.trim().toLowerCase();
+          return idMatches || nameMatches;
+        }).toList();
+
         setState(() {
-          _employee = results[0] as Employee;
+          _employee = emp;
           _clients = results[1] as List<Client>;
           _sales = results[2] as List<Sale>;
+          _interactions = empInteractions;
           _loading = false;
         });
       }
@@ -116,7 +133,8 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
     final emp = _employee!;
     final avatarUrl = AppConfig.mediaUrl(emp.avatar);
     final isMobile = AppLayout.isMobile(context);
-    final isTablet = !isMobile && MediaQuery.sizeOf(context).width >= 900;
+    // Two-pane detail from 900 up; below that it stays single-pane.
+    final isTablet = AppLayout.isWide(context);
 
     return RefreshIndicator(
       onRefresh: _load,
@@ -324,24 +342,24 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
                 final isNarrow = constraints.maxWidth < 520;
                 final clientCard = _kpiStatCard(
                   title: 'CLIENTS',
-                  value: emp.clientsCount.toString(),
+                  value: math.max(_clients.length, emp.clientsCount).toString(),
                   icon: Icons.people_alt_outlined,
                   accentColor: AppColors.info,
                   bgColor: AppColors.surfaceSelected,
                 );
                 final salesCard = _kpiStatCard(
                   title: 'SALES',
-                  value: emp.salesCount.toString(),
+                  value: math.max(_sales.length, emp.salesCount).toString(),
                   icon: Icons.trending_up_rounded,
                   accentColor: AppColors.success,
-                  bgColor: AppAccents.greenSoft,
+                  bgColor: AppColors.primaryGreenSoft,
                 );
                 final interactionsCard = _kpiStatCard(
                   title: 'INTERACTIONS',
-                  value: emp.interactionsCount.toString(),
+                  value: math.max(_interactions.length, emp.interactionsCount).toString(),
                   icon: Icons.forum_outlined,
-                  accentColor: AppAccents.purpleBase,
-                  bgColor: AppAccents.purpleSoft,
+                  accentColor: AppColors.chat,
+                  bgColor: AppColors.chatSoft,
                 );
 
                 if (isNarrow) {
@@ -490,7 +508,7 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
                         style: const TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w700,
-                          color: AppAccents.blueStrong,
+                          color: AppColors.primaryBlue,
                         ),
                       ),
                     ),
@@ -571,9 +589,9 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
                       vertical: AppSpacing.xxs,
                     ),
                     decoration: BoxDecoration(
-                      color: AppAccents.greenSoft,
+                      color: AppColors.primaryGreenSoft,
                       borderRadius: BorderRadius.circular(AppRadius.sm),
-                      border: Border.all(color: AppAccents.greenBorderSoft),
+                      border: Border.all(color: AppColors.primaryGreenBorder),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
@@ -581,9 +599,9 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
                         const Text(
                           'TOTAL: ',
                           style: TextStyle(
-                            fontSize: 10,
+                            fontSize: 11,
                             fontWeight: FontWeight.w700,
-                            color: AppAccents.greenDeep,
+                            color: AppPalette.green700,
                             letterSpacing: 0.5,
                           ),
                         ),
@@ -594,7 +612,7 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
                           style: const TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w700,
-                            color: AppAccents.greenStrong,
+                            color: AppColors.money,
                           ),
                         ),
                       ],
@@ -662,7 +680,7 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
                           child: Text(
                             prodName,
                             style: TextStyle(
-                              fontSize: 10,
+                              fontSize: 11,
                               fontWeight: FontWeight.w600,
                               color: prodColor,
                             ),
@@ -719,10 +737,10 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
         vertical: AppSpacing.xxs,
       ),
       decoration: BoxDecoration(
-        color: isAdmin ? AppColors.surfaceSelected : AppAccents.greenTint,
+        color: isAdmin ? AppColors.surfaceSelected : AppColors.primaryGreenSoft,
         borderRadius: BorderRadius.circular(AppRadius.sm),
         border: Border.all(
-          color: isAdmin ? AppAccents.blueBorder : AppAccents.greenBorder,
+          color: isAdmin ? AppPalette.navy200 : AppColors.primaryGreenBorder,
         ),
       ),
       child: Text(
@@ -730,7 +748,7 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
         style: TextStyle(
           fontSize: 11,
           fontWeight: FontWeight.w700,
-          color: isAdmin ? AppAccents.blueStrong : AppAccents.greenTeal,
+          color: isAdmin ? AppColors.primaryBlue : AppColors.primaryGreenDark,
           letterSpacing: 0.4,
         ),
       ),
@@ -775,7 +793,7 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
               Text(
                 title,
                 style: TextStyle(
-                  fontSize: 10,
+                  fontSize: 11,
                   fontWeight: FontWeight.w700,
                   letterSpacing: 0.5,
                   color: accentColor.withValues(alpha: 0.85),

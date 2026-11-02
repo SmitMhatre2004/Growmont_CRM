@@ -3,12 +3,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'dart:math' as math;
+
 import '../../core/excel/excel_io.dart';
 import '../../core/io/record_import.dart';
 import '../../core/providers.dart';
 import '../../core/config/app_config.dart';
 import '../../core/theme/app_theme.dart';
+import '../../models/client.dart';
 import '../../models/employee.dart';
+import '../../models/interaction.dart';
+import '../../models/sale.dart';
 import '../../shared/widgets/error_state.dart';
 import '../../shared/widgets/toolbar_action_button.dart';
 import '../auth/auth_provider.dart';
@@ -58,10 +63,63 @@ class _EmployeesListScreenState extends ConsumerState<EmployeesListScreen> {
       _error = null;
     });
     try {
-      final data = await ref.read(apiServiceProvider).getEmployees();
+      final api = ref.read(apiServiceProvider);
+      final results = await Future.wait([
+        api.getEmployees(),
+        api.getClients(),
+        api.getSales(),
+        api.getInteractions(),
+      ]);
+      final rawEmployees = results[0] as List<Employee>;
+      final clients = results[1] as List<Client>;
+      final sales = results[2] as List<Sale>;
+      final interactions = results[3] as List<Interaction>;
+
+      final populated = rawEmployees.map((emp) {
+        final empId = emp.id.trim();
+        final empEmail = emp.email.trim().toLowerCase();
+        final empName = emp.name.trim().toLowerCase();
+
+        final clientCount = clients.where((c) {
+          final eid = c.employeeId.trim();
+          final ename = (c.employeeName ?? '').trim().toLowerCase();
+          final hasMatchingId = eid.isNotEmpty && (eid == empId || eid.toLowerCase() == empEmail);
+          final hasMatchingName = ename.isNotEmpty && ename == empName;
+          return hasMatchingId || hasMatchingName;
+        }).length;
+
+        final saleCount = sales.where((s) {
+          final sRepId = (s.salesRepId ?? '').trim();
+          final sRep = s.salesRep.trim();
+          final sRepName = (s.salesRepName ?? '').trim().toLowerCase();
+          final hasMatchingId = (sRepId.isNotEmpty && (sRepId == empId || sRepId.toLowerCase() == empEmail)) ||
+              (sRep.isNotEmpty && (sRep == empId || sRep.toLowerCase() == empEmail));
+          final hasMatchingName = (sRepName.isNotEmpty && sRepName == empName) ||
+              (sRep.isNotEmpty && sRep.toLowerCase() == empName);
+          return hasMatchingId || hasMatchingName;
+        }).length;
+
+        final chatCount = interactions.where((i) {
+          final iEmpId = (i.employeeId ?? '').trim();
+          final iEmp = i.employee.trim();
+          final iEmpName = (i.employeeName ?? '').trim().toLowerCase();
+          final hasMatchingId = (iEmpId.isNotEmpty && (iEmpId == empId || iEmpId.toLowerCase() == empEmail)) ||
+              (iEmp.isNotEmpty && (iEmp == empId || iEmp.toLowerCase() == empEmail));
+          final hasMatchingName = (iEmpName.isNotEmpty && iEmpName == empName) ||
+              (iEmp.isNotEmpty && iEmp.toLowerCase() == empName);
+          return hasMatchingId || hasMatchingName;
+        }).length;
+
+        return emp.copyWith(
+          clientsCount: math.max(clientCount, emp.clientsCount),
+          salesCount: math.max(saleCount, emp.salesCount),
+          interactionsCount: math.max(chatCount, emp.interactionsCount),
+        );
+      }).toList();
+
       if (mounted) {
         setState(() {
-          _employees = data;
+          _employees = populated;
           _loading = false;
         });
       }
@@ -732,7 +790,7 @@ class _EmployeeRow extends StatelessWidget {
                         Icons.forum_outlined,
                         '${employee.interactionsCount}',
                         'chats',
-                        AppAccents.purpleBase,
+                        AppColors.chat,
                       ),
                     ],
                   ),
@@ -767,10 +825,10 @@ class _EmployeeRow extends StatelessWidget {
         vertical: AppSpacing.xxs,
       ),
       decoration: BoxDecoration(
-        color: isAdminRole ? AppColors.surfaceSelected : AppAccents.greenTint,
+        color: isAdminRole ? AppColors.surfaceSelected : AppColors.primaryGreenSoft,
         borderRadius: BorderRadius.circular(AppRadius.xs),
         border: Border.all(
-          color: isAdminRole ? AppAccents.blueBorder : AppAccents.greenBorder,
+          color: isAdminRole ? AppPalette.navy200 : AppColors.primaryGreenBorder,
         ),
       ),
       child: Text(
@@ -779,7 +837,7 @@ class _EmployeeRow extends StatelessWidget {
           fontSize: 11,
           fontWeight: FontWeight.w700,
           letterSpacing: 0.3,
-          color: isAdminRole ? AppAccents.blueStrong : AppAccents.greenTeal,
+          color: isAdminRole ? AppColors.primaryBlue : AppColors.primaryGreenDark,
         ),
       ),
     );

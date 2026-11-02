@@ -39,9 +39,19 @@ class TokenStorage {
   }
 
   Future<void> clear() async {
-    await _secureStorage.delete(key: _accessKey);
-    await _secureStorage.delete(key: _refreshKey);
-    await _secureStorage.delete(key: _userKey);
+    try {
+      await _secureStorage.deleteAll();
+    } catch (_) {
+      try {
+        await _secureStorage.delete(key: _accessKey);
+      } catch (_) {}
+      try {
+        await _secureStorage.delete(key: _refreshKey);
+      } catch (_) {}
+      try {
+        await _secureStorage.delete(key: _userKey);
+      } catch (_) {}
+    }
   }
 
   Future<String?> getStickyNotes() async {

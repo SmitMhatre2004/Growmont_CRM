@@ -138,6 +138,31 @@ service cloud.firestore {
       allow delete: if isOwnerEmployee(resource.data.employee_id);
     }
 
+    // ─── Client transfers ───
+    match /client_transfers/{transferId} {
+      // Any active employee can see transfer history — it drives the
+      // client detail screen's audit trail and isn't sensitive per-owner
+      // data the way a client or sale record is.
+      allow read: if isActive();
+
+      // A transfer is initiated either by the current owner handing off
+      // their own client ("Staff Handover") or by an admin reassigning on
+      // anyone's behalf ("Admin Transfer").
+      allow create: if isAdmin() ||
+                       isOwnerEmployee(request.resource.data.from_employee_id);
+
+      // Transfer records are an immutable audit trail.
+      allow update, delete: if isAdmin();
+    }
+
+    // ─── Transfer reasons ───
+    // Shared reference list shown in the transfer dialog's reason dropdown.
+    match /transfer_reasons/{reasonId} {
+      allow read: if isActive();
+      allow create: if isActive();
+      allow update, delete: if isAdmin();
+    }
+
     // The app_installs collection was removed along with the sidebar's
     // "scan to install" QR, which was the only thing that read it. Any
     // documents left in Firestore from before that are now covered by the

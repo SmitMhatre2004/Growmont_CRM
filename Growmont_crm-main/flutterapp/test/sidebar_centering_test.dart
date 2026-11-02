@@ -143,7 +143,7 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
-    final widths = [195.0, 160.0, 130.0, 100.0, 80.0];
+    final widths = [215.0, 195.0, 160.0, 130.0, 100.0, 80.0];
     final salesIconCenters = <double>[];
 
     for (final w in widths) {
