@@ -12,6 +12,7 @@ import 'firebase/firestore_service.dart';
 import 'local/crm_repository.dart';
 import 'local/startup_sync.dart';
 import 'local/sync_engine.dart';
+import 'notifications/reminder_notifications.dart';
 import 'storage/token_storage.dart';
 
 final tokenStorageProvider = Provider<TokenStorage>((ref) {
@@ -55,6 +56,26 @@ final firestoreProvider = Provider<FirebaseFirestore?>((ref) {
 /// is a process-lifetime singleton. [ChangeNotifierProvider] automatically
 /// calls dispose() when recomputed or torn down, which permanently breaks
 /// a singleton ChangeNotifier.
+/// Keeps on-device reminder notifications in step with the signed-in user's
+/// reminders. Like [syncEngineProvider], it must be watched for the app's
+/// lifetime (see GrowmontApp.build in main.dart).
+final reminderNotificationsProvider = Provider<void>((ref) {
+  final notifications = ReminderNotifications.instance;
+  if (!ReminderNotifications.isSupported) return;
+
+  final uid = ref.watch(authProvider.select((s) => s.user?.id));
+  if (uid == null) {
+    unawaited(notifications.clear());
+    return;
+  }
+
+  final sub = ref
+      .watch(firestoreServiceProvider)
+      .streamReminders()
+      .listen(notifications.sync, onError: (_) {});
+  ref.onDispose(sub.cancel);
+});
+
 final syncEngineProvider = Provider<SyncEngine>((ref) {
   final uid = ref.watch(authProvider.select((s) => s.user?.id));
   final engine = SyncEngine.instance;
