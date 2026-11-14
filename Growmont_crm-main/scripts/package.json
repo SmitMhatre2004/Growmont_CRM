@@ -5,7 +5,9 @@
   "type": "module",
   "scripts": {
     "bootstrap-admin": "node bootstrap-admin.js",
-    "reset": "node reset-firebase.js"
+    "reset": "node reset-firebase.js",
+    "seed:emulator": "node seed-emulator.js",
+    "verify": "node verify-report.js"
   },
   "dependencies": {
     "firebase-admin": "^13.1.0"

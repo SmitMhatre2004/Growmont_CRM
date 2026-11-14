@@ -96,6 +96,14 @@ class AppSidebar extends ConsumerWidget {
             Icons.handshake_outlined,
             '/clients',
           ),
+          // Available to every role: an employee's report is scoped to
+          // their own records by the data they hold, not by a role check.
+          _MenuItem(
+            'reports',
+            'Reports',
+            Icons.assessment_outlined,
+            '/reports',
+          ),
           if (user?.isAdmin == true)
             _MenuItem(
               'employees',

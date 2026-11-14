@@ -4,11 +4,14 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 import 'firebase_options.dart';
+import 'core/config/dev_config.dart';
 import 'core/providers.dart';
 import 'core/router/app_router.dart';
 import 'core/storage/app_paths.dart';
@@ -33,13 +36,27 @@ void main() async {
       options: DefaultFirebaseOptions.currentPlatform,
     );
 
-    // Enable offline persistence for Firestore
-    FirebaseFirestore.instance.settings = const Settings(
-      persistenceEnabled: true,
-      cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,
-    );
+    if (DevConfig.useFirebaseEmulator) {
+      // Local-development path only; see dev_config.dart for the guards
+      // that keep this unreachable from a release build. Must run before
+      // anything touches Firestore or Auth.
+      await _connectToEmulators();
+    } else {
+      // Enable offline persistence for Firestore
+      FirebaseFirestore.instance.settings = const Settings(
+        persistenceEnabled: true,
+        cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,
+      );
+    }
   } catch (e) {
     debugPrint('Firebase initialization note: $e');
+  }
+
+  if (DevConfig.emulatorSuppressed) {
+    debugPrint(
+      'USE_FIREBASE_EMULATOR was set but this is a release build - '
+      'ignoring it and using the live Firebase project.',
+    );
   }
 
   if (!kIsWeb &&
@@ -77,6 +94,43 @@ void main() async {
   );
 
   runApp(const ProviderScope(child: GrowmontApp()));
+}
+
+/// Points Auth, Firestore and Storage at the local Firebase Emulator
+/// Suite, so a development build never reads or writes the live project.
+///
+/// Firestore's on-disk persistence is left OFF here on purpose: the cache
+/// is keyed by project, not by host, so a run that had previously talked
+/// to production could otherwise serve real documents out of the cache
+/// while "connected to the emulator". Emulator data is small and local, so
+/// there is nothing to gain from caching it.
+///
+/// The Functions emulator is deliberately not wired up. Nothing in the app
+/// that this mode is used to exercise calls a Cloud Function, and running
+/// them would need `npm install` under functions/ first. Account
+/// management (create employee, change password, review) therefore does
+/// not work in emulator mode — seed those accounts with the seed script
+/// instead.
+Future<void> _connectToEmulators() async {
+  final host = DevConfig.emulatorHost;
+
+  FirebaseFirestore.instance.settings = Settings(
+    persistenceEnabled: false,
+    host: '$host:${DevConfig.firestorePort}',
+    sslEnabled: false,
+  );
+  await FirebaseAuth.instance.useAuthEmulator(host, DevConfig.authPort);
+  await FirebaseStorage.instance.useStorageEmulator(
+    host,
+    DevConfig.storagePort,
+  );
+
+  debugPrint(
+    'EMULATOR MODE: Auth :${DevConfig.authPort}, '
+    'Firestore :${DevConfig.firestorePort}, '
+    'Storage :${DevConfig.storagePort} on $host. '
+    'The live Firebase project is NOT in use.',
+  );
 }
 
 /// Resolves once the splash mark is decoded into the image cache. Never

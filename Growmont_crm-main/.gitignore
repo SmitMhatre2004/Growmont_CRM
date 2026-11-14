@@ -7,3 +7,10 @@ serviceAccountKey.json
 
 # Firebase Admin SDK service account keys (any download filename)
 *firebase-adminsdk*.json
+
+# Firebase Emulator Suite run artefacts (see flutterapp/DEV_TESTING.md)
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+database-debug.log
+pubsub-debug.log

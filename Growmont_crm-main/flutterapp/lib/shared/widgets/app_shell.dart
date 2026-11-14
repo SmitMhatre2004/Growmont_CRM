@@ -20,6 +20,7 @@ class AppBranch {
   static const int employees = 4;
   static const int infoPortal = 5;
   static const int profile = 6;
+  static const int reports = 7;
 }
 
 class AppShell extends ConsumerStatefulWidget {
@@ -141,15 +142,16 @@ class _MobileShell extends ConsumerWidget {
         label: 'Clients',
         branchIndex: AppBranch.clients,
       ),
-      // Employees and Info Portal are admin-only and would take the bar past
-      // five destinations, so they sit behind "More".
-      if (isAdmin)
-        const BottomNavItem(
-          icon: Icons.grid_view_outlined,
-          activeIcon: Icons.grid_view,
-          label: 'More',
-          branchIndex: BottomNavItem.moreBranch,
-        ),
+      // Reports is available to everyone; Employees and Info Portal are
+      // admin-only. All three would take the bar past five destinations,
+      // so they sit behind "More" — which is why it is no longer gated on
+      // isAdmin: a non-admin still needs a way through to Reports.
+      const BottomNavItem(
+        icon: Icons.grid_view_outlined,
+        activeIcon: Icons.grid_view,
+        label: 'More',
+        branchIndex: BottomNavItem.moreBranch,
+      ),
     ];
 
     return Scaffold(
@@ -174,12 +176,16 @@ class _MobileShell extends ConsumerWidget {
         items: items,
         currentBranch: navigationShell.currentIndex,
         onSelect: onSelectBranch,
-        onMore: () => _showMoreSheet(context, onSelectBranch),
+        onMore: () => _showMoreSheet(context, onSelectBranch, isAdmin),
       ),
     );
   }
 
-  void _showMoreSheet(BuildContext context, ValueChanged<int> onSelect) {
+  void _showMoreSheet(
+    BuildContext context,
+    ValueChanged<int> onSelect,
+    bool isAdmin,
+  ) {
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: AppColors.surface,
@@ -200,26 +206,39 @@ class _MobileShell extends ConsumerWidget {
             const SizedBox(height: AppSpacing.sm),
             ListTile(
               leading: const Icon(
-                Icons.people_outline,
+                Icons.assessment_outlined,
                 color: AppColors.primaryBlue,
               ),
-              title: const Text('Employees'),
+              title: const Text('Monthly Report'),
               onTap: () {
                 Navigator.pop(sheetContext);
-                onSelect(AppBranch.employees);
+                onSelect(AppBranch.reports);
               },
             ),
-            ListTile(
-              leading: const Icon(
-                Icons.inventory_2_outlined,
-                color: AppColors.primaryBlue,
+            if (isAdmin) ...[
+              ListTile(
+                leading: const Icon(
+                  Icons.people_outline,
+                  color: AppColors.primaryBlue,
+                ),
+                title: const Text('Employees'),
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  onSelect(AppBranch.employees);
+                },
               ),
-              title: const Text('Info Portal'),
-              onTap: () {
-                Navigator.pop(sheetContext);
-                onSelect(AppBranch.infoPortal);
-              },
-            ),
+              ListTile(
+                leading: const Icon(
+                  Icons.inventory_2_outlined,
+                  color: AppColors.primaryBlue,
+                ),
+                title: const Text('Info Portal'),
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  onSelect(AppBranch.infoPortal);
+                },
+              ),
+            ],
             const SizedBox(height: AppSpacing.sm),
           ],
         ),

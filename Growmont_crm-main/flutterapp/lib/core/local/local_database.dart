@@ -13,6 +13,7 @@ import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
 import 'package:sqflite/sqflite.dart';
 
+import '../config/dev_config.dart';
 import '../storage/app_paths.dart';
 
 class LocalDatabase {
@@ -127,10 +128,15 @@ class LocalDatabase {
   /// Android/iOS: unchanged. The native sqflite plugin's `getDatabasesPath()`
   /// already returns a correct, sandboxed, app-private directory there.
   static Future<String> _resolveDbPath() async {
+    // DevConfig swaps in a separate filename when the build is pointed at
+    // the Firebase emulator, so seeded test rows can never land in the
+    // same database as real synced data. In every normal build this is
+    // exactly 'growmont.db' as before.
+    final fileName = DevConfig.localDatabaseFileName;
     if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
-      return AppPaths.childPath('growmont.db');
+      return AppPaths.childPath(fileName);
     }
-    return p.join(await getDatabasesPath(), 'growmont.db');
+    return p.join(await getDatabasesPath(), fileName);
   }
 
   Future<void> _createTables(Database db) async {

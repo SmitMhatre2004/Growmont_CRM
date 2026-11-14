@@ -13,6 +13,7 @@ import '../../features/employees/employees_list_screen.dart';
 import '../../features/info_portal/info_portal_screen.dart';
 import '../../features/interactions/interactions_screen.dart';
 import '../../features/profile/profile_screen.dart';
+import '../../features/reports/monthly_report_screen.dart';
 import '../../features/sales/sales_screen.dart';
 import '../../shared/widgets/app_shell.dart';
 
@@ -137,6 +138,18 @@ final routerProvider = Provider<GoRouter>((ref) {
                     child: ProfileScreen(initialTab: tab),
                   );
                 },
+              ),
+            ],
+          ),
+          // Declared last on purpose: the shell indexes its branches by
+          // declaration order, so appending here leaves every existing
+          // AppBranch constant — profile included — pointing where it did.
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/reports',
+                pageBuilder: (context, state) =>
+                    const NoTransitionPage(child: MonthlyReportScreen()),
               ),
             ],
           ),
