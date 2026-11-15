@@ -528,6 +528,25 @@ class _MonthlyReportScreenState extends ConsumerState<MonthlyReportScreen> {
         ),
       ),
       (card: _activityCard(report), weight: 210),
+      // Only on an individual report. On the company view the daily trend
+      // already carries the shape, and a second time series there would
+      // be the duplication the page was trimmed of.
+      if (report.scope == ReportScope.individual)
+        (
+          card: ReportCard(
+            title: 'Month by month',
+            subtitle: '${report.scopeLabel}, newest first - tap a month to open it',
+            child: MonthlyHistoryTable(
+              months: report.trailingRevenue,
+              selected: report.period,
+              onMonthTap: (month) {
+                if (month.compareTo(_latest) > 0) return;
+                setState(() => _period = month);
+              },
+            ),
+          ),
+          weight: 96 + report.trailingRevenue.length * 26,
+        ),
       (
         card: ReportCard(
           title: 'Largest deals',

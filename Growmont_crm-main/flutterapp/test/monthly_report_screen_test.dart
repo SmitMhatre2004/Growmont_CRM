@@ -12,6 +12,7 @@
 // and cannot run without Firebase being initialized.
 
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:growmont_crm/core/firebase/firestore_service.dart';
@@ -487,6 +488,80 @@ void main() {
 
     expect(find.byType(TeamPerformanceTable), findsNothing);
     expect(find.text('All employees'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  // ── Month-by-month history ───────────────────────────────────────────
+
+  testWidgets('an employee report carries a month-by-month history', (
+    tester,
+  ) async {
+    final now = DateTime.now();
+    final lastMonth = DateTime(now.year, now.month - 1, 12);
+
+    await _pump(
+      tester,
+      role: UserRole.employee,
+      service: _FakeService(
+        sales: [
+          _sale(id: 'now', paise: 500000),
+          _sale(id: 'prev', date: lastMonth.toIso8601String(), paise: 200000),
+        ],
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final history = find.text('Month by month');
+    await _scrollTo(tester, history);
+    expect(history, findsOneWidget);
+
+    // Both months are listed, each with its own figure.
+    expect(find.textContaining('5,000'), findsWidgets);
+    expect(find.textContaining('2,000'), findsWidgets);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('tapping a month in the history opens that month', (
+    tester,
+  ) async {
+    final now = DateTime.now();
+    final lastMonth = DateTime(now.year, now.month - 1, 12);
+    final label = DateFormat('MMM yyyy').format(lastMonth);
+
+    await _pump(
+      tester,
+      role: UserRole.employee,
+      service: _FakeService(
+        sales: [
+          _sale(id: 'prev', date: lastMonth.toIso8601String(), paise: 777700),
+        ],
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // This month is empty, so the report opens on the empty state.
+    expect(find.textContaining('Nothing recorded in'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Previous month'));
+    await tester.pumpAndSettle();
+
+    final history = find.text('Month by month');
+    await _scrollTo(tester, history);
+    expect(find.text(label), findsWidgets);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('the company report has no month-by-month card', (
+    tester,
+  ) async {
+    await _pump(
+      tester,
+      role: UserRole.admin,
+      service: _FakeService(sales: [_sale()]),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Month by month'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 

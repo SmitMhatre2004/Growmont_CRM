@@ -108,6 +108,30 @@ revenue, team revenue summing to the company total, and so on). Compare
 its output with the screen. **Any mismatch is a bug — report it with both
 numbers.**
 
+### The automated cross-check
+
+`test/emulator_fixture_test.dart` does the same comparison without a
+human. `scripts/dump-fixture.js` writes the emulator's actual records —
+plus expected figures recomputed in JavaScript from those documents — to
+`test/fixtures/emulator_report.json`, and the Dart test asserts the
+report builder reproduces them: every KPI, both breakdowns row for row,
+each employee's own report, and the reconciliations (breakdowns sum to
+revenue, team rows sum to the company, the daily series sums to the
+month).
+
+That is the gap the hand-written tests cannot cover. They prove the
+arithmetic; this proves the pipeline — a mis-named field, a date in an
+unexpected shape, or a sale hanging off an id the report never reads
+would pass every other test and still put a wrong number on screen.
+
+Regenerate it whenever the seed changes:
+
+```bash
+npm --prefix scripts run dump:fixture
+```
+
+The fixture is committed, so the test runs with no emulator present.
+
 ### What to work through
 
 | # | Check | Expected |
