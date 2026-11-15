@@ -165,6 +165,21 @@ class CategoryTotal {
   double get rupees => paise / 100;
 }
 
+/// Revenue for one day in a trailing series.
+class DayTotal {
+  const DayTotal({
+    required this.day,
+    required this.paise,
+    required this.count,
+  });
+
+  final DateTime day;
+  final int paise;
+  final int count;
+
+  double get rupees => paise / 100;
+}
+
 /// Revenue for one month in a trailing series.
 class MonthTotal {
   const MonthTotal({
@@ -256,6 +271,7 @@ class MonthlyReport {
     required this.revenueByCompany,
     required this.revenueByFrequency,
     required this.trailingRevenue,
+    required this.dailyRevenue,
     required this.topDeals,
     required this.team,
     required this.quality,
@@ -304,6 +320,14 @@ class MonthlyReport {
 
   /// Trailing 12 months ending with [period], oldest first.
   final List<MonthTotal> trailingRevenue;
+
+  /// One entry per day for the year ending on the selected month's last
+  /// day, oldest first — including days with no sales, which are zeros
+  /// rather than gaps so the line's x-axis stays evenly spaced.
+  ///
+  /// The trend chart slices the tail of this to whatever period the
+  /// reader picks, so changing that selector costs no recomputation.
+  final List<DayTotal> dailyRevenue;
 
   /// Largest sales of the month, biggest first.
   final List<Sale> topDeals;

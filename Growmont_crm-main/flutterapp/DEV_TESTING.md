@@ -187,16 +187,43 @@ pipeline, so it is not done here.
 
 Flutter copies its C++ client wrapper into
 `windows/flutter/ephemeral/cpp_client_wrapper/` at build time. On the
-VS 2026 machine it sometimes copies only the `include/` subfolder and
-drops the `.cc` files. That directory is generated and gitignored, so it
-is safe to repopulate by hand from the SDK cache:
+VS 2026 machine it copies only the `include/` subfolder and drops the
+`.cc` files next to it.
+
+**The fix is to clear that step's build stamp so it runs again:**
 
 ```bash
-cp -r "$(dirname $(dirname $(which flutter)))/bin/cache/artifacts/engine/windows-x64/cpp_client_wrapper/." \
-      windows/flutter/ephemeral/cpp_client_wrapper/
+find .dart_tool/flutter_build -name "unpack_windows.stamp" -delete
+flutter run -d windows --dart-define=USE_FIREBASE_EMULATOR=true
 ```
 
-A `flutter clean` can bring the problem back.
+### Why that, and not the things that look like they should work
+
+Flutter's `unpack_windows` build step is the one that copies the C++
+client wrapper into `ephemeral/`. Like every step in that build system it
+is incremental: it writes `unpack_windows.stamp`, and skips itself when
+that stamp still looks current. Once the `.cc` files are missing but the
+stamp says the copy is done, **nothing puts them back** — every
+subsequent build skips straight past the step and the compiler fails on
+files that were never recreated.
+
+That explains the two fixes that half-worked:
+
+- **Hand-copying the files from the SDK cache** survives until the next
+  build, which clears `ephemeral/` and re-skips the copy.
+- **`flutter precache --windows --force`** does fix it — it re-downloads
+  the artifacts, which changes their timestamps and invalidates the
+  stamp — but it is slow (it rebuilds the Flutter tool and runs a pub
+  upgrade, which can touch `pubspec.lock`) and only holds until the
+  stamp goes stale again.
+
+Deleting the stamp does the same job directly, in a second, with no side
+effects.
+
+What is still not understood is why the `.cc` files go missing in the
+first place; antivirus was ruled out (hand-copied files stay on disk
+until Flutter itself clears them). It has not been seen on a Visual
+Studio 2022 machine.
 
 **`LNK1168: cannot open growmont_crm.exe for writing`**
 

@@ -36,12 +36,13 @@ import '../../models/employee.dart';
 import '../../models/interaction.dart';
 import '../../models/sale.dart';
 import '../../shared/widgets/error_state.dart';
-import '../../shared/widgets/monthly_revenue_chart.dart' show compactRupees;
 import '../auth/auth_provider.dart';
 import 'widgets/month_picker_bar.dart';
+import 'widgets/ranked_bar_chart.dart';
 import 'widgets/report_cards.dart';
 import 'widgets/report_export_picker.dart';
 import 'widgets/report_tables.dart';
+import 'widgets/segmented_bar.dart';
 import 'widgets/report_trend_chart.dart';
 
 class MonthlyReportScreen extends ConsumerStatefulWidget {
@@ -59,6 +60,10 @@ class _MonthlyReportScreenState extends ConsumerState<MonthlyReportScreen> {
   final ReportMonth _latest = ReportMonth.current();
 
   late ReportMonth _period = _latest;
+
+  /// Set when an admin opens one person's row in the team table. Null is
+  /// the company-wide report.
+  String? _focusEmployeeId;
 
   bool _loading = true;
   bool _exporting = false;
@@ -136,6 +141,26 @@ class _MonthlyReportScreenState extends ConsumerState<MonthlyReportScreen> {
   MonthlyReport _buildReport() {
     final user = ref.read(authProvider).user;
     final isAdmin = user?.isAdmin == true;
+
+    // An admin who has opened one person's row gets that person's report,
+    // built from the same already-loaded records — no reload, because the
+    // admin's copy already holds the whole company.
+    final focusId = isAdmin ? _focusEmployeeId : null;
+    if (focusId != null) {
+      return MonthlyReportBuilder.build(
+        period: _period,
+        scope: ReportScope.individual,
+        scopeLabel: _employeeNames[focusId] ?? 'Employee',
+        sales: _sales
+            .where((s) => (s.salesRepId ?? s.salesRep) == focusId)
+            .toList(),
+        interactions: _interactions
+            .where((i) => (i.employeeId ?? i.employee) == focusId)
+            .toList(),
+        clients: _clients.where((c) => c.employeeId == focusId).toList(),
+        employeeNames: _employeeNames,
+      );
+    }
 
     return MonthlyReportBuilder.build(
       period: _period,
@@ -290,99 +315,227 @@ class _MonthlyReportScreenState extends ConsumerState<MonthlyReportScreen> {
         gutter,
         isShort ? 4 : 12,
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          title,
-          const SizedBox(height: AppSpacing.md),
-          // Wrap rather than Row: on a phone the picker and the export
-          // button stack instead of squeezing the month name to an
-          // ellipsis.
-          Wrap(
-            spacing: AppSpacing.md,
-            runSpacing: AppSpacing.sm,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [picker, exportButton],
-          ),
-        ],
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          // Matches the Dashboard's header: title and a one-line summary
+          // on the left, controls on the right, collapsing to stacked
+          // rows below the same breakpoint it uses.
+          final inlineControls = constraints.maxWidth >= 720;
+
+          final heading = Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // The way back out of one person's report. Without it the
+              // only escape is leaving the page and returning.
+              if (_focusEmployeeId != null) ...[
+                _BackToCompany(
+                  onPressed: () =>
+                      setState(() => _focusEmployeeId = null),
+                ),
+                const SizedBox(height: AppSpacing.xs),
+              ],
+              title,
+              if (report != null && !isShort) ...[
+                const SizedBox(height: AppSpacing.xxs),
+                _scopeLine(report),
+              ],
+            ],
+          );
+
+          if (inlineControls) {
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(child: heading),
+                const SizedBox(width: AppSpacing.md),
+                picker,
+                const SizedBox(width: AppSpacing.sm),
+                exportButton,
+              ],
+            );
+          }
+
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              heading,
+              const SizedBox(height: AppSpacing.md),
+              // Wrap rather than Row: on a phone the picker and the export
+              // button stack instead of squeezing the month name to an
+              // ellipsis.
+              Wrap(
+                spacing: AppSpacing.md,
+                runSpacing: AppSpacing.sm,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [picker, exportButton],
+              ),
+            ],
+          );
+        },
       ),
     );
   }
 
+  /// The page body.
+  ///
+  /// Laid out the way the Dashboard is: full-width rows for the things
+  /// that need the room, then a two-column split with a wide main column
+  /// and a narrower rail, collapsing to one column on a narrow window at
+  /// the same breakpoint the Dashboard uses.
   List<Widget> _sections(MonthlyReport report, bool isMobile) {
     final previousLabel = formatReportMonth(report.period.previous, short: true);
 
+    if (report.isEmpty) {
+      return [_emptyMonth(report)];
+    }
+
     return [
-      _scopeLine(report),
-      const SizedBox(height: AppSpacing.md),
+      _kpiGrid(report, previousLabel, isMobile),
+      const SizedBox(height: AppSpacing.lg),
 
-      if (report.isEmpty) ...[
-        _emptyMonth(report),
-        const SizedBox(height: AppSpacing.md),
-      ] else ...[
-        _kpiGrid(report, previousLabel, isMobile),
-        const SizedBox(height: AppSpacing.md),
+      // The trend keeps the full width: a daily line over three months is
+      // ninety points, and needs every pixel of horizontal room it can get.
+      ReportCard(
+        title: 'Revenue trend',
+        subtitle: 'Booked value per day',
+        child: ReportTrendChart(series: report.dailyRevenue),
+      ),
+      const SizedBox(height: AppSpacing.lg),
 
+      LayoutBuilder(
+        builder: (context, constraints) {
+          final cards = _cards(report);
+
+          if (constraints.maxWidth < 850) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                for (var i = 0; i < cards.length; i++) ...[
+                  if (i > 0) const SizedBox(height: AppSpacing.md),
+                  cards[i].card,
+                ],
+              ],
+            );
+          }
+
+          // Two equal columns, filled by whichever is currently shorter.
+          //
+          // A fixed "wide column plus narrow rail" split was tried first
+          // and looked wrong: the rail ran out of cards while the main
+          // column kept going, leaving a tall band of empty page on the
+          // right. Card heights vary with the data — a month with four
+          // products is half the height of one with twelve, and an
+          // employee's report has no team table at all — so no hand-picked
+          // assignment stays balanced. Packing by estimated height does.
+          final left = <Widget>[];
+          final right = <Widget>[];
+          var leftHeight = 0.0;
+          var rightHeight = 0.0;
+
+          for (final entry in cards) {
+            if (leftHeight <= rightHeight) {
+              if (left.isNotEmpty) left.add(const SizedBox(height: AppSpacing.md));
+              left.add(entry.card);
+              leftHeight += entry.weight;
+            } else {
+              if (right.isNotEmpty) right.add(const SizedBox(height: AppSpacing.md));
+              right.add(entry.card);
+              rightHeight += entry.weight;
+            }
+          }
+
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: left,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: right,
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+      if (report.scope == ReportScope.company) ...[
+        const SizedBox(height: AppSpacing.lg),
+        // Full width rather than in a column: seven columns of figures
+        // need the room, and it is the one card that reads worse at half
+        // the page.
         ReportCard(
-          title: 'Revenue trend',
-          subtitle:
-              'Last ${report.trailingRevenue.length} months by sale date. '
-              'Tap a bar to open that month.',
-          child: ReportTrendChart(
-            series: report.trailingRevenue,
-            selected: report.period,
-            onMonthTap: (month) {
-              if (month.compareTo(_latest) > 0) return;
-              setState(() => _period = month);
-            },
+          title: 'Team performance',
+          subtitle: 'Revenue stays with whoever recorded the sale',
+          child: TeamPerformanceTable(
+            rows: report.team,
+            previousLabel: formatReportMonth(report.period.previous, short: true),
+            onEmployeeTap: (row) =>
+                setState(() => _focusEmployeeId = row.employeeId),
           ),
         ),
-        const SizedBox(height: AppSpacing.md),
+      ],
+    ];
+  }
 
-        _breakdownPair(report, isMobile),
-        const SizedBox(height: AppSpacing.md),
+  /// The cards that get packed into columns, each with a rough rendered
+  /// height so the packer can balance them.
+  ///
+  /// The weights only have to be right relative to each other — they
+  /// decide which column a card lands in, never how tall it is drawn.
+  List<({Widget card, double weight})> _cards(MonthlyReport report) {
+    const cardChrome = 96.0;
 
-        ReportCard(
-          title: 'Payment frequency',
-          subtitle: 'How this month\'s revenue is scheduled to recur',
-          child: BreakdownTable(rows: report.revenueByFrequency),
+    double rows(int n, double per) => cardChrome + n * per;
+
+    return [
+      (
+        card: ReportCard(
+          title: 'Revenue by product',
+          subtitle: 'Largest first',
+          child: RankedBarChart(rows: report.revenueByProduct),
         ),
-        const SizedBox(height: AppSpacing.md),
-
-        ReportCard(
+        weight: rows(
+          report.revenueByProduct.length.clamp(0, 8),
+          46,
+        ),
+      ),
+      (
+        card: ReportCard(
+          title: 'Payment frequency',
+          subtitle: 'How the revenue is scheduled to recur',
+          child: SegmentedBarList(rows: report.revenueByFrequency),
+        ),
+        weight: rows(
+          report.revenueByFrequency.where((r) => r.paise > 0).length,
+          30,
+        ) + 24,
+      ),
+      (
+        card: ReportCard(
+          title: 'Revenue by company',
+          subtitle: 'Largest first',
+          child: RankedBarChart(rows: report.revenueByCompany),
+        ),
+        weight: rows(
+          report.revenueByCompany.length.clamp(0, 8),
+          46,
+        ),
+      ),
+      (card: _activityCard(report), weight: 210),
+      (
+        card: ReportCard(
           title: 'Largest deals',
-          subtitle: 'The biggest sales recorded this month',
+          subtitle: 'The biggest sales this month',
           child: TopDealsTable(deals: report.topDeals),
         ),
-        const SizedBox(height: AppSpacing.md),
-
-        _activityCard(report),
-        const SizedBox(height: AppSpacing.md),
-
-        if (report.scope == ReportScope.company) ...[
-          ReportCard(
-            title: 'Team performance',
-            subtitle:
-                'By the employee recorded on each sale, so transfers do not '
-                'move past credit',
-            child: TeamPerformanceTable(
-              rows: report.team,
-              previousLabel: previousLabel,
-            ),
-          ),
-          const SizedBox(height: AppSpacing.md),
-        ],
-
-        _comparisonCard(report, previousLabel),
-        const SizedBox(height: AppSpacing.md),
-      ],
-
-      if (report.quality.hasIssues) ...[
-        _qualityNotice(report),
-        const SizedBox(height: AppSpacing.md),
-      ],
-
-      _footnote(report),
+        weight: rows(report.topDeals.length, 48),
+      ),
     ];
   }
 
@@ -393,10 +546,12 @@ class _MonthlyReportScreenState extends ConsumerState<MonthlyReportScreen> {
     final generated = DateFormat('d MMM yyyy, h:mm a').format(
       report.generatedAt,
     );
+    // Short enough to read at a glance. The day range and the wording
+    // about synced data were accurate but read as small print under the
+    // page title; the generation time still earns its place, because a
+    // local-first read is only as fresh as the last sync.
     return Text(
-      '${report.scopeLabel} · ${formatReportMonth(report.period)} '
-      '(1–${report.period.dayCount} ${DateFormat('MMM').format(report.period.start)}) '
-      '· computed $generated from synced data',
+      '${report.scopeLabel} · Updated $generated',
       style: AppTypography.caption,
     );
   }
@@ -411,14 +566,12 @@ class _MonthlyReportScreenState extends ConsumerState<MonthlyReportScreen> {
         delta: report.revenue,
         previousLabel: previousLabel,
         valueColor: AppColors.money,
-        note: 'By sale date',
       ),
       ReportKpiCard(
         label: 'DEALS CLOSED',
         value: '${report.deals.current}',
         delta: report.deals,
         previousLabel: previousLabel,
-        note: 'Every recorded sale is a closed sale',
       ),
       ReportKpiCard(
         label: 'AVG DEAL VALUE',
@@ -427,31 +580,24 @@ class _MonthlyReportScreenState extends ConsumerState<MonthlyReportScreen> {
         ),
         delta: report.avgDeal,
         previousLabel: previousLabel,
-        note: 'Revenue ÷ deals',
       ),
       ReportKpiCard(
         label: 'ACTIVE CLIENTS',
         value: '${report.activeClients.current}',
         delta: report.activeClients,
         previousLabel: previousLabel,
-        note: 'Distinct clients who bought',
       ),
       ReportKpiCard(
         label: 'NEW CLIENTS',
         value: '${report.newClients.current}',
         delta: report.newClients,
         previousLabel: previousLabel,
-        note: report.quality.clientsWithoutCreatedAt > 0
-            ? 'By date added — ${report.quality.clientsWithoutCreatedAt} '
-                  'client(s) have no date, so this is a minimum'
-            : 'By date added',
       ),
       ReportKpiCard(
         label: 'INTERACTIONS',
         value: '${report.interactions.current}',
         delta: report.interactions,
         previousLabel: previousLabel,
-        note: 'Client conversations logged',
       ),
     ];
 
@@ -480,49 +626,20 @@ class _MonthlyReportScreenState extends ConsumerState<MonthlyReportScreen> {
     );
   }
 
-  Widget _breakdownPair(MonthlyReport report, bool isMobile) {
-    final product = ReportCard(
-      title: 'Revenue by product',
-      subtitle: 'Which lines carried the month',
-      child: BreakdownTable(rows: report.revenueByProduct, maxRows: 7),
-    );
-    final company = ReportCard(
-      title: 'Revenue by company',
-      subtitle: 'Where the business was placed',
-      child: BreakdownTable(rows: report.revenueByCompany, maxRows: 7),
-    );
-
-    if (isMobile || MediaQuery.sizeOf(context).width < 900) {
-      return Column(
-        children: [
-          product,
-          const SizedBox(height: AppSpacing.md),
-          company,
-        ],
-      );
-    }
-
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(child: product),
-        const SizedBox(width: AppSpacing.md),
-        Expanded(child: company),
-      ],
-    );
-  }
-
   Widget _activityCard(MonthlyReport report) {
     return ReportCard(
       title: 'Client activity and follow-up load',
-      subtitle: 'Interactions by priority, and follow-ups falling in this month',
+      subtitle: 'Follow-ups are counted by their date - the CRM does not '
+          'record whether they were done',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          BreakdownTable(
+          // Three counts on an ordered scale. A three-bar chart would be
+          // the one-bar-chart failure with two extra bars — the numbers
+          // are the content, so they are set as figures, with the ordinal
+          // ramp carrying High -> Low underneath them.
+          MiniStatRow(
             rows: report.interactionsByPriority,
-            showAmount: false,
-            countLabel: 'Logs',
             emptyMessage: 'No interactions logged this month',
           ),
           const SizedBox(height: AppSpacing.lg),
@@ -530,13 +647,13 @@ class _MonthlyReportScreenState extends ConsumerState<MonthlyReportScreen> {
             children: [
               Expanded(
                 child: _miniStat(
-                  'Follow-ups scheduled',
+                  'Scheduled',
                   '${report.followUpsScheduled}',
                 ),
               ),
               Expanded(
                 child: _miniStat(
-                  'Date already passed',
+                  'Date passed',
                   '${report.followUpsPastDue}',
                   valueColor: report.followUpsPastDue > 0
                       ? AppColors.warning
@@ -544,13 +661,6 @@ class _MonthlyReportScreenState extends ConsumerState<MonthlyReportScreen> {
                 ),
               ),
             ],
-          ),
-          const SizedBox(height: AppSpacing.md),
-          const ReportNotice(
-            message:
-                'An interaction has no "done" field in this CRM, so these '
-                'count follow-ups whose date falls in the month — not '
-                'whether anyone acted on them.',
           ),
         ],
       ),
@@ -568,105 +678,6 @@ class _MonthlyReportScreenState extends ConsumerState<MonthlyReportScreen> {
           style: AppTypography.metricMedium.copyWith(color: valueColor),
         ),
       ],
-    );
-  }
-
-  Widget _comparisonCard(MonthlyReport report, String previousLabel) {
-    final rows = <({String label, MetricDelta delta, bool money})>[
-      (label: 'Revenue', delta: report.revenue, money: true),
-      (label: 'Deals closed', delta: report.deals, money: false),
-      (label: 'Average deal value', delta: report.avgDeal, money: true),
-      (label: 'Active clients', delta: report.activeClients, money: false),
-      (label: 'New clients', delta: report.newClients, money: false),
-      (label: 'Interactions', delta: report.interactions, money: false),
-    ];
-
-    String format(num value, bool money) => money
-        ? compactRupees(value / 100)
-        : '${value.round()}';
-
-    return ReportCard(
-      title: 'Month-over-month',
-      subtitle:
-          '${formatReportMonth(report.period, short: true)} against '
-          '$previousLabel',
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Expanded(
-                flex: 4,
-                child: Text('Metric', style: AppTypography.tableHeader),
-              ),
-              Expanded(
-                flex: 3,
-                child: Text(
-                  formatReportMonth(report.period, short: true),
-                  style: AppTypography.tableHeader,
-                  textAlign: TextAlign.right,
-                ),
-              ),
-              Expanded(
-                flex: 3,
-                child: Text(
-                  previousLabel,
-                  style: AppTypography.tableHeader,
-                  textAlign: TextAlign.right,
-                ),
-              ),
-              Expanded(
-                flex: 4,
-                child: Text('Change', style: AppTypography.tableHeader),
-              ),
-            ],
-          ),
-          const Divider(height: AppSpacing.lg, color: AppColors.divider),
-          for (var i = 0; i < rows.length; i++) ...[
-            if (i > 0) const SizedBox(height: AppSpacing.md),
-            Row(
-              children: [
-                Expanded(
-                  flex: 4,
-                  child: Text(
-                    rows[i].label,
-                    style: AppTypography.tableCell,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                Expanded(
-                  flex: 3,
-                  child: Text(
-                    format(rows[i].delta.current, rows[i].money),
-                    style: AppTypography.tableCellNumeric,
-                    textAlign: TextAlign.right,
-                  ),
-                ),
-                Expanded(
-                  flex: 3,
-                  child: Text(
-                    format(rows[i].delta.previous, rows[i].money),
-                    style: AppTypography.tableCellNumeric.copyWith(
-                      color: AppColors.textSecondary,
-                    ),
-                    textAlign: TextAlign.right,
-                  ),
-                ),
-                Expanded(
-                  flex: 4,
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: DeltaChip(
-                      delta: rows[i].delta,
-                      previousLabel: previousLabel,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ],
-      ),
     );
   }
 
@@ -704,70 +715,42 @@ class _MonthlyReportScreenState extends ConsumerState<MonthlyReportScreen> {
       ),
     );
   }
+}
 
-  Widget _qualityNotice(MonthlyReport report) {
-    final quality = report.quality;
-    final parts = <String>[
-      if (quality.salesWithoutDate > 0)
-        '${quality.salesWithoutDate} sale(s) have no usable date',
-      if (quality.interactionsWithoutDate > 0)
-        '${quality.interactionsWithoutDate} interaction(s) have no usable date',
-      if (quality.clientsWithoutCreatedAt > 0)
-        '${quality.clientsWithoutCreatedAt} client(s) have no date added',
-    ];
+/// Breadcrumb out of a single employee's report, back to the company one.
+class _BackToCompany extends StatelessWidget {
+  const _BackToCompany({required this.onPressed});
 
-    return ReportNotice(
-      tone: ReportNoticeTone.warning,
-      icon: Icons.warning_amber_outlined,
-      title: 'Some records could not be placed in a month',
-      message:
-          '${parts.join('; ')}. These are left out of every month rather than '
-          'guessed at, so the totals above are a minimum. Fixing the dates on '
-          'those records will correct the figures.',
-    );
-  }
+  final VoidCallback onPressed;
 
-  /// States plainly what this CRM does not track, so a zero is never
-  /// mistaken for an absence and an absence is never mistaken for a zero.
-  Widget _footnote(MonthlyReport report) {
-    return ReportCard(
-      title: 'How to read this report',
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const ReportNotice(
-            message:
-                'Figures are recalculated from current records every time '
-                'this screen opens. Editing or deleting an old sale changes '
-                'that month\'s numbers — no month-end snapshot is stored.',
-          ),
-          const SizedBox(height: AppSpacing.md),
-          Text('Not tracked in this CRM', style: AppTypography.captionSemibold),
-          const SizedBox(height: AppSpacing.xs),
-          for (final item in kUntrackedMetrics)
-            Padding(
-              padding: const EdgeInsets.only(bottom: AppSpacing.xxs),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '· ',
-                    style: AppTypography.caption.copyWith(
-                      color: AppColors.textMuted,
-                    ),
-                  ),
-                  Expanded(
-                    child: Text(
-                      item,
-                      style: AppTypography.caption.copyWith(
-                        color: AppColors.textMuted,
-                      ),
-                    ),
-                  ),
-                ],
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onPressed,
+      borderRadius: BorderRadius.circular(AppRadius.sm),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.xs,
+          vertical: AppSpacing.xxs,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.arrow_back,
+              size: AppSizing.iconSm,
+              color: AppColors.link,
+            ),
+            const SizedBox(width: AppSpacing.xs),
+            Text(
+              'All employees',
+              style: AppTypography.caption.copyWith(
+                color: AppColors.link,
+                fontWeight: FontWeight.w700,
               ),
             ),
-        ],
+          ],
+        ),
       ),
     );
   }

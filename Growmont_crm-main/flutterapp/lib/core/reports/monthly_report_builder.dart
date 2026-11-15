@@ -15,8 +15,13 @@ import '../theme/app_theme.dart'
     show frequencyChoices, priorityChoices, productCategories;
 import 'monthly_report.dart';
 
-/// How many months the trend chart covers, ending with the selected one.
+/// How many months the monthly trend series covers, ending with the
+/// selected one. Still used by the Excel and PDF exports' trend table.
 const int kTrendMonths = 12;
+
+/// How many days the daily trend series covers. A year, so the chart's
+/// period selector can slice 3, 6 or 12 months out of one computation.
+const int kTrendDays = 365;
 
 /// How many of the month's largest sales the report lists.
 const int kTopDealCount = 5;
@@ -165,13 +170,17 @@ class MonthlyReportBuilder {
             : _labelFor(productCategories, s.product),
       ),
       revenueByCompany: _categorize(currentSales, (s) => s.company),
-      revenueByFrequency: _categorize(
+      // Scale order (Monthly -> One Time), NOT largest-first: payment
+      // frequency is an ordered scale, and the segmented bar that draws it
+      // reads left to right along that scale. Re-sorting by size would
+      // turn an ordered split into a ranked list wearing an ordinal ramp.
+      revenueByFrequency: _categorizeInScaleOrder(
         currentSales,
-        (s) => s.frequencyDisplay?.isNotEmpty == true
-            ? s.frequencyDisplay!
-            : _labelFor(frequencyChoices, s.frequency),
+        frequencyChoices,
+        (s) => s.frequency,
       ),
       trailingRevenue: _trailingRevenue(sales, period),
+      dailyRevenue: _dailyRevenue(sales, period),
       topDeals: topDeals.take(kTopDealCount).toList(),
       team: scope == ReportScope.company
           ? _teamPerformance(
@@ -262,6 +271,44 @@ class MonthlyReportBuilder {
     return rows;
   }
 
+  /// Groups sales into the order a `(code, label)` scale declares, rather
+  /// than by size. Codes outside the scale are appended after it so a
+  /// stray value is still counted; an empty scale slot is kept at zero so
+  /// the ordering never shifts between months.
+  static List<CategoryTotal> _categorizeInScaleOrder(
+    List<Sale> sales,
+    List<(String, String)> scale,
+    String Function(Sale) codeOf,
+  ) {
+    final paise = <String, int>{};
+    final counts = <String, int>{};
+
+    for (final sale in sales) {
+      final code = codeOf(sale);
+      paise[code] = (paise[code] ?? 0) + salePaise(sale);
+      counts[code] = (counts[code] ?? 0) + 1;
+    }
+
+    final rows = <CategoryTotal>[
+      for (final (code, label) in scale)
+        CategoryTotal(
+          label: label,
+          paise: paise.remove(code) ?? 0,
+          count: counts.remove(code) ?? 0,
+        ),
+    ];
+    for (final leftover in paise.entries) {
+      rows.add(
+        CategoryTotal(
+          label: leftover.key.isEmpty ? kUnspecifiedLabel : leftover.key,
+          paise: leftover.value,
+          count: counts[leftover.key] ?? 0,
+        ),
+      );
+    }
+    return rows;
+  }
+
   /// HIGH/MEDIUM/LOW counts in the fixed order [priorityChoices] declares,
   /// including a zero row, so the bar order never shuffles between months.
   /// `paise` is 0 on these rows: an interaction carries no money.
@@ -286,6 +333,43 @@ class MonthlyReportBuilder {
       );
     }
     return rows;
+  }
+
+  /// One entry per day for [kTrendDays] ending on [period]'s last day,
+  /// oldest first.
+  ///
+  /// Days with no sales are present as zeros. A line that simply skipped
+  /// them would space its points by "days that happened to have a sale",
+  /// which compresses quiet stretches and makes a busy week look the same
+  /// width as a dead month.
+  static List<DayTotal> _dailyRevenue(List<Sale> sales, ReportMonth period) {
+    final end = period.lastDay;
+    final paise = <DateTime, int>{};
+    final counts = <DateTime, int>{};
+
+    for (final sale in sales) {
+      final day = parseEventDate(sale.date);
+      if (day == null) continue;
+      if (day.isAfter(end)) continue;
+      if (end.difference(day).inDays >= kTrendDays) continue;
+      paise[day] = (paise[day] ?? 0) + salePaise(sale);
+      counts[day] = (counts[day] ?? 0) + 1;
+    }
+
+    return [
+      for (var back = kTrendDays - 1; back >= 0; back--)
+        () {
+          // Built from y/m/d rather than by subtracting Durations, so a
+          // daylight-saving boundary cannot shift a day by an hour and
+          // land two entries on the same date.
+          final day = DateTime(end.year, end.month, end.day - back);
+          return DayTotal(
+            day: day,
+            paise: paise[day] ?? 0,
+            count: counts[day] ?? 0,
+          );
+        }(),
+    ];
   }
 
   /// Revenue for the [kTrendMonths] months ending with [period], oldest
@@ -371,7 +455,14 @@ class MonthlyReportBuilder {
       if (name != null && name.isNotEmpty) fallbackNames[id] ??= name;
     }
 
+    // Everyone on the roster appears, not only the people who sold
+    // something. An admin reading a team table needs to see who had a
+    // quiet month as much as who led it, and a name that vanishes in a
+    // slow month looks like a bug. Ids found only on records — a
+    // departed employee's sales — are included too, so nothing is
+    // dropped from the totals.
     final ids = <String>{
+      ...employeeNames.keys,
       ...revenue.keys,
       ...previousRevenue.keys,
       ...interactionCounts.keys,
