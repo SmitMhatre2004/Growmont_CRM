@@ -125,6 +125,46 @@ service cloud.firestore {
       allow delete: if isAdminOrOwner(resource.data.employee_id);
     }
 
+    // ─── Client notes ───
+    // Short bullet notes about a client. client_owner_id mirrors the
+    // client's employee_id (the app keeps it current on transfer) so that,
+    // like interactions, a note can be read and queried by owner without a
+    // per-document lookup.
+    match /client_notes/{noteId} {
+      allow read: if isAdminOrOwner(resource.data.client_owner_id);
+
+      // Only as yourself, only on a client you can see (admin, or the
+      // client's current owner), with a 1-500 char text.
+      allow create: if isActive() &&
+                       request.resource.data.author_id == request.auth.uid &&
+                       request.resource.data.client_id is string &&
+                       request.resource.data.author_name is string &&
+                       request.resource.data.text is string &&
+                       request.resource.data.text.size() >= 1 &&
+                       request.resource.data.text.size() <= 500 &&
+                       (isAdmin() ||
+                        (request.resource.data.client_owner_id ==
+                           request.auth.uid &&
+                         get(/databases/$(database)/documents/clients/$(request.resource.data.client_id))
+                           .data.employee_id == request.auth.uid));
+
+      // Notes can't be edited. The one exception is the app re-pointing
+      // client_owner_id when its client is transferred, by an admin or the
+      // outgoing owner, to the client's new owner.
+      allow update: if isAdminOrOwner(resource.data.client_owner_id) &&
+                       request.resource.data.diff(resource.data)
+                         .affectedKeys().hasOnly(['client_owner_id', 'updated_at']) &&
+                       (isAdmin() ||
+                        request.resource.data.client_owner_id ==
+                          get(/databases/$(database)/documents/clients/$(resource.data.client_id))
+                            .data.employee_id);
+
+      // The author, or any admin.
+      allow delete: if isAdmin() ||
+                       (isActive() &&
+                        resource.data.author_id == request.auth.uid);
+    }
+
     // ─── Reminders ───
     // All users can only see/manage their own reminders (even admins, matching Django behavior)
     match /reminders/{reminderId} {

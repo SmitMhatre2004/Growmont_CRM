@@ -219,11 +219,15 @@ class EmployeeDropdown {
     required this.id,
     required this.name,
     required this.role,
+    this.excludeFromHeadcount = false,
   });
 
   final String id;
   final String name;
   final String role;
+
+  /// Developer / test account: kept out of team statistics.
+  final bool excludeFromHeadcount;
 
   factory EmployeeDropdown.fromJson(
     Map<String, dynamic> json, [
@@ -233,6 +237,7 @@ class EmployeeDropdown {
       id: (docId ?? json['id'] ?? '').toString(),
       name: json['name'] as String? ?? '',
       role: json['role'] as String? ?? 'EMPLOYEE',
+      excludeFromHeadcount: json['exclude_from_headcount'] as bool? ?? false,
     );
   }
 

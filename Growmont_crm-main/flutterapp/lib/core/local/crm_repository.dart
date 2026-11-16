@@ -15,6 +15,7 @@
 import 'dart:async';
 
 import '../../models/client.dart';
+import '../../models/client_note.dart';
 import '../../models/client_transfer.dart';
 import '../../models/employee.dart';
 import '../../models/interaction.dart';
@@ -393,6 +394,25 @@ class CrmRepository extends FirestoreService {
       'employee_name': toEmployeeName,
     });
 
+    // Keep the client's notes visible to the new owner (and hidden from the
+    // previous one): owner-scoped sync and the rules key off this field.
+    for (final doc in await _store.all('client_notes')) {
+      if (doc['client_id'] != clientId) continue;
+      final noteId = (doc['id'] ?? '').toString();
+      if (noteId.isEmpty) continue;
+      final merged = {...doc, 'client_owner_id': toEmployeeId}..remove('id');
+      await _store.putLocal(
+        'client_notes',
+        noteId,
+        PayloadNormalizer.forCollection(
+          'client_notes',
+          merged,
+          isCreate: false,
+          currentUid: currentUid,
+        ),
+      );
+    }
+
     _drain();
     return ClientTransfer.fromJson(payload, id);
   }
@@ -548,6 +568,66 @@ class CrmRepository extends FirestoreService {
   @override
   Future<void> deleteInteraction(dynamic id) async {
     await _store.deleteLocal('interactions', id.toString());
+    _drain();
+  }
+
+  // ── Client notes ─────────────────────────────────────────────────────
+
+  Future<List<ClientNote>> _localClientNotes(String clientId) async {
+    final docs = await _store.all('client_notes');
+    final notes = docs
+        .map(ClientNote.fromJson)
+        .where((n) => n.clientId == clientId)
+        .toList();
+    notes.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    return notes;
+  }
+
+  @override
+  Stream<List<ClientNote>> streamClientNotes(String clientId) async* {
+    yield await _localClientNotes(clientId);
+    await for (final changed in _store.changes) {
+      if (changed == 'client_notes') {
+        yield await _localClientNotes(clientId);
+      }
+    }
+  }
+
+  @override
+  Future<ClientNote> createClientNote({
+    required String clientId,
+    required String clientOwnerId,
+    required String text,
+    required String authorId,
+    required String authorName,
+  }) async {
+    final clean = ClientNote.validate(text);
+    if (clean == null) {
+      throw ArgumentError(
+        'A note must be 1-${ClientNote.maxLength} characters.',
+      );
+    }
+    final id = firestore.collection('client_notes').doc().id;
+    final payload = PayloadNormalizer.forCollection(
+      'client_notes',
+      {
+        'client_id': clientId,
+        'client_owner_id': clientOwnerId,
+        'text': clean,
+        'author_id': authorId,
+        'author_name': authorName,
+      },
+      isCreate: true,
+      currentUid: currentUid,
+    );
+    await _store.putLocal('client_notes', id, payload);
+    _drain();
+    return ClientNote.fromJson(payload, id);
+  }
+
+  @override
+  Future<void> deleteClientNote(String id) async {
+    await _store.deleteLocal('client_notes', id);
     _drain();
   }
 

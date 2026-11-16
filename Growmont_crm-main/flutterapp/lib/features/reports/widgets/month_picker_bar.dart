@@ -15,101 +15,16 @@ String formatReportMonth(ReportMonth month, {bool short = false}) {
   return DateFormat(short ? 'MMM yyyy' : 'MMMM yyyy').format(month.start);
 }
 
-/// Previous / current / next control for the selected [month].
-///
-/// [latest] caps forward travel — there is nothing to report on a month
-/// that has not started, and letting the user walk into empty future
-/// months just looks broken.
-class MonthPickerBar extends StatelessWidget {
-  const MonthPickerBar({
-    super.key,
-    required this.month,
-    required this.latest,
-    required this.onChanged,
-  });
-
-  final ReportMonth month;
-  final ReportMonth latest;
-  final ValueChanged<ReportMonth> onChanged;
-
-  bool get _canGoForward => month.compareTo(latest) < 0;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        _arrow(
-          icon: Icons.chevron_left,
-          tooltip: 'Previous month',
-          onPressed: () => onChanged(month.previous),
-        ),
-        // Fixed width so the row does not jump as the month name's
-        // length changes between, say, May and September.
-        ConstrainedBox(
-          constraints: const BoxConstraints(minWidth: 132),
-          child: InkWell(
-            onTap: () => _pick(context),
-            borderRadius: BorderRadius.circular(AppRadius.sm),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.sm,
-                vertical: AppSpacing.sm,
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    formatReportMonth(month),
-                    style: AppTypography.tableCellStrong,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(width: AppSpacing.xs),
-                  const Icon(
-                    Icons.arrow_drop_down,
-                    size: AppSizing.iconLg,
-                    color: AppColors.textSecondary,
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-        _arrow(
-          icon: Icons.chevron_right,
-          tooltip: _canGoForward ? 'Next month' : 'No later month to report on',
-          onPressed: _canGoForward ? () => onChanged(month.next) : null,
-        ),
-      ],
-    );
-  }
-
-  Widget _arrow({
-    required IconData icon,
-    required String tooltip,
-    VoidCallback? onPressed,
-  }) {
-    return Tooltip(
-      message: tooltip,
-      child: IconButton(
-        onPressed: onPressed,
-        icon: Icon(icon, size: AppSizing.iconLg),
-        color: AppColors.textSecondary,
-        disabledColor: AppColors.textMuted,
-        visualDensity: VisualDensity.compact,
-        splashRadius: AppSizing.iconXl,
-      ),
-    );
-  }
-
-  Future<void> _pick(BuildContext context) async {
-    final picked = await showDialog<ReportMonth>(
-      context: context,
-      builder: (context) => _MonthYearDialog(month: month, latest: latest),
-    );
-    if (picked != null && picked != month) onChanged(picked);
-  }
+/// Opens the month-and-year grid. Null when dismissed.
+Future<ReportMonth?> pickReportMonth(
+  BuildContext context, {
+  required ReportMonth month,
+  required ReportMonth latest,
+}) {
+  return showDialog<ReportMonth>(
+    context: context,
+    builder: (context) => _MonthYearDialog(month: month, latest: latest),
+  );
 }
 
 /// Year stepper over a 12-month grid. A full date picker would be the

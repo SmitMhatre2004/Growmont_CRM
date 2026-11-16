@@ -29,6 +29,7 @@ class SyncEngine extends ChangeNotifier {
     'transfer_reasons',
     'sales',
     'interactions',
+    'client_notes',
     'reminders',
   ];
 
@@ -53,6 +54,7 @@ class SyncEngine extends ChangeNotifier {
     'clients': 'employee_id',
     'sales': 'sales_rep_id',
     'interactions': 'employee_id',
+    'client_notes': 'client_owner_id',
   };
 
   Query<Map<String, dynamic>> _queryFor(

@@ -210,22 +210,12 @@ class _MobileShell extends ConsumerWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const SizedBox(height: AppSpacing.sm),
-            Container(
-              width: 36,
-              height: 4,
-              decoration: BoxDecoration(
-                color: AppColors.borderStrong,
-                borderRadius: AppRadius.brXs,
-              ),
-            ),
-            const SizedBox(height: AppSpacing.sm),
             ListTile(
               leading: const Icon(
                 Icons.assessment_outlined,
                 color: AppColors.primaryBlue,
               ),
-              title: const Text('Monthly Report'),
+              title: const Text('Reports'),
               onTap: () {
                 Navigator.pop(sheetContext);
                 onSelect(AppBranch.reports);

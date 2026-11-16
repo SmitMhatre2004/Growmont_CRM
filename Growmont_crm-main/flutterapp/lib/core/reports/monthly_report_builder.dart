@@ -91,8 +91,8 @@ class MonthlyReportBuilder {
       previous: previousSales.length,
     );
     final activeClients = MetricDelta(
-      current: _distinctClients(currentSales),
-      previous: _distinctClients(previousSales),
+      current: distinctClientCount(currentSales),
+      previous: distinctClientCount(previousSales),
     );
 
     // ── Interactions ───────────────────────────────────────────────────
@@ -160,21 +160,21 @@ class MonthlyReportBuilder {
         current: currentInteractions.length,
         previous: previousInteractionCount,
       ),
-      interactionsByPriority: _interactionsByPriority(currentInteractions),
+      interactionsByPriority: interactionsByPriority(currentInteractions),
       followUpsScheduled: followUpsScheduled,
       followUpsPastDue: followUpsPastDue,
-      revenueByProduct: _categorize(
+      revenueByProduct: categorize(
         currentSales,
         (s) => s.productDisplay?.isNotEmpty == true
             ? s.productDisplay!
-            : _labelFor(productCategories, s.product),
+            : labelFor(productCategories, s.product),
       ),
-      revenueByCompany: _categorize(currentSales, (s) => s.company),
+      revenueByCompany: categorize(currentSales, (s) => s.company),
       // Scale order (Monthly -> One Time), NOT largest-first: payment
       // frequency is an ordered scale, and the segmented bar that draws it
       // reads left to right along that scale. Re-sorting by size would
       // turn an ordered split into a ranked list wearing an ordinal ramp.
-      revenueByFrequency: _categorizeInScaleOrder(
+      revenueByFrequency: categorizeInScaleOrder(
         currentSales,
         frequencyChoices,
         (s) => s.frequency,
@@ -208,7 +208,7 @@ class MonthlyReportBuilder {
   /// id was stored, which is the same fallback the Sales screen's "ACTIVE
   /// CLIENTS" box uses. Sales with neither are not counted — there is
   /// nothing to tell them apart by.
-  static int _distinctClients(List<Sale> sales) {
+  static int distinctClientCount(List<Sale> sales) {
     final keys = <String>{};
     for (final sale in sales) {
       final id = sale.clientId;
@@ -225,7 +225,7 @@ class MonthlyReportBuilder {
   /// Resolves a stored code to its display label using one of the
   /// `(code, label)` lists in app_theme.dart, so the report always names
   /// a product or frequency the way the rest of the app does.
-  static String _labelFor(
+  static String labelFor(
     List<(String, String)> choices,
     String code,
   ) {
@@ -239,7 +239,7 @@ class MonthlyReportBuilder {
   /// Groups sales by a label, summing paise and counting rows. Sorted by
   /// value descending so the biggest contributor reads first; ties break
   /// on count, then alphabetically, so the order is stable across rebuilds.
-  static List<CategoryTotal> _categorize(
+  static List<CategoryTotal> categorize(
     List<Sale> sales,
     String Function(Sale) labelOf,
   ) {
@@ -275,7 +275,7 @@ class MonthlyReportBuilder {
   /// than by size. Codes outside the scale are appended after it so a
   /// stray value is still counted; an empty scale slot is kept at zero so
   /// the ordering never shifts between months.
-  static List<CategoryTotal> _categorizeInScaleOrder(
+  static List<CategoryTotal> categorizeInScaleOrder(
     List<Sale> sales,
     List<(String, String)> scale,
     String Function(Sale) codeOf,
@@ -312,7 +312,7 @@ class MonthlyReportBuilder {
   /// HIGH/MEDIUM/LOW counts in the fixed order [priorityChoices] declares,
   /// including a zero row, so the bar order never shuffles between months.
   /// `paise` is 0 on these rows: an interaction carries no money.
-  static List<CategoryTotal> _interactionsByPriority(
+  static List<CategoryTotal> interactionsByPriority(
     List<Interaction> interactions,
   ) {
     final counts = <String, int>{};
@@ -431,7 +431,7 @@ class MonthlyReportBuilder {
     final fallbackNames = <String, String>{};
 
     for (final sale in currentSales) {
-      final id = _repId(sale);
+      final id = repIdOf(sale);
       if (id.isEmpty) continue;
       revenue[id] = (revenue[id] ?? 0) + salePaise(sale);
       deals[id] = (deals[id] ?? 0) + 1;
@@ -440,7 +440,7 @@ class MonthlyReportBuilder {
     }
 
     for (final sale in previousSales) {
-      final id = _repId(sale);
+      final id = repIdOf(sale);
       if (id.isEmpty) continue;
       previousRevenue[id] = (previousRevenue[id] ?? 0) + salePaise(sale);
       final name = sale.salesRepName;
@@ -491,7 +491,7 @@ class MonthlyReportBuilder {
     return rows;
   }
 
-  static String _repId(Sale sale) =>
+  static String repIdOf(Sale sale) =>
       (sale.salesRepId?.isNotEmpty == true ? sale.salesRepId! : sale.salesRep)
           .trim();
 }
