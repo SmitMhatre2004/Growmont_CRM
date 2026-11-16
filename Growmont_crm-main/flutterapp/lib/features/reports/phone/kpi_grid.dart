@@ -52,7 +52,12 @@ class KpiGrid extends StatelessWidget {
         cells.add(
           Expanded(
             child: i + c < tiles.length
-                ? _Tile(tiles[i + c], centered: fill)
+                ? _Tile(
+                    tiles[i + c],
+                    size: fill
+                        ? _TileSize.large
+                        : (columns >= 4 ? _TileSize.medium : _TileSize.small),
+                  )
                 : const SizedBox(),
           ),
         );
@@ -67,52 +72,76 @@ class KpiGrid extends StatelessWidget {
   }
 }
 
+enum _TileSize { small, medium, large }
+
 class _Tile extends StatelessWidget {
-  const _Tile(this.data, {this.centered = false});
+  const _Tile(this.data, {this.size = _TileSize.small});
 
   final KpiData data;
-  final bool centered;
+  final _TileSize size;
 
   @override
   Widget build(BuildContext context) {
-    final content = Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          data.label,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: PhoneText.muted,
-        ),
-        const SizedBox(height: 6),
-        FittedBox(
-          fit: BoxFit.scaleDown,
-          alignment: Alignment.centerLeft,
-          child: Text(
-            data.value,
-            maxLines: 1,
-            style: PhoneText.number(22, color: data.valueColor),
-          ),
-        ),
-        if (data.deltaText != null) ...[
-          const SizedBox(height: 4),
-          Text(
+    // Phone tiles stay compact; on PC the tiles beside the revenue card are
+    // as tall as that card, so the type scales up to fill them.
+    final (labelSize, valueSize, deltaSize) = switch (size) {
+      _TileSize.small => (13.0, 22.0, 12.0),
+      _TileSize.medium => (15.0, 30.0, 13.0),
+      _TileSize.large => (16.0, 40.0, 14.0),
+    };
+    final label = Text(
+      data.label,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: PhoneText.muted.copyWith(fontSize: labelSize),
+    );
+    final value = FittedBox(
+      fit: BoxFit.scaleDown,
+      alignment: Alignment.centerLeft,
+      child: Text(
+        data.value,
+        maxLines: 1,
+        style: PhoneText.number(valueSize, color: data.valueColor),
+      ),
+    );
+    final delta = data.deltaText == null
+        ? null
+        : Text(
             data.deltaText!,
             maxLines: 1,
             style: PhoneText.number(
-              12,
+              deltaSize,
               weight: FontWeight.w600,
               color: data.deltaColor,
             ),
-          ),
-        ],
-      ],
-    );
+          );
+
+    if (size == _TileSize.large) {
+      // Label on top, figure anchored to the bottom: no floating block of
+      // small text in the middle of a tall card.
+      return PhoneCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            label,
+            const Spacer(),
+            value,
+            if (delta != null) ...[const SizedBox(height: 4), delta],
+          ],
+        ),
+      );
+    }
     return PhoneCard(
-      child: centered
-          ? Align(alignment: Alignment.centerLeft, child: content)
-          : content,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          label,
+          SizedBox(height: size == _TileSize.small ? 6 : 8),
+          value,
+          if (delta != null) ...[const SizedBox(height: 4), delta],
+        ],
+      ),
     );
   }
 }
