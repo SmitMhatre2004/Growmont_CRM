@@ -91,7 +91,9 @@ class _AddEmployeeModalState extends ConsumerState<AddEmployeeModal> {
       // Bare username — _normalisedEmail() will append the domain.
       return null;
     }
-    if (!raw.toLowerCase().endsWith(kAllowedEmailDomain)) {
+    final lower = raw.toLowerCase();
+    if (!lower.endsWith(kAllowedEmailDomain) &&
+        !kAdditionalAllowedEmails.contains(lower)) {
       return 'Employee emails must be $kAllowedEmailDomain';
     }
     if (raw.split('@').first.isEmpty) return 'Enter a valid email address';

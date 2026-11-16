@@ -5,9 +5,10 @@
 // The bug this exists for: the touch callback originally gated on
 // FlTouchEvent.isInterestedForInteractions, which fl_chart returns true
 // for on FlPointerHoverEvent. On Windows that meant moving the mouse
-// across the chart selected whatever bar was under the cursor — the whole
+// across the chart selected whatever month was under the cursor — the whole
 // report re-ran, and the month jumped, with nobody having clicked.
 
+import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -76,7 +77,7 @@ void main() {
     addTearDown(mouse.removePointer);
     await tester.pump();
 
-    // Sweep the pointer right across every bar, the way a user would when
+    // Sweep the pointer right across every point, the way a user would when
     // reading the chart or reaching for something past it.
     for (var step = 0; step <= 20; step++) {
       await mouse.moveTo(
@@ -128,8 +129,10 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('renders one bar per month in the window', (tester) async {
+  testWidgets('renders a line chart covering the month window', (tester) async {
     await _pumpChart(tester, series: _series());
+    expect(find.byType(LineChart), findsOneWidget);
+    expect(find.byType(BarChart), findsNothing);
     // The month being reported on keeps its axis label at every width.
     expect(find.text('Jun'), findsOneWidget);
     expect(tester.takeException(), isNull);

@@ -468,7 +468,6 @@ class _InteractionsScreenState extends ConsumerState<InteractionsScreen> {
       height: _controlHeight,
       decoration: BoxDecoration(
         color: _Palette.headerBg,
-        border: Border.all(color: _Palette.border),
         borderRadius: BorderRadius.circular(_radius),
       ),
       padding: const EdgeInsets.all(AppSpacing.xs),

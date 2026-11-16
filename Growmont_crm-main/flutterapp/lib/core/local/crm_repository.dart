@@ -267,6 +267,15 @@ class CrmRepository extends FirestoreService {
     await _fetchAndCache('employees', id.toString());
   }
 
+  @override
+  Future<void> setEmployeeHeadcountExclusion(
+    dynamic id,
+    bool excludeFromHeadcount,
+  ) async {
+    await super.setEmployeeHeadcountExclusion(id, excludeFromHeadcount);
+    await _fetchAndCache('employees', id.toString());
+  }
+
   // setEmployeePassword: not overridden — it changes nothing in the
   // employee document.
 

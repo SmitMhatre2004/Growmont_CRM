@@ -144,6 +144,11 @@ class _EmployeesListScreenState extends ConsumerState<EmployeesListScreen> {
   List<Employee> get _filtered {
     final q = _search.toLowerCase();
     return _employees.where((e) {
+      // Accounts excluded from headcount no longer appear as rows here at
+      // all — manage them from the "Developer / system access" card on the
+      // Profile page instead. _employees itself stays untouched (export and
+      // the import signature map still need every account).
+      if (e.excludeFromHeadcount) return false;
       final matchesRole = switch (_roleFilter) {
         RoleFilter.all => true,
         RoleFilter.admin => e.role.toLowerCase() == 'admin',
@@ -158,8 +163,15 @@ class _EmployeesListScreenState extends ConsumerState<EmployeesListScreen> {
     }).toList();
   }
 
-  int get _adminCount =>
-      _employees.where((e) => e.role.toLowerCase() == 'admin').length;
+  /// Employees counted toward headcount totals — everyone except accounts
+  /// an admin has explicitly excluded. Excluded accounts are never dropped
+  /// from [_employees] or [_filtered]; this only feeds the numeric tallies.
+  int _headcountOf(Iterable<Employee> employees) =>
+      employees.where((e) => !e.excludeFromHeadcount).length;
+
+  int get _adminCount => _headcountOf(
+    _employees.where((e) => e.role.toLowerCase() == 'admin'),
+  );
 
   Future<void> _showModal({Employee? employee}) async {
     final saved = await showDialog<bool>(
@@ -478,8 +490,9 @@ class _EmployeesListScreenState extends ConsumerState<EmployeesListScreen> {
       ),
     );
 
+    final visibleCount = _headcountOf(_filtered);
     final countBadge = Text(
-      '${_filtered.length} ${_filtered.length == 1 ? 'employee' : 'employees'}',
+      '$visibleCount ${visibleCount == 1 ? 'employee' : 'employees'}',
       style: AppTypography.tableCellStrong.copyWith(fontSize: 14),
     );
 
@@ -528,7 +541,6 @@ class _EmployeesListScreenState extends ConsumerState<EmployeesListScreen> {
       height: controlHeight,
       decoration: BoxDecoration(
         color: AppColors.surfaceHeader,
-        border: Border.all(color: AppColors.border),
         borderRadius: BorderRadius.circular(radius),
       ),
       padding: const EdgeInsets.all(AppSpacing.xs),
@@ -565,7 +577,7 @@ class _EmployeesListScreenState extends ConsumerState<EmployeesListScreen> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 _slidingSegmentItem(
-                  label: 'All (${_employees.length})',
+                  label: 'All (${_headcountOf(_employees)})',
                   isSelected: activeIndex == 0,
                   width: itemWidth,
                   onTap: () => setState(() => _roleFilter = RoleFilter.all),
@@ -577,7 +589,7 @@ class _EmployeesListScreenState extends ConsumerState<EmployeesListScreen> {
                   onTap: () => setState(() => _roleFilter = RoleFilter.admin),
                 ),
                 _slidingSegmentItem(
-                  label: 'Employees (${_employees.length - _adminCount})',
+                  label: 'Employees (${_headcountOf(_employees) - _adminCount})',
                   isSelected: activeIndex == 2,
                   width: itemWidth,
                   onTap: () =>

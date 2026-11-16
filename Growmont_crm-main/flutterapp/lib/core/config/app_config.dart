@@ -3,6 +3,15 @@
 /// and server-side in functions/index.js.
 const kAllowedEmailDomain = '@growmont.com';
 
+/// Specific external addresses allowed to sign in despite not being on
+/// [kAllowedEmailDomain] — e.g. the developer/vendor's own test account.
+/// Each one still goes through the exact same approval flow as any other
+/// account (self-provisions as PENDING, needs an admin to set it ACTIVE):
+/// this only widens who is allowed to even attempt that, not who already
+/// has access. Mirrored server-side as ADDITIONAL_ALLOWED_EMAILS in
+/// functions/index.js — keep both lists in sync.
+const kAdditionalAllowedEmails = {'info@svayatta.in'};
+
 /// Region the Cloud Functions in functions/index.js are deployed to (set by
 /// its setGlobalOptions). Must match, or every callable answers 404.
 const kFunctionsRegion = 'asia-south1';

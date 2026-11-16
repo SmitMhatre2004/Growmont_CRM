@@ -50,7 +50,7 @@ List<BottomNavItem> _items({required bool isAdmin}) => [
   const BottomNavItem(
     icon: Icons.chat_bubble_outline,
     activeIcon: Icons.chat_bubble,
-    label: 'Chats',
+    label: 'Interactions',
     branchIndex: 2,
   ),
   const BottomNavItem(

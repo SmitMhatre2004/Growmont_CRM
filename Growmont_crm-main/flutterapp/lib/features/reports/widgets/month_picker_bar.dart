@@ -36,59 +36,52 @@ class MonthPickerBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        border: Border.all(color: AppColors.border),
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _arrow(
-            icon: Icons.chevron_left,
-            tooltip: 'Previous month',
-            onPressed: () => onChanged(month.previous),
-          ),
-          // Fixed width so the row does not jump as the month name's
-          // length changes between, say, May and September.
-          ConstrainedBox(
-            constraints: const BoxConstraints(minWidth: 132),
-            child: InkWell(
-              onTap: () => _pick(context),
-              borderRadius: BorderRadius.circular(AppRadius.sm),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.sm,
-                  vertical: AppSpacing.sm,
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      formatReportMonth(month),
-                      style: AppTypography.tableCellStrong,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(width: AppSpacing.xs),
-                    const Icon(
-                      Icons.arrow_drop_down,
-                      size: AppSizing.iconLg,
-                      color: AppColors.textSecondary,
-                    ),
-                  ],
-                ),
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _arrow(
+          icon: Icons.chevron_left,
+          tooltip: 'Previous month',
+          onPressed: () => onChanged(month.previous),
+        ),
+        // Fixed width so the row does not jump as the month name's
+        // length changes between, say, May and September.
+        ConstrainedBox(
+          constraints: const BoxConstraints(minWidth: 132),
+          child: InkWell(
+            onTap: () => _pick(context),
+            borderRadius: BorderRadius.circular(AppRadius.sm),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.sm,
+                vertical: AppSpacing.sm,
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    formatReportMonth(month),
+                    style: AppTypography.tableCellStrong,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(width: AppSpacing.xs),
+                  const Icon(
+                    Icons.arrow_drop_down,
+                    size: AppSizing.iconLg,
+                    color: AppColors.textSecondary,
+                  ),
+                ],
               ),
             ),
           ),
-          _arrow(
-            icon: Icons.chevron_right,
-            tooltip: _canGoForward ? 'Next month' : 'No later month to report on',
-            onPressed: _canGoForward ? () => onChanged(month.next) : null,
-          ),
-        ],
-      ),
+        ),
+        _arrow(
+          icon: Icons.chevron_right,
+          tooltip: _canGoForward ? 'Next month' : 'No later month to report on',
+          onPressed: _canGoForward ? () => onChanged(month.next) : null,
+        ),
+      ],
     );
   }
 

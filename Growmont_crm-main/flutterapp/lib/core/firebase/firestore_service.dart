@@ -336,6 +336,20 @@ class FirestoreService {
     });
   }
 
+  /// Sets whether an account is excluded from the "total employees"
+  /// headcount tallies on the Employees list. The account still appears in
+  /// every list, search and filter exactly as before — only the numeric
+  /// counts change. An admin may exclude their own account.
+  Future<void> setEmployeeHeadcountExclusion(
+    dynamic id,
+    bool excludeFromHeadcount,
+  ) async {
+    await _callables.call('setEmployeeHeadcountExclusion', {
+      'employeeId': id.toString(),
+      'excludeFromHeadcount': excludeFromHeadcount,
+    });
+  }
+
   /// Sets a new password for another employee, signing them out everywhere.
   /// Your own password goes through [changePassword] instead.
   Future<void> setEmployeePassword(dynamic id, String password) async {

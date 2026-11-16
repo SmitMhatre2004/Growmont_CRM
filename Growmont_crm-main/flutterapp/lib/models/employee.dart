@@ -61,6 +61,7 @@ class Employee {
     this.rejectedBy,
     this.rejectedAt,
     this.restrictedAt,
+    this.excludeFromHeadcount = false,
   });
 
   final String id;
@@ -82,6 +83,12 @@ class Employee {
   final String? rejectedBy;
   final DateTime? rejectedAt;
   final DateTime? restrictedAt;
+
+  /// Admin-set flag excluding this account from the "total employees"
+  /// tallies on the Employees list. Purely a display/count concern — the
+  /// account still appears in every list and goes through the exact same
+  /// login, role and permission logic as any other account.
+  final bool excludeFromHeadcount;
 
   bool get isPending => status == EmployeeStatus.pending;
   bool get isRestricted => status == EmployeeStatus.restricted;
@@ -125,6 +132,7 @@ class Employee {
       rejectedBy: json['rejected_by'] as String?,
       rejectedAt: _timestampToDate(json['rejected_at']),
       restrictedAt: _timestampToDate(json['restricted_at']),
+      excludeFromHeadcount: json['exclude_from_headcount'] as bool? ?? false,
     );
   }
 
@@ -139,6 +147,7 @@ class Employee {
     int? clientsCount,
     int? salesCount,
     int? interactionsCount,
+    bool? excludeFromHeadcount,
   }) {
     return Employee(
       id: id,
@@ -160,6 +169,7 @@ class Employee {
       rejectedBy: rejectedBy,
       rejectedAt: rejectedAt,
       restrictedAt: restrictedAt,
+      excludeFromHeadcount: excludeFromHeadcount ?? this.excludeFromHeadcount,
     );
   }
 
@@ -175,6 +185,7 @@ class Employee {
     'clients_count': clientsCount,
     'sales_count': salesCount,
     'interactions_count': interactionsCount,
+    'exclude_from_headcount': excludeFromHeadcount,
   };
 
   String get genderDisplay {

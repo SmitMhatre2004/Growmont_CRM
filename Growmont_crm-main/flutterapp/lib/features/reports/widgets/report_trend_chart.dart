@@ -3,7 +3,7 @@
 // The 12-month revenue trend, with the selected month highlighted so the
 // reader can see where the month they are reading about sits in the run.
 //
-// Styling (grid, axis labels, tooltip, rod geometry) deliberately mirrors
+// Styling (grid, axis labels, tooltip, line geometry) deliberately mirrors
 // MonthlyRevenueChart so the dashboard's chart and this one read as the
 // same chart with a different window — see that file for the originals.
 
@@ -32,9 +32,39 @@ class ReportTrendChart extends StatelessWidget {
 
   final double height;
 
-  /// Tapping a bar re-runs the report for that month. Optional so the
+  /// Tapping a month re-runs the report for that month. Optional so the
   /// chart stays usable in a read-only context such as a test.
   final ValueChanged<ReportMonth>? onMonthTap;
+
+  LineTooltipItem _tooltipItem(MonthTotal item, double y) {
+    return LineTooltipItem(
+      '${formatReportMonth(item.month, short: true)}\n',
+      const TextStyle(
+        color: AppColors.borderStrong,
+        fontWeight: FontWeight.w500,
+        fontSize: 11,
+        height: 14 / 11,
+      ),
+      children: [
+        TextSpan(
+          text: compactRupees(y),
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.w700,
+            fontSize: 13,
+          ),
+        ),
+        TextSpan(
+          text: '\n${item.count} ${item.count == 1 ? 'deal' : 'deals'}',
+          style: const TextStyle(
+            color: AppColors.borderStrong,
+            fontWeight: FontWeight.w500,
+            fontSize: 11,
+          ),
+        ),
+      ],
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -68,14 +98,16 @@ class ReportTrendChart extends StatelessWidget {
     }
 
     // Narrow screens cannot fit 12 month labels; every other one keeps the
-    // axis readable without dropping the bars themselves.
+    // axis readable without dropping any points.
     final labelStride = MediaQuery.sizeOf(context).width < 640 ? 2 : 1;
 
     return SizedBox(
       height: height,
-      child: BarChart(
-        BarChartData(
-          alignment: BarChartAlignment.spaceAround,
+      child: LineChart(
+        LineChartData(
+          minX: -0.4,
+          maxX: series.length - 0.6,
+          minY: 0,
           maxY: peak * 1.25,
           borderData: FlBorderData(show: false),
           gridData: FlGridData(
@@ -113,6 +145,11 @@ class ReportTrendChart extends StatelessWidget {
                 showTitles: true,
                 reservedSize: 28,
                 getTitlesWidget: (value, meta) {
+                  // minX/maxX are padded fractions, and fl_chart also asks for
+                  // titles at those edges; only whole numbers are months.
+                  if (value != value.roundToDouble()) {
+                    return const SizedBox.shrink();
+                  }
                   final i = value.toInt();
                   if (i < 0 || i >= series.length) {
                     return const SizedBox.shrink();
@@ -143,91 +180,90 @@ class ReportTrendChart extends StatelessWidget {
               ),
             ),
           ),
-          barTouchData: BarTouchData(
+          lineTouchData: LineTouchData(
+            touchSpotThreshold: 24,
             touchCallback: (event, response) {
               if (onMonthTap == null) return;
               // Only a deliberate press re-runs the report.
               //
               // NOT FlTouchEvent.isInterestedForInteractions: that returns
               // true for FlPointerHoverEvent too, so on desktop merely
-              // moving the mouse across the chart selected whatever bar
-              // was under the cursor — the report jumped months, and
-              // rebuilt on every pointer move, without anyone clicking.
+              // moving the mouse across the chart selected whatever month
+              // was under the cursor without anyone clicking.
               //
               // Gated on the DOWN event rather than the up/end one because
-              // fl_chart reports a null `spot` once the touch has ended,
-              // so an up-only gate never resolves a bar and tapping did
-              // nothing at all. Hover produces no tap-down, so this still
-              // keeps the mouse from selecting anything.
+              // fl_chart reports no spots once the touch has ended.
               if (event is! FlTapDownEvent && event is! FlLongPressStart) {
                 return;
               }
-              final index = response?.spot?.touchedBarGroupIndex;
-              if (index == null || index < 0 || index >= series.length) return;
+              final spots = response?.lineBarSpots;
+              if (spots == null || spots.isEmpty) return;
+              final index = spots.first.spotIndex;
+              if (index < 0 || index >= series.length) return;
               onMonthTap!(series[index].month);
             },
-            touchTooltipData: BarTouchTooltipData(
+            getTouchedSpotIndicator: (barData, indexes) => [
+              for (final _ in indexes)
+                const TouchedSpotIndicatorData(
+                  FlLine(color: AppColors.border, strokeWidth: 1),
+                  FlDotData(show: false),
+                ),
+            ],
+            touchTooltipData: LineTouchTooltipData(
               getTooltipColor: (_) => AppColors.textPrimary,
               tooltipRoundedRadius: AppRadius.md,
               tooltipPadding: const EdgeInsets.symmetric(
                 horizontal: AppSpacing.sm,
                 vertical: AppSpacing.xs,
               ),
-              getTooltipItem: (group, groupIndex, rod, rodIndex) {
-                final item = series[group.x.toInt()];
-                return BarTooltipItem(
-                  '${formatReportMonth(item.month, short: true)}\n',
-                  const TextStyle(
-                    color: AppColors.borderStrong,
-                    fontWeight: FontWeight.w500,
-                    fontSize: 11,
-                    height: 14 / 11,
-                  ),
-                  children: [
-                    TextSpan(
-                      text: AppFormatters.formatAmount(rod.toY.toString()),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 13,
-                      ),
-                    ),
-                    TextSpan(
-                      text: '\n${item.count} '
-                          '${item.count == 1 ? 'deal' : 'deals'}',
-                      style: const TextStyle(
-                        color: AppColors.borderStrong,
-                        fontWeight: FontWeight.w500,
-                        fontSize: 11,
-                      ),
-                    ),
-                  ],
-                );
-              },
+              getTooltipItems: (spots) => [
+                for (final spot in spots)
+                  if (spot.spotIndex >= 0 && spot.spotIndex < series.length)
+                    _tooltipItem(series[spot.spotIndex], spot.y)
+                  else
+                    null,
+              ],
             ),
           ),
-          barGroups: [
-            for (var i = 0; i < series.length; i++)
-              BarChartGroupData(
-                x: i,
-                barRods: [
-                  BarChartRodData(
-                    toY: series[i].rupees,
-                    width: 16,
-                    // The unselected months are a mid navy, not
-                    // AppColors.border: at slate-200 on a white card the
-                    // bars were so pale the trend could not be read, which
-                    // defeats the point of drawing it. They still sit well
-                    // behind the selected month's full-strength navy.
-                    color: series[i].month == selected
-                        ? AppColors.primaryBlue
-                        : AppPalette.navy200,
-                    borderRadius: const BorderRadius.vertical(
-                      top: Radius.circular(4),
-                    ),
-                  ),
-                ],
+          lineBarsData: [
+            LineChartBarData(
+              spots: [
+                for (var i = 0; i < series.length; i++)
+                  FlSpot(i.toDouble(), series[i].rupees),
+              ],
+              isCurved: true,
+              curveSmoothness: 0.25,
+              preventCurveOverShooting: true,
+              color: AppColors.primaryBlue,
+              barWidth: 2.5,
+              isStrokeCapRound: true,
+              dotData: FlDotData(
+                show: true,
+                getDotPainter: (spot, percent, bar, index) {
+                  final isSel = index >= 0 &&
+                      index < series.length &&
+                      series[index].month == selected;
+                  return FlDotCirclePainter(
+                    radius: isSel ? 7 : 3.5,
+                    color: isSel ? AppColors.primaryBlue : Colors.white,
+                    strokeWidth: isSel ? 3 : 2,
+                    strokeColor:
+                        isSel ? Colors.white : AppColors.primaryBlue,
+                  );
+                },
               ),
+              belowBarData: BarAreaData(
+                show: true,
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    AppColors.primaryBlue.withValues(alpha: 0.22),
+                    AppColors.primaryBlue.withValues(alpha: 0.0),
+                  ],
+                ),
+              ),
+            ),
           ],
         ),
       ),

@@ -277,9 +277,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Delete Follow-up'),
+        title: const Text('Delete Interaction'),
         content: const Text(
-          'Are you sure you want to delete this follow-up interaction?',
+          'Are you sure you want to delete this interaction?',
         ),
         actions: [
           TextButton(
@@ -305,7 +305,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         if (mounted) {
           ScaffoldMessenger.of(
             context,
-          ).showSnackBar(const SnackBar(content: Text('Follow-up deleted')));
+          ).showSnackBar(const SnackBar(content: Text('Interaction deleted')));
         }
       } catch (e) {
         if (mounted) {
@@ -676,7 +676,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                           const SizedBox(width: AppSpacing.sm),
                           _quickActionButton(
                             icon: Icons.add,
-                            label: 'Add Follow-up',
+                            label: 'Add Interaction',
                             isPrimary: true,
                             color: AppColors.primaryBlue,
                             onPressed: () => _openAddInteraction(user),
@@ -773,13 +773,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     return Column(
       children: [
         _sectionCard(
-          title: 'Upcoming Follow-ups',
+          title: 'Upcoming Interactions',
           icon: Icons.calendar_today,
           subtitle: sortedInteractions.length > 4
               ? '${sortedInteractions.length} entries'
               : null,
           child: sortedInteractions.isEmpty
-              ? const _EmptyState('No upcoming follow-ups')
+              ? const _EmptyState('No upcoming interactions')
               : _ScrollableSectionList(
                   maxHeight: 232.0,
                   children: sortedInteractions.map((i) {

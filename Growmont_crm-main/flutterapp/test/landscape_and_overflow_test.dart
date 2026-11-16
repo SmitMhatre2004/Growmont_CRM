@@ -385,7 +385,7 @@ void main() {
 
         // Every segment is reachable in one tap: the control no longer
         // scrolls sideways, so nothing hides off the right edge.
-        for (final label in ['Sales', 'Chats', 'Reminders']) {
+        for (final label in ['Sales', 'Interactions', 'Reminders']) {
           final segment = find.textContaining(label);
           expect(segment, findsWidgets, reason: '$label segment is on screen');
           await tester.tap(segment.first, warnIfMissed: false);

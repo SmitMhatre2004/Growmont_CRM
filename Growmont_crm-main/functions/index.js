@@ -58,6 +58,12 @@ function getTransporter() {
 // ==========================================
 
 const ALLOWED_DOMAIN = '@growmont.com';
+// Specific external addresses allowed despite not being on ALLOWED_DOMAIN —
+// e.g. the developer/vendor's own test account. Mirrored client-side as
+// kAdditionalAllowedEmails in lib/core/config/app_config.dart — keep both
+// lists in sync. Each one still goes through the same approval flow as any
+// other account; this only widens who is allowed to be provisioned at all.
+const ADDITIONAL_ALLOWED_EMAILS = new Set(['info@svayatta.in']);
 const ROLES = ['ADMIN', 'EMPLOYEE'];
 // Firebase Auth's own minimum; the app enforces the same.
 const MIN_PASSWORD_LENGTH = 6;
@@ -133,6 +139,7 @@ function requireNotSelf(employeeId, caller, action) {
 
 function normaliseEmail(raw) {
   const email = String(raw || '').trim().toLowerCase();
+  if (ADDITIONAL_ALLOWED_EMAILS.has(email)) return email;
   const local = email.slice(0, -ALLOWED_DOMAIN.length);
   if (!email.endsWith(ALLOWED_DOMAIN) || !/^[a-z0-9._%+-]+$/.test(local)) {
     throw new HttpsError('invalid-argument', `Employee emails must end in ${ALLOWED_DOMAIN}.`);
@@ -300,6 +307,29 @@ export const updateEmployeeRole = adminCallable(async (data, caller) => {
   return { success: true, role };
 });
 
+// Sets whether an account is excluded from the "total employees" headcount
+// tallies shown in the Employees list. Purely a display/count concern: it
+// never hides the account from any list, and does not touch role, status,
+// or any permission logic. An admin may exclude their own account — that's
+// the main use case — so unlike the other callables here, there's no
+// requireNotSelf check.
+export const setEmployeeHeadcountExclusion = adminCallable(async (data, caller) => {
+  const employeeId = requireEmployeeId(data.employeeId);
+  if (typeof data.excludeFromHeadcount !== 'boolean') {
+    throw new HttpsError('invalid-argument', 'Specify whether the account should be excluded from headcount.');
+  }
+  const excludeFromHeadcount = data.excludeFromHeadcount;
+  const { ref, data: current } = await loadEmployee(employeeId);
+  if (Boolean(current.exclude_from_headcount) === excludeFromHeadcount) {
+    return { success: true, excludeFromHeadcount, noop: true };
+  }
+
+  await ref.update({ exclude_from_headcount: excludeFromHeadcount, updated_at: serverTimestamp() });
+
+  console.log(JSON.stringify({ event: 'setEmployeeHeadcountExclusion', employeeId, excludeFromHeadcount, adminId: caller.uid }));
+  return { success: true, excludeFromHeadcount };
+});
+
 // Grants (active: true) or restricts (active: false) an account. Granting
 // also serves PENDING and REJECTED accounts, so it doubles as an approval.
 export const setEmployeeAccess = adminCallable(async (data, caller) => {
@@ -418,9 +448,9 @@ export const provisionPendingEmployee = onCall(async (request) => {
     throw new HttpsError('unauthenticated', 'User must be authenticated.');
   }
 
-  const emailClaim = request.auth.token.email || '';
-  if (!emailClaim.toLowerCase().endsWith('@growmont.com')) {
-    throw new HttpsError('invalid-argument', 'Only @growmont.com accounts can be provisioned.');
+  const emailClaim = (request.auth.token.email || '').toLowerCase();
+  if (!emailClaim.endsWith(ALLOWED_DOMAIN) && !ADDITIONAL_ALLOWED_EMAILS.has(emailClaim)) {
+    throw new HttpsError('invalid-argument', `Only ${ALLOWED_DOMAIN} accounts can be provisioned.`);
   }
 
   const uid = request.auth.uid;

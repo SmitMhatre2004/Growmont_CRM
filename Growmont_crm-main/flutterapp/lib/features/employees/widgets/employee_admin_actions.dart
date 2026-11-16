@@ -20,7 +20,7 @@ import '../../profile/widgets/change_password_dialog.dart';
 // — so the menu hides those for your own account rather than offering
 // something the server will reject.
 
-enum _AdminAction { edit, password, role, access, delete }
+enum _AdminAction { edit, password, headcount, role, access, delete }
 
 class EmployeeAdminMenu extends ConsumerWidget {
   const EmployeeAdminMenu({
@@ -66,6 +66,16 @@ class EmployeeAdminMenu extends ConsumerWidget {
           Icons.key_outlined,
           AppColors.info,
           isSelf ? 'Change my password' : 'Set new password',
+        ),
+        _item(
+          _AdminAction.headcount,
+          employee.excludeFromHeadcount
+              ? Icons.group_add_outlined
+              : Icons.group_remove_outlined,
+          AppColors.neutral,
+          employee.excludeFromHeadcount
+              ? 'Include in employee count'
+              : 'Exclude from employee count',
         ),
         if (!isSelf) ...[
           _item(
@@ -145,6 +155,32 @@ class EmployeeAdminMenu extends ConsumerWidget {
             'Password updated. $name has been signed out and must use the '
             'new password to log in.',
           );
+        }
+
+      case _AdminAction.headcount:
+        final excluding = !employee.excludeFromHeadcount;
+        final done = await _confirm(
+          context,
+          title: excluding
+              ? 'Exclude $name from employee count?'
+              : 'Include $name in employee count?',
+          message: excluding
+              ? '$name will still appear in the list for every admin, fully '
+                    'searchable and auditable as before — they just won\'t be '
+                    'counted in employee totals.'
+              : '$name will be counted in employee totals again.',
+          confirmLabel: excluding ? 'Exclude' : 'Include',
+          action: () =>
+              api.setEmployeeHeadcountExclusion(employee.id, excluding),
+        );
+        if (done && context.mounted) {
+          _snack(
+            context,
+            excluding
+                ? '$name is excluded from employee counts'
+                : '$name is included in employee counts again',
+          );
+          onChanged();
         }
 
       case _AdminAction.role:

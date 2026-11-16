@@ -21,6 +21,7 @@ import '../reminders/reminders_excel.dart';
 import '../reminders/widgets/add_reminder_modal.dart';
 import 'widgets/account_security_card.dart';
 import 'widgets/data_location_card.dart';
+import 'widgets/developer_access_card.dart';
 import 'widgets/sync_status_card.dart';
 import 'widgets/update_card.dart';
 import '../../shared/widgets/monogram.dart';
@@ -385,11 +386,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   /// chip scrolled off the end of the row, so the cards were effectively
   /// invisible. They are now a plain section of the page.
   Widget _accountSection(bool isMobile) {
+    final isAdmin = ref.watch(authProvider).user?.isAdmin == true;
     final cards = <Widget>[
       const AccountSecurityCard(),
       if (_canSelfUpdate) const UpdateCard(),
       if (_isDesktop) const DataLocationCard(),
       const SyncStatusCard(),
+      if (isAdmin) const DeveloperAccessCard(),
     ];
 
     Widget body;
@@ -866,7 +869,7 @@ class _RecordSegments extends StatelessWidget {
 
   static const _labels = {
     ProfileTab.sales: 'Sales',
-    ProfileTab.interactions: 'Chats',
+    ProfileTab.interactions: 'Interactions',
     ProfileTab.reminders: 'Reminders',
   };
 
@@ -1067,7 +1070,7 @@ class _ProfileIdentityCard extends StatelessWidget {
   Widget _activity() {
     final tiles = [
       _statTile('Sales', '$salesCount', AppStatus.won),
-      _statTile('Chats', '$interactionsCount', AppStatus.chat),
+      _statTile('Interactions', '$interactionsCount', AppStatus.chat),
       _statTile('Reminders', '$remindersCount', AppStatus.fresh),
     ];
 

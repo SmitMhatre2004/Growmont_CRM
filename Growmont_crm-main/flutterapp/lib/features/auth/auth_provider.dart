@@ -112,7 +112,12 @@ class AuthNotifier extends Notifier<AuthState> {
         : UserRole.employee;
     final name = (data['name'] as String?)?.trim();
     final nameChanged = name != null && name.isNotEmpty && name != current.name;
-    if (role == current.role && !nameChanged) return;
+    final excludeFromHeadcount = data['exclude_from_headcount'] as bool? ?? false;
+    if (role == current.role &&
+        !nameChanged &&
+        excludeFromHeadcount == current.excludeFromHeadcount) {
+      return;
+    }
 
     final updated = AppUser(
       id: current.id,
@@ -120,6 +125,7 @@ class AuthNotifier extends Notifier<AuthState> {
       email: current.email,
       avatar: current.avatar,
       role: role,
+      excludeFromHeadcount: excludeFromHeadcount,
     );
     state = state.copyWith(user: updated);
     try {
@@ -197,6 +203,7 @@ class AuthNotifier extends Notifier<AuthState> {
         email: firebaseUser.email ?? '',
         avatar: avatar,
         role: roleStr == 'ADMIN' ? UserRole.admin : UserRole.employee,
+        excludeFromHeadcount: docData['exclude_from_headcount'] as bool? ?? false,
       );
 
       await _storage.saveSession(
@@ -223,13 +230,21 @@ class AuthNotifier extends Notifier<AuthState> {
     }
   }
 
+  /// True for any `kAllowedEmailDomain` address, plus the short, named
+  /// exceptions in `kAdditionalAllowedEmails` (see its doc comment).
+  static bool _isAllowedEmail(String email) {
+    final normalised = email.trim().toLowerCase();
+    return normalised.endsWith(kAllowedEmailDomain) ||
+        kAdditionalAllowedEmails.contains(normalised);
+  }
+
   String? _eligibilityError(
     User user,
     Map<String, dynamic> docData,
     bool docExists,
   ) {
     final email = user.email?.trim().toLowerCase() ?? '';
-    if (!email.endsWith(kAllowedEmailDomain)) {
+    if (!_isAllowedEmail(email)) {
       return 'Only $kAllowedEmailDomain accounts can sign in to Growmont CRM.';
     }
     if (!docExists) {
@@ -285,7 +300,7 @@ class AuthNotifier extends Notifier<AuthState> {
         email = '$email$kAllowedEmailDomain';
       }
 
-      if (!email.toLowerCase().endsWith(kAllowedEmailDomain)) {
+      if (!_isAllowedEmail(email)) {
         state = state.copyWith(isLoading: false);
         return 'Only $kAllowedEmailDomain accounts can sign in to Growmont CRM.';
       }
@@ -494,9 +509,9 @@ class AuthNotifier extends Notifier<AuthState> {
       if (!cleanEmail.contains('@')) {
         cleanEmail = '$cleanEmail$kAllowedEmailDomain';
       }
-      // Same domain gate as [login] — never send a reset mail to, or confirm
-      // the existence of, an address outside the company domain.
-      if (!cleanEmail.toLowerCase().endsWith(kAllowedEmailDomain)) {
+      // Same allowlist as [login] — never send a reset mail to, or confirm
+      // the existence of, an address outside it.
+      if (!_isAllowedEmail(cleanEmail)) {
         return 'Only $kAllowedEmailDomain accounts can sign in to Growmont CRM.';
       }
       await FirebaseAuth.instance.sendPasswordResetEmail(email: cleanEmail);

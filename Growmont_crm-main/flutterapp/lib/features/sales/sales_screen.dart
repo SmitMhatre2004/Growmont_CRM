@@ -1,6 +1,7 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../core/excel/excel_io.dart';
 import '../../core/io/file_saver.dart';
@@ -69,9 +70,9 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
     try {
       final user = ref.read(authProvider).user;
       final selfId = user?.isAdmin == true ? null : user?.id;
-      final data = await ref.read(apiServiceProvider).getSales(
-        salesRepId: selfId,
-      );
+      final data = await ref
+          .read(apiServiceProvider)
+          .getSales(salesRepId: selfId);
       if (mounted) {
         setState(() {
           _sales = data;
@@ -367,10 +368,7 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
         if (constraints.maxHeight.isFinite &&
             constraints.maxHeight < minComfortHeight) {
           return SingleChildScrollView(
-            child: SizedBox(
-              height: minComfortHeight,
-              child: content,
-            ),
+            child: SizedBox(height: minComfortHeight, child: content),
           );
         }
 
@@ -688,9 +686,7 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                 ? catColor.withValues(alpha: 0.08)
                 : Colors.transparent,
             border: selected
-                ? Border(
-                    left: BorderSide(color: catColor, width: 3.5),
-                  )
+                ? Border(left: BorderSide(color: catColor, width: 3.5))
                 : null,
             borderRadius: BorderRadius.circular(AppRadius.md),
           ),
@@ -709,9 +705,7 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                         fontWeight: selected
                             ? FontWeight.w700
                             : FontWeight.w500,
-                        color: selected
-                            ? catColor
-                            : _Palette.textPrimary,
+                        color: selected ? catColor : _Palette.textPrimary,
                       ),
                     ),
                     const SizedBox(height: AppSpacing.xxs),
@@ -749,7 +743,6 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
         height: 40,
         decoration: BoxDecoration(
           color: Colors.white,
-          border: Border.all(color: _Palette.border),
           borderRadius: BorderRadius.circular(AppRadius.md),
         ),
         padding: const EdgeInsets.symmetric(
@@ -792,8 +785,9 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                           cat.$2,
                           style: TextStyle(
                             fontSize: 12,
-                            fontWeight:
-                                selected ? FontWeight.w700 : FontWeight.w500,
+                            fontWeight: selected
+                                ? FontWeight.w700
+                                : FontWeight.w500,
                             color: selected ? catColor : _Palette.textPrimary,
                           ),
                         ),
@@ -802,8 +796,9 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                           '($count)',
                           style: TextStyle(
                             fontSize: 11,
-                            fontWeight:
-                                selected ? FontWeight.w700 : FontWeight.w400,
+                            fontWeight: selected
+                                ? FontWeight.w700
+                                : FontWeight.w400,
                             color: selected ? catColor : _Palette.textMuted,
                           ),
                         ),
@@ -837,9 +832,7 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        border: Border.all(color: _Palette.border),
         borderRadius: BorderRadius.circular(AppRadius.lg),
-        boxShadow: AppShadows.sm,
       ),
       clipBehavior: Clip.antiAlias,
       child: Column(
@@ -1182,7 +1175,9 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
         return SingleChildScrollView(
           child: ConstrainedBox(
             constraints: BoxConstraints(
-              minHeight: constraints.maxHeight.isFinite ? constraints.maxHeight : 0,
+              minHeight: constraints.maxHeight.isFinite
+                  ? constraints.maxHeight
+                  : 0,
             ),
             child: Center(
               child: Padding(
@@ -1238,11 +1233,15 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                           onPressed: () => _showSaleModal(
                             context,
                             ref.read(authProvider).user,
-                            defaultProduct: isFiltered ? _selectedProduct : null,
+                            defaultProduct: isFiltered
+                                ? _selectedProduct
+                                : null,
                           ),
                           icon: const Icon(Icons.add, size: AppSizing.iconMd),
                           label: Text(
-                            isFiltered ? 'Add $categoryName Sale' : 'Add First Sale',
+                            isFiltered
+                                ? 'Add $categoryName Sale'
+                                : 'Add First Sale',
                           ),
                           style: FilledButton.styleFrom(
                             backgroundColor: AppColors.primaryBlue,
@@ -1250,7 +1249,8 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                         ),
                         if (isFiltered)
                           OutlinedButton.icon(
-                            onPressed: () => setState(() => _selectedProduct = 'ALL'),
+                            onPressed: () =>
+                                setState(() => _selectedProduct = 'ALL'),
                             icon: const Icon(
                               Icons.filter_alt_off,
                               size: AppSizing.iconMd,
@@ -1317,6 +1317,7 @@ class _SalesTableRow extends StatefulWidget {
 
 class _SalesTableRowState extends State<_SalesTableRow> {
   bool _isHovered = false;
+  bool _clientHovered = false;
 
   String _getFrequencyLabel(String code) {
     for (final choice in frequencyChoices) {
@@ -1344,6 +1345,10 @@ class _SalesTableRowState extends State<_SalesTableRow> {
         _getFrequencyLabel(widget.sale.frequency);
     final hasCompany = widget.sale.company.trim().isNotEmpty;
     final hasScheme = widget.sale.scheme.trim().isNotEmpty;
+    final rawClientId = widget.sale.clientId?.trim();
+    final clientId = (rawClientId == null || rawClientId.isEmpty)
+        ? null
+        : rawClientId;
 
     return MouseRegion(
       onEnter: (_) => setState(() => _isHovered = true),
@@ -1378,52 +1383,73 @@ class _SalesTableRowState extends State<_SalesTableRow> {
             // Client & Details
             Expanded(
               flex: 4,
-              child: Row(
-                children: [
-                  CircleAvatar(
-                    radius: 16,
-                    backgroundColor: AppColors.primaryBlue.withValues(
-                      alpha: 0.1,
-                    ),
-                    child: Text(
-                      widget.sale.clientName.isEmpty
-                          ? '?'
-                          : widget.sale.clientName[0].toUpperCase(),
-                      style: const TextStyle(
-                        color: AppColors.primaryBlue,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 13,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: AppSpacing.sm),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          widget.sale.clientName.isEmpty
-                              ? '—'
-                              : widget.sale.clientName,
-                          style: AppTypography.tableCellStrong,
-                          overflow: TextOverflow.ellipsis,
+              child: MouseRegion(
+                cursor: clientId == null
+                    ? MouseCursor.defer
+                    : SystemMouseCursors.click,
+                onEnter: (_) => setState(() => _clientHovered = true),
+                onExit: (_) => setState(() => _clientHovered = false),
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: clientId == null
+                      ? null
+                      : () => context.push('/clients/$clientId'),
+                  child: Row(
+                    children: [
+                      CircleAvatar(
+                        radius: 16,
+                        backgroundColor: AppColors.primaryBlue.withValues(
+                          alpha: 0.1,
                         ),
-                        if (hasCompany || hasScheme) ...[
-                          const SizedBox(height: AppSpacing.xxs),
-                          Text(
-                            [
-                              if (hasCompany) widget.sale.company.trim(),
-                              if (hasScheme) widget.sale.scheme.trim(),
-                            ].join(' • '),
-                            style: AppTypography.caption,
-                            overflow: TextOverflow.ellipsis,
+                        child: Text(
+                          widget.sale.clientName.isEmpty
+                              ? '?'
+                              : widget.sale.clientName[0].toUpperCase(),
+                          style: const TextStyle(
+                            color: AppColors.primaryBlue,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 13,
                           ),
-                        ],
-                      ],
-                    ),
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              widget.sale.clientName.isEmpty
+                                  ? '—'
+                                  : widget.sale.clientName,
+                              style: AppTypography.tableCellStrong.copyWith(
+                                color: clientId != null && _clientHovered
+                                    ? AppColors.primaryBlue
+                                    : null,
+                                decoration: clientId != null && _clientHovered
+                                    ? TextDecoration.underline
+                                    : null,
+                                decorationColor: AppColors.primaryBlue,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            if (hasCompany || hasScheme) ...[
+                              const SizedBox(height: AppSpacing.xxs),
+                              Text(
+                                [
+                                  if (hasCompany) widget.sale.company.trim(),
+                                  if (hasScheme) widget.sale.scheme.trim(),
+                                ].join(' • '),
+                                style: AppTypography.caption,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
             ),
 

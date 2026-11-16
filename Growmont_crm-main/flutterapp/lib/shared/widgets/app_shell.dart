@@ -8,6 +8,7 @@ import '../../core/theme/app_theme.dart';
 import '../../features/auth/auth_provider.dart';
 import 'app_bottom_nav.dart';
 import 'app_sidebar.dart';
+import 'dev_test_banner.dart';
 
 /// Shell branch indices, matching the order declared in `app_router.dart`.
 class AppBranch {
@@ -58,33 +59,43 @@ class _AppShellState extends ConsumerState<AppShell> {
           autofocus: true,
           child: Scaffold(
             backgroundColor: AppColors.background,
-            body: Row(
+            body: Column(
               children: [
-                AnimatedContainer(
-                  duration: const Duration(milliseconds: 250),
-                  curve: Curves.easeInOutCubic,
-                  width: isSidebarCollapsed
-                      ? AppSizing.sidebarCollapsedWidth
-                      : AppSizing.sidebarWidth,
-                  clipBehavior: Clip.hardEdge,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    border: Border(
-                      right: BorderSide(color: AppColors.border, width: 1),
-                    ),
-                  ),
-                  child: AppSidebar(
-                    isCompact: isSidebarCollapsed,
-                    onNavigate: () {},
-                  ),
-                ),
+                const DevTestBanner(),
                 Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.only(
-                      top: AppSpacing.xl,
-                      right: AppSpacing.lg,
-                    ),
-                    child: ClipRect(child: widget.navigationShell),
+                  child: Row(
+                    children: [
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 250),
+                        curve: Curves.easeInOutCubic,
+                        width: isSidebarCollapsed
+                            ? AppSizing.sidebarCollapsedWidth
+                            : AppSizing.sidebarWidth,
+                        clipBehavior: Clip.hardEdge,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          border: Border(
+                            right: BorderSide(
+                              color: AppColors.border,
+                              width: 1,
+                            ),
+                          ),
+                        ),
+                        child: AppSidebar(
+                          isCompact: isSidebarCollapsed,
+                          onNavigate: () {},
+                        ),
+                      ),
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.only(
+                            top: AppSpacing.xl,
+                            right: AppSpacing.lg,
+                          ),
+                          child: ClipRect(child: widget.navigationShell),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
@@ -133,7 +144,7 @@ class _MobileShell extends ConsumerWidget {
       const BottomNavItem(
         icon: Icons.chat_bubble_outline,
         activeIcon: Icons.chat_bubble,
-        label: 'Chats',
+        label: 'Interactions',
         branchIndex: AppBranch.interactions,
       ),
       const BottomNavItem(
@@ -171,7 +182,12 @@ class _MobileShell extends ConsumerWidget {
           const SizedBox(width: AppSpacing.sm),
         ],
       ),
-      body: navigationShell,
+      body: Column(
+        children: [
+          const DevTestBanner(),
+          Expanded(child: navigationShell),
+        ],
+      ),
       bottomNavigationBar: AppBottomNav(
         items: items,
         currentBranch: navigationShell.currentIndex,
