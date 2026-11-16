@@ -5,6 +5,7 @@
 // out of the page stream, which is the only way to prove a number
 // actually reached the page rather than just reaching the builder.
 
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io' show ZLibCodec;
 import 'dart:typed_data';
@@ -352,6 +353,64 @@ void main() {
       // The fallback renders the "no baseline" dash as a hyphen, so the
       // cell is never blank.
       expect(text, contains('-'));
+    });
+
+    test('with Inter embedded, no glyph is missing from the page', () async {
+      // The decisive check for the rupee sign. The pdf package draws
+      // NOTHING for a character its font cannot render, and says so on
+      // stdout — "Unable to find a font to draw ...". Capturing that
+      // output turns a silent, invisible failure into an assertion.
+      //
+      // This covers every character the report can emit, not only the
+      // rupee: a future label with a dash, a bullet or a non-Latin name
+      // would trip it too.
+      TestWidgetsFlutterBinding.ensureInitialized();
+      final loaded = await ReportPdfFonts.load();
+      expect(loaded.unicodeSafe, isTrue, reason: 'Inter must load');
+
+      final warnings = <String>[];
+      await runZoned(
+        () async {
+          await MonthlyReportPdf.build(_report(), loaded);
+        },
+        zoneSpecification: ZoneSpecification(
+          print: (self, parent, zone, line) => warnings.add(line),
+        ),
+      );
+
+      final missing = warnings
+          .where((w) => w.contains('Unable to find a font to draw'))
+          .toList();
+      expect(
+        missing,
+        isEmpty,
+        reason: 'characters the embedded font cannot draw: $missing',
+      );
+    });
+
+    test('the rupee sign reaches the page with Inter embedded', () async {
+      TestWidgetsFlutterBinding.ensureInitialized();
+      final loaded = await ReportPdfFonts.load();
+
+      final warnings = <String>[];
+      late final Uint8List bytes;
+      await runZoned(
+        () async {
+          bytes = await MonthlyReportPdf.build(_report(), loaded);
+        },
+        zoneSpecification: ZoneSpecification(
+          print: (self, parent, zone, line) => warnings.add(line),
+        ),
+      );
+
+      // No complaint about U+20B9 specifically...
+      expect(
+        warnings.where((w) => w.contains('20B9')),
+        isEmpty,
+      );
+      // ...and the document really did embed a font subset to draw with.
+      final raw = latin1.decode(bytes, allowInvalid: true);
+      expect(raw, contains('FontFile2'));
     });
 
     test('embedded Inter is used when the asset bundle is available',

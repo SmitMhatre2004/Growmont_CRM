@@ -7,7 +7,8 @@
     "bootstrap-admin": "node bootstrap-admin.js",
     "reset": "node reset-firebase.js",
     "seed:emulator": "node seed-emulator.js",
-    "verify": "node verify-report.js"
+    "verify": "node verify-report.js",
+    "dump:fixture": "node dump-fixture.js"
   },
   "dependencies": {
     "firebase-admin": "^13.1.0"

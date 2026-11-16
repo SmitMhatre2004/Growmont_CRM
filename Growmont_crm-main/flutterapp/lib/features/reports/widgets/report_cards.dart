@@ -68,28 +68,18 @@ class ReportCard extends StatelessWidget {
   }
 }
 
-/// Direction of a month-over-month move, and what it should look like.
-///
-/// Up is not always good: more past-due follow-ups is a worse month, so
-/// the caller states whether a rise is favourable rather than the widget
-/// assuming green-is-up.
-enum DeltaSense { higherIsBetter, lowerIsBetter, neutral }
-
 /// The "+12.4% vs May" chip under a KPI value.
 class DeltaChip extends StatelessWidget {
   const DeltaChip({
     super.key,
     required this.delta,
     required this.previousLabel,
-    this.sense = DeltaSense.higherIsBetter,
   });
 
   final MetricDelta delta;
 
   /// Name of the month being compared against, e.g. "May 2025".
   final String previousLabel;
-
-  final DeltaSense sense;
 
   @override
   Widget build(BuildContext context) {
@@ -109,16 +99,14 @@ class DeltaChip extends StatelessWidget {
       );
     }
 
+    // Every metric the report shows is one where more is better, so a
+    // rise is green and a fall is red. If a "lower is better" measure is
+    // ever added here, it needs its own direction flag rather than
+    // inheriting this one.
     final isFlat = delta.isFlat;
-    final isGood = switch (sense) {
-      DeltaSense.higherIsBetter => delta.isUp,
-      DeltaSense.lowerIsBetter => delta.isDown,
-      DeltaSense.neutral => true,
-    };
-
-    final (Color ink, Color fill) = isFlat || sense == DeltaSense.neutral
+    final (Color ink, Color fill) = isFlat
         ? (AppColors.textSecondary, AppColors.surfaceSunken)
-        : isGood
+        : delta.isUp
             ? (AppColors.success, AppColors.successSoft)
             : (AppColors.danger, AppColors.dangerSoft);
 
@@ -195,21 +183,14 @@ class ReportKpiCard extends StatelessWidget {
     required this.value,
     this.delta,
     this.previousLabel = '',
-    this.sense = DeltaSense.higherIsBetter,
     this.valueColor,
-    this.note,
   });
 
   final String label;
   final String value;
   final MetricDelta? delta;
   final String previousLabel;
-  final DeltaSense sense;
   final Color? valueColor;
-
-  /// Small print under the chip — used to name the metric's date basis,
-  /// e.g. "By sale date".
-  final String? note;
 
   @override
   Widget build(BuildContext context) {
@@ -251,18 +232,7 @@ class ReportKpiCard extends StatelessWidget {
               child: DeltaChip(
                 delta: delta!,
                 previousLabel: previousLabel,
-                sense: sense,
               ),
-            ),
-          ],
-          if (note != null) ...[
-            const SizedBox(height: AppSpacing.xs),
-            Text(
-              note!,
-              style: AppTypography.caption.copyWith(
-                color: AppColors.textMuted,
-              ),
-              maxLines: 2,
             ),
           ],
         ],
@@ -270,73 +240,3 @@ class ReportKpiCard extends StatelessWidget {
     );
   }
 }
-
-/// An inline notice. Used for the data-quality warning and for the
-/// "not tracked in this CRM" footnote, so neither looks like an error.
-class ReportNotice extends StatelessWidget {
-  const ReportNotice({
-    super.key,
-    required this.message,
-    this.icon = Icons.info_outline,
-    this.tone = ReportNoticeTone.info,
-    this.title,
-  });
-
-  final String message;
-  final String? title;
-  final IconData icon;
-  final ReportNoticeTone tone;
-
-  @override
-  Widget build(BuildContext context) {
-    final (Color ink, Color fill, Color edge) = switch (tone) {
-      ReportNoticeTone.info => (
-          AppColors.textSecondary,
-          AppColors.surfaceSunken,
-          AppColors.border,
-        ),
-      ReportNoticeTone.warning => (
-          AppColors.warning,
-          AppColors.warningSoft,
-          AppColors.warning.withValues(alpha: 0.25),
-        ),
-    };
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(AppSpacing.md),
-      decoration: BoxDecoration(
-        color: fill,
-        border: Border.all(color: edge),
-        borderRadius: BorderRadius.circular(AppRadius.md),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, size: AppSizing.iconSm, color: ink),
-          const SizedBox(width: AppSpacing.sm),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (title != null) ...[
-                  Text(
-                    title!,
-                    style: AppTypography.captionSemibold.copyWith(color: ink),
-                  ),
-                  const SizedBox(height: AppSpacing.xxs),
-                ],
-                Text(
-                  message,
-                  style: AppTypography.caption.copyWith(color: ink),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-enum ReportNoticeTone { info, warning }

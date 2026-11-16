@@ -445,11 +445,60 @@ void main() {
       expect(byCompany, report.revenue.current);
     });
 
-    test('frequency uses its display label', () {
+    test('frequency comes back in scale order, not largest first', () {
+      // Payment frequency is an ordered scale, so it keeps the order
+      // frequencyChoices declares and holds a zero row for every step
+      // that saw no business. The segmented bar that draws it reads left
+      // to right along that scale; re-sorting by size would turn an
+      // ordered split into a ranked list wearing an ordinal ramp.
       final report = buildReport(
-        sales: [sale(date: '2025-06-01', frequency: 'Q', paise: 100000)],
+        sales: [
+          // Deliberately largest last: Yearly out-sells Quarterly.
+          sale(id: 'q', date: '2025-06-01', frequency: 'Q', paise: 100000),
+          sale(id: 'y', date: '2025-06-02', frequency: 'Y', paise: 900000),
+        ],
       );
-      expect(report.revenueByFrequency.single.label, 'Quarterly');
+
+      expect(
+        report.revenueByFrequency.map((r) => r.label),
+        ['Monthly', 'Quarterly', 'Half Yearly', 'Yearly', 'One Time'],
+      );
+
+      final quarterly = report.revenueByFrequency
+          .firstWhere((r) => r.label == 'Quarterly');
+      expect(quarterly.paise, 100000);
+      expect(quarterly.count, 1);
+
+      // Steps with no sales are present at zero, so the order never
+      // shifts between months.
+      expect(
+        report.revenueByFrequency.firstWhere((r) => r.label == 'Monthly').paise,
+        0,
+      );
+    });
+
+    test('a frequency outside the scale is still counted, after it', () {
+      final report = buildReport(
+        sales: [
+          sale(id: 'a', date: '2025-06-01', frequency: 'M', paise: 100000),
+          sale(id: 'b', date: '2025-06-02', frequency: 'WEIRD', paise: 50000),
+        ],
+      );
+
+      final labels = report.revenueByFrequency.map((r) => r.label).toList();
+      expect(labels.take(5), [
+        'Monthly',
+        'Quarterly',
+        'Half Yearly',
+        'Yearly',
+        'One Time',
+      ]);
+      expect(labels.last, 'WEIRD');
+      // Nothing is dropped: the breakdown still reconciles to revenue.
+      expect(
+        report.revenueByFrequency.fold<int>(0, (s, r) => s + r.paise),
+        report.revenue.current,
+      );
     });
 
     test('top deals are the largest, biggest first, capped', () {
@@ -462,6 +511,88 @@ void main() {
       expect(report.topDeals.length, kTopDealCount);
       expect(report.topDeals.first.amountPaise, 80000);
       expect(report.topDeals.last.amountPaise, 40000);
+    });
+  });
+
+  group('daily revenue series', () {
+    test('runs one entry per day, oldest first, ending on the last day', () {
+      final report = buildReport();
+      expect(report.dailyRevenue.length, kTrendDays);
+      expect(report.dailyRevenue.last.day, DateTime(2025, 6, 30));
+      expect(
+        report.dailyRevenue.first.day,
+        DateTime(2025, 6, 30 - (kTrendDays - 1)),
+      );
+    });
+
+    test('days are consecutive with no gaps or repeats', () {
+      final days = buildReport().dailyRevenue.map((d) => d.day).toList();
+      expect(days.toSet().length, days.length, reason: 'no repeated dates');
+      for (var i = 1; i < days.length; i++) {
+        expect(
+          days[i].difference(days[i - 1]).inDays,
+          1,
+          reason: 'gap before ${days[i]}',
+        );
+      }
+    });
+
+    test('a sale lands on its own day', () {
+      final report = buildReport(
+        sales: [sale(date: '2025-06-10', paise: 450000)],
+      );
+      final tenth = report.dailyRevenue
+          .firstWhere((d) => d.day == DateTime(2025, 6, 10));
+      expect(tenth.paise, 450000);
+      expect(tenth.count, 1);
+    });
+
+    test('several sales on one day are summed', () {
+      final report = buildReport(
+        sales: [
+          sale(id: 'a', date: '2025-06-10', paise: 100000),
+          sale(id: 'b', date: '2025-06-10', paise: 250000),
+        ],
+      );
+      final tenth = report.dailyRevenue
+          .firstWhere((d) => d.day == DateTime(2025, 6, 10));
+      expect(tenth.paise, 350000);
+      expect(tenth.count, 2);
+    });
+
+    test('a quiet day is a zero, not a missing entry', () {
+      final report = buildReport(
+        sales: [sale(date: '2025-06-10', paise: 450000)],
+      );
+      final eleventh = report.dailyRevenue
+          .firstWhere((d) => d.day == DateTime(2025, 6, 11));
+      expect(eleventh.paise, 0);
+      expect(eleventh.count, 0);
+    });
+
+    test('sales after the reported month are not included', () {
+      final report = buildReport(
+        sales: [sale(date: '2025-07-05', paise: 900000)],
+      );
+      expect(report.dailyRevenue.every((d) => d.paise == 0), isTrue);
+    });
+
+    test('sales older than the window are not included', () {
+      final report = buildReport(
+        sales: [sale(date: '2020-01-10', paise: 900000)],
+      );
+      expect(report.dailyRevenue.every((d) => d.paise == 0), isTrue);
+    });
+
+    test('the window spans a year boundary correctly', () {
+      final report = buildReport(
+        period: const ReportMonth(2025, 1),
+        now: DateTime(2025, 1, 20),
+        sales: [sale(date: '2024-12-15', paise: 700000)],
+      );
+      final december = report.dailyRevenue
+          .firstWhere((d) => d.day == DateTime(2024, 12, 15));
+      expect(december.paise, 700000);
     });
   });
 

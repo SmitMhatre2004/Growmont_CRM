@@ -12,6 +12,7 @@
 // and cannot run without Firebase being initialized.
 
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:growmont_crm/core/firebase/firestore_service.dart';
@@ -259,8 +260,7 @@ void main() {
       'Revenue by product',
       'Largest deals',
       'Team performance',
-      'Month-over-month',
-      'How to read this report',
+      'Payment frequency',
     ]) {
       await _scrollTo(tester, find.text(section));
       expect(find.text(section), findsOneWidget, reason: 'missing: $section');
@@ -323,11 +323,21 @@ void main() {
     expect(forward.onPressed, isNull);
   });
 
-  testWidgets('warns when records cannot be placed in a month', (tester) async {
+  testWidgets('undated records are excluded quietly, with no banner', (
+    tester,
+  ) async {
+    // The page used to carry a data-quality banner. It was removed as
+    // clutter — the full explanation still ships in the PDF and in the
+    // workbook's Notes tab. What must NOT change is the arithmetic: a
+    // record with no usable date is left out of the month rather than
+    // guessed into it.
     await _pump(
       tester,
       service: _FakeService(
-        sales: [_sale(), _sale(id: 'bad', date: '')],
+        sales: [
+          _sale(paise: 300000),
+          _sale(id: 'bad', date: '', paise: 900000),
+        ],
         clients: [
           const Client(id: 'c9', name: 'No Date Ltd', contactNumber: '1'),
         ],
@@ -335,11 +345,13 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    final notice = find.text('Some records could not be placed in a month');
-    await _scrollTo(tester, notice);
+    expect(find.textContaining('no usable date'), findsNothing);
+    expect(find.textContaining('a minimum'), findsNothing);
 
-    expect(notice, findsOneWidget);
-    expect(find.textContaining('1 sale(s) have no usable date'), findsOneWidget);
+    // 3,000 is the dated sale; 12,000 would mean the undated one was
+    // counted anyway.
+    expect(find.textContaining('3,000'), findsWidgets);
+    expect(find.textContaining('12,000'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 
@@ -400,6 +412,156 @@ void main() {
     expect(service.lastClientEmployeeId, isNull);
     // Both reps' sales are included: 3,000 + 9,000.
     expect(find.textContaining('12,000'), findsWidgets);
+    expect(tester.takeException(), isNull);
+  });
+
+  // ── Employee drill-down ──────────────────────────────────────────────
+
+  testWidgets('an admin can open one employee report and come back', (
+    tester,
+  ) async {
+    final service = _FakeService(
+      sales: [
+        _sale(id: 'a', rep: 'emp1', repName: 'Asha Rao', paise: 300000),
+        _sale(id: 'b', rep: 'emp2', repName: 'Bilal Khan', paise: 900000),
+      ],
+      roster: const [
+        EmployeeDropdown(id: 'emp1', name: 'Asha Rao', role: 'EMPLOYEE'),
+        EmployeeDropdown(id: 'emp2', name: 'Bilal Khan', role: 'EMPLOYEE'),
+      ],
+    );
+
+    await _pump(tester, service: service, role: UserRole.admin);
+    await tester.pumpAndSettle();
+
+    // Company first: both reps' revenue.
+    expect(find.textContaining('12,000'), findsWidgets);
+
+    await _scrollTo(tester, find.text('Team performance'));
+    await tester.tap(find.text('Bilal Khan').first);
+    await tester.pumpAndSettle();
+
+    // Now only Bilal's: 9,000, and the team table is gone because this
+    // is one person's own report.
+    expect(find.textContaining('9,000'), findsWidgets);
+    expect(find.byType(TeamPerformanceTable), findsNothing);
+    expect(find.textContaining('Bilal Khan'), findsWidgets);
+
+    // And there is a way back.
+    await tester.tap(find.text('All employees'));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('12,000'), findsWidgets);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('the team table lists everyone, including a quiet month', (
+    tester,
+  ) async {
+    final service = _FakeService(
+      sales: [_sale(id: 'a', rep: 'emp1', repName: 'Asha Rao')],
+      roster: const [
+        EmployeeDropdown(id: 'emp1', name: 'Asha Rao', role: 'EMPLOYEE'),
+        EmployeeDropdown(id: 'emp2', name: 'Quiet Person', role: 'EMPLOYEE'),
+      ],
+    );
+
+    await _pump(tester, service: service, role: UserRole.admin);
+    await tester.pumpAndSettle();
+    await _scrollTo(tester, find.text('Team performance'));
+
+    // Someone who sold nothing still appears — a name that vanishes in a
+    // slow month reads as a bug.
+    expect(find.textContaining('Quiet Person'), findsWidgets);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('an employee sees no tappable team table at all', (
+    tester,
+  ) async {
+    await _pump(
+      tester,
+      role: UserRole.employee,
+      service: _FakeService(sales: [_sale()]),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byType(TeamPerformanceTable), findsNothing);
+    expect(find.text('All employees'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  // ── Month-by-month history ───────────────────────────────────────────
+
+  testWidgets('an employee report carries a month-by-month history', (
+    tester,
+  ) async {
+    final now = DateTime.now();
+    final lastMonth = DateTime(now.year, now.month - 1, 12);
+
+    await _pump(
+      tester,
+      role: UserRole.employee,
+      service: _FakeService(
+        sales: [
+          _sale(id: 'now', paise: 500000),
+          _sale(id: 'prev', date: lastMonth.toIso8601String(), paise: 200000),
+        ],
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final history = find.text('Month by month');
+    await _scrollTo(tester, history);
+    expect(history, findsOneWidget);
+
+    // Both months are listed, each with its own figure.
+    expect(find.textContaining('5,000'), findsWidgets);
+    expect(find.textContaining('2,000'), findsWidgets);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('tapping a month in the history opens that month', (
+    tester,
+  ) async {
+    final now = DateTime.now();
+    final lastMonth = DateTime(now.year, now.month - 1, 12);
+    final label = DateFormat('MMM yyyy').format(lastMonth);
+
+    await _pump(
+      tester,
+      role: UserRole.employee,
+      service: _FakeService(
+        sales: [
+          _sale(id: 'prev', date: lastMonth.toIso8601String(), paise: 777700),
+        ],
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // This month is empty, so the report opens on the empty state.
+    expect(find.textContaining('Nothing recorded in'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Previous month'));
+    await tester.pumpAndSettle();
+
+    final history = find.text('Month by month');
+    await _scrollTo(tester, history);
+    expect(find.text(label), findsWidgets);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('the company report has no month-by-month card', (
+    tester,
+  ) async {
+    await _pump(
+      tester,
+      role: UserRole.admin,
+      service: _FakeService(sales: [_sale()]),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Month by month'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 
