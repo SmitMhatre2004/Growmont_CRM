@@ -7,7 +7,9 @@ import 'cloud_callables.dart';
 import '../../models/client.dart';
 import '../../models/client_transfer.dart';
 import '../../models/employee.dart';
+import '../../models/client_note.dart';
 import '../../models/interaction.dart';
+import '../local/firestore_json.dart';
 import '../../models/reminder.dart';
 import '../../models/sale.dart';
 
@@ -577,6 +579,63 @@ class FirestoreService {
 
   Future<void> deleteInteraction(dynamic id) async {
     await _firestore.collection('interactions').doc(id.toString()).delete();
+  }
+
+  // ----------------------------------------------------
+  // Client notes
+  // ----------------------------------------------------
+
+  Stream<List<ClientNote>> streamClientNotes(String clientId) {
+    return _firestore
+        .collection('client_notes')
+        .where('client_id', isEqualTo: clientId)
+        .snapshots()
+        .map((snapshot) {
+          final notes = snapshot.docs
+              .map((d) => ClientNote.fromJson(toJsonSafe(d.data()), d.id))
+              .toList();
+          notes.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+          return notes;
+        });
+  }
+
+  /// Adds a note to a client. [text] is trimmed and must be 1-500 chars.
+  Future<ClientNote> createClientNote({
+    required String clientId,
+    required String clientOwnerId,
+    required String text,
+    required String authorId,
+    required String authorName,
+  }) async {
+    final clean = ClientNote.validate(text);
+    if (clean == null) {
+      throw ArgumentError(
+        'A note must be 1-${ClientNote.maxLength} characters.',
+      );
+    }
+    final docRef = _firestore.collection('client_notes').doc();
+    await docRef.set({
+      'client_id': clientId,
+      'client_owner_id': clientOwnerId,
+      'text': clean,
+      'author_id': authorId,
+      'author_name': authorName,
+      'created_at': FieldValue.serverTimestamp(),
+      'updated_at': FieldValue.serverTimestamp(),
+    });
+    return ClientNote(
+      id: docRef.id,
+      clientId: clientId,
+      clientOwnerId: clientOwnerId,
+      text: clean,
+      authorId: authorId,
+      authorName: authorName,
+      createdAt: DateTime.now(),
+    );
+  }
+
+  Future<void> deleteClientNote(String id) async {
+    await _firestore.collection('client_notes').doc(id).delete();
   }
 
   // ----------------------------------------------------

@@ -13,6 +13,7 @@ import '../../shared/widgets/error_state.dart';
 import '../../shared/widgets/monthly_revenue_chart.dart';
 import '../auth/auth_provider.dart';
 import '../interactions/widgets/interaction_detail_modal.dart';
+import 'widgets/client_notes_section.dart';
 import 'widgets/transfer_client_modal.dart';
 
 class ClientDetailScreen extends ConsumerStatefulWidget {
@@ -189,6 +190,8 @@ class _ClientDetailScreenState extends ConsumerState<ClientDetailScreen> {
                       children: [
                         _buildInteractionsCard(),
                         const SizedBox(height: AppSpacing.md),
+                        _buildNotesCard(client),
+                        const SizedBox(height: AppSpacing.md),
                         _buildTransferHistoryCard(),
                       ],
                     ),
@@ -201,6 +204,8 @@ class _ClientDetailScreenState extends ConsumerState<ClientDetailScreen> {
                   _buildRevenueCard(),
                   const SizedBox(height: AppSpacing.md),
                   _buildInteractionsCard(),
+                  const SizedBox(height: AppSpacing.md),
+                  _buildNotesCard(client),
                   const SizedBox(height: AppSpacing.md),
                   _buildSalesHistoryCard(),
                   const SizedBox(height: AppSpacing.md),
@@ -423,6 +428,14 @@ class _ClientDetailScreenState extends ConsumerState<ClientDetailScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildNotesCard(Client client) {
+    return ClientNotesSection(
+      key: ValueKey('notes-${client.id}-${client.employeeId}'),
+      clientId: client.id,
+      clientOwnerId: client.employeeId,
     );
   }
 

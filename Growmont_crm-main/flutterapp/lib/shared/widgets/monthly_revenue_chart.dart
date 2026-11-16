@@ -1,9 +1,8 @@
-import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
-import '../../core/theme/app_theme.dart';
 import '../../models/sale.dart';
+import '../charts/charts.dart';
 
 /// A sale's value in paise. Money is summed in paise so repeated float
 /// addition cannot drift; [Sale.amount] is only a fallback for older rows
@@ -50,10 +49,6 @@ List<({String label, double rupees})> monthlyRevenue(
   ];
 }
 
-/// Chart series 1. The series order is fixed across the product, so revenue
-/// is navy in every chart that draws it.
-final _defaultBarColor = AppChart.seriesAt(0);
-
 /// Bar chart of booked revenue per month, shared by the dashboard and the
 /// employee detail screen.
 class MonthlyRevenueChart extends StatelessWidget {
@@ -70,7 +65,7 @@ class MonthlyRevenueChart extends StatelessWidget {
   final int months;
   final double height;
 
-  /// Defaults to chart series 1.
+  /// Defaults to the chart kit accent.
   final Color? barColor;
   final String emptyMessage;
 
@@ -79,142 +74,14 @@ class MonthlyRevenueChart extends StatelessWidget {
     final series = monthlyRevenue(sales, months: months);
     final peak = series.fold<double>(0, (m, e) => e.rupees > m ? e.rupees : m);
 
-    if (peak <= 0) {
-      return SizedBox(
-        height: height,
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(
-                Icons.bar_chart_rounded,
-                size: AppSizing.iconXl,
-                color: AppColors.textMuted,
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              Text(
-                emptyMessage,
-                style: AppTypography.caption,
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ),
-        ),
-      );
-    }
+    if (peak <= 0) return ChartEmpty(height: height, message: emptyMessage);
 
-    return SizedBox(
+    return GrowBarChart(
       height: height,
-      child: BarChart(
-        BarChartData(
-          alignment: BarChartAlignment.spaceAround,
-          // Head-room so the tallest bar never touches the top edge.
-          maxY: peak * 1.25,
-          borderData: FlBorderData(show: false),
-          gridData: FlGridData(
-            show: true,
-            drawVerticalLine: false,
-            getDrawingHorizontalLine: (_) =>
-                const FlLine(color: AppColors.border, strokeWidth: 1),
-          ),
-          titlesData: FlTitlesData(
-            topTitles: const AxisTitles(
-              sideTitles: SideTitles(showTitles: false),
-            ),
-            rightTitles: const AxisTitles(
-              sideTitles: SideTitles(showTitles: false),
-            ),
-            leftTitles: AxisTitles(
-              sideTitles: SideTitles(
-                showTitles: true,
-                reservedSize: 46,
-                getTitlesWidget: (value, meta) {
-                  if (value <= 0) return const SizedBox.shrink();
-                  return Text(
-                    compactRupees(value),
-                    style: const TextStyle(
-                      fontSize: 11,
-                      color: AppColors.textMuted,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  );
-                },
-              ),
-            ),
-            bottomTitles: AxisTitles(
-              sideTitles: SideTitles(
-                showTitles: true,
-                reservedSize: 24,
-                getTitlesWidget: (value, meta) {
-                  final i = value.toInt();
-                  if (i < 0 || i >= series.length) {
-                    return const SizedBox.shrink();
-                  }
-                  return Padding(
-                    padding: const EdgeInsets.only(top: AppSpacing.sm),
-                    child: Text(
-                      series[i].label,
-                      style: const TextStyle(
-                        fontSize: 11,
-                        color: AppColors.textSecondary,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-          ),
-          barTouchData: BarTouchData(
-            touchTooltipData: BarTouchTooltipData(
-              getTooltipColor: (_) => AppColors.textPrimary,
-              tooltipRoundedRadius: AppRadius.md,
-              tooltipPadding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.sm,
-                vertical: AppSpacing.xs,
-              ),
-              getTooltipItem: (group, groupIndex, rod, rodIndex) {
-                final item = series[group.x.toInt()];
-                return BarTooltipItem(
-                  '${item.label}\n',
-                  const TextStyle(
-                    color: AppColors.borderStrong,
-                    fontWeight: FontWeight.w500,
-                    fontSize: 11,
-                    height: 14 / 11,
-                  ),
-                  children: [
-                    TextSpan(
-                      text: AppFormatters.formatAmount(rod.toY.toString()),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 13,
-                      ),
-                    ),
-                  ],
-                );
-              },
-            ),
-          ),
-          barGroups: [
-            for (var i = 0; i < series.length; i++)
-              BarChartGroupData(
-                x: i,
-                barRods: [
-                  BarChartRodData(
-                    toY: series[i].rupees,
-                    width: 18,
-                    color: barColor ?? _defaultBarColor,
-                    borderRadius: const BorderRadius.vertical(
-                      top: Radius.circular(4),
-                    ),
-                  ),
-                ],
-              ),
-          ],
-        ),
-      ),
+      color: barColor,
+      bars: [
+        for (final e in series) ChartBar(label: e.label, value: e.rupees),
+      ],
     );
   }
 }

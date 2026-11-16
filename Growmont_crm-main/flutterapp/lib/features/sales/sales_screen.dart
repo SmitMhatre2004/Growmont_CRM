@@ -12,6 +12,7 @@ import '../../core/theme/app_theme.dart';
 import '../../models/sale.dart';
 import '../../models/user.dart';
 import '../../shared/widgets/export_format_picker.dart';
+import '../../shared/widgets/hero_stat_card.dart';
 import '../../shared/widgets/toolbar_action_button.dart';
 import '../auth/auth_provider.dart';
 import 'sales_excel.dart';
@@ -597,19 +598,18 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
               children: [
                 actionButtons,
                 const SizedBox(height: AppSpacing.sm),
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: [
-                      dealsBox,
-                      const SizedBox(width: AppSpacing.md),
-                      clientsBox,
-                      const SizedBox(width: AppSpacing.md),
-                      amountBox,
-                      const SizedBox(width: AppSpacing.md),
-                      avgBox,
-                    ],
-                  ),
+                HeroStatCard(
+                  label: isFiltered ? currentCatName : 'Revenue',
+                  value: AppFormatters.formatAmount(total.toStringAsFixed(2)),
+                  compactValue: true,
+                  stats: [
+                    HeroStat('Deals', '$count'),
+                    HeroStat('Clients', '$uniqueClients'),
+                    HeroStat(
+                      'Avg deal',
+                      AppFormatters.formatAmount(avgDeal.toStringAsFixed(2)),
+                    ),
+                  ],
                 ),
               ],
             )

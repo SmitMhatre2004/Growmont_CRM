@@ -8,6 +8,7 @@ import 'package:growmont_crm/features/auth/auth_provider.dart';
 import 'package:growmont_crm/features/clients/client_detail_screen.dart';
 import 'package:growmont_crm/features/clients/widgets/transfer_client_modal.dart';
 import 'package:growmont_crm/models/client.dart';
+import 'package:growmont_crm/models/client_note.dart';
 import 'package:growmont_crm/models/client_transfer.dart';
 import 'package:growmont_crm/models/employee.dart';
 import 'package:growmont_crm/models/interaction.dart';
@@ -57,6 +58,10 @@ class FakeTransferService implements FirestoreService {
 
   @override
   Future<List<Interaction>> getInteractions({String? employeeId, String? clientId}) async => [];
+
+  @override
+  Stream<List<ClientNote>> streamClientNotes(String clientId) =>
+      Stream.value(const <ClientNote>[]);
 
   @override
   Future<List<ClientTransfer>> getClientTransfers(String clientId) async {

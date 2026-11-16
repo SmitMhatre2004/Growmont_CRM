@@ -29,6 +29,7 @@ const Map<String, List<String>> kDateFields = {
   'clients': ['created_at', 'updated_at'],
   'sales': ['date', 'created_at', 'updated_at'],
   'interactions': ['date', 'follow_up_date', 'created_at', 'updated_at'],
+  'client_notes': ['created_at', 'updated_at'],
   'reminders': ['date', 'created_at', 'updated_at'],
 };
 
