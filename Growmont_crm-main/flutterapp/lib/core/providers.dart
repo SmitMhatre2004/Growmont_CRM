@@ -24,13 +24,15 @@ final tokenStorageProvider = Provider<TokenStorage>((ref) {
 /// existing call site keeps compiling and behaving exactly as before for
 /// every member CrmRepository doesn't override.
 final firestoreServiceProvider = Provider<FirestoreService>((ref) {
-  final authUser = ref.watch(authProvider).user;
+  // Only the id is used, so a role/name change does not rebuild the
+  // repository and everything that depends on it.
+  final authUserId = ref.watch(authProvider.select((s) => s.user?.id));
   return CrmRepository(
     firestore: FirebaseFirestore.instance,
     auth: FirebaseAuth.instance,
     functions: FirebaseFunctions.instance,
     storage: FirebaseStorage.instance,
-    devUid: authUser?.id,
+    devUid: authUserId,
   );
 });
 

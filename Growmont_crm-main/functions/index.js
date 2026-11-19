@@ -26,6 +26,7 @@ import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { onDocumentUpdated, onDocumentWritten } from 'firebase-functions/v2/firestore';
 import admin from 'firebase-admin';
 import nodemailer from 'nodemailer';
+import { createAttendanceHandlers } from './attendance.js';
 
 setGlobalOptions({ region: 'asia-south1', maxInstances: 10 });
 
@@ -342,7 +343,13 @@ export const setEmployeeAccess = adminCallable(async (data, caller) => {
 
   const status = data.active ? 'ACTIVE' : 'RESTRICTED';
   const update = data.active
-    ? { status, restricted_at: null, approved_by: caller.uid, approved_at: serverTimestamp() }
+    ? {
+        status,
+        restricted_at: null,
+        approved_by: caller.uid,
+        approved_at: serverTimestamp(),
+        first_approved_at: current.first_approved_at || current.approved_at || serverTimestamp(),
+      }
     : { status, restricted_at: serverTimestamp() };
 
   // Auth first: a failure between the two steps then leaves a restricted
@@ -589,6 +596,8 @@ export const reviewEmployee = onCall(async (request) => {
         role: newRole,
         approved_by: adminId,
         approved_at: admin.firestore.FieldValue.serverTimestamp(),
+        first_approved_at: current.first_approved_at || current.approved_at
+          || admin.firestore.FieldValue.serverTimestamp(),
         updated_at: admin.firestore.FieldValue.serverTimestamp()
       });
       firestoreUpdateResult = 'ok';
@@ -818,3 +827,27 @@ export const onEmployeeUpdate = onDocumentUpdated('employees/{employeeId}', asyn
   await batch.commit();
   console.log(`Updated denormalized name across ${salesSnapshot.size} sales, ${interSnapshot.size} interactions, and ${remSnapshot.size} reminders.`);
 });
+
+// ==========================================
+// Attendance (logic in attendance.js / attendance_logic.js)
+// ==========================================
+
+const attendanceHandlers = createAttendanceHandlers({
+  db,
+  Timestamp: admin.firestore.Timestamp,
+  now: () => new Date(),
+});
+export const attendanceGetToday = onCall(attendanceHandlers.attendanceGetToday);
+export const attendanceMark = onCall(attendanceHandlers.attendanceMark);
+export const attendanceSubmitNote = onCall(attendanceHandlers.attendanceSubmitNote);
+export const attendanceMonth = onCall(attendanceHandlers.attendanceMonth);
+export const attendanceTeamDay = onCall(attendanceHandlers.attendanceTeamDay);
+export const attendanceTeamMonth = onCall(attendanceHandlers.attendanceTeamMonth);
+export const attendanceListApprovals = onCall(attendanceHandlers.attendanceListApprovals);
+export const attendanceReview = onCall(attendanceHandlers.attendanceReview);
+export const attendanceAdminEdit = onCall(attendanceHandlers.attendanceAdminEdit);
+export const attendanceGetSettings = onCall(attendanceHandlers.attendanceGetSettings);
+export const attendanceSaveSettings = onCall(attendanceHandlers.attendanceSaveSettings);
+export const attendanceListHolidays = onCall(attendanceHandlers.attendanceListHolidays);
+export const attendanceSetHoliday = onCall(attendanceHandlers.attendanceSetHoliday);
+export const attendanceRemoveHoliday = onCall(attendanceHandlers.attendanceRemoveHoliday);

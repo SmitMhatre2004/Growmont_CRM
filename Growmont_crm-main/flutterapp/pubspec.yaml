@@ -21,7 +21,6 @@ dependencies:
   dio: ^5.8.0
   flutter_secure_storage: ^9.2.4
   shared_preferences: ^2.5.3
-  cached_network_image: ^3.4.1
   image_picker: ^1.1.2
   file_picker: ^11.0.3
   path_provider: ^2.1.5
@@ -41,6 +40,8 @@ dependencies:
   timezone: ^0.11.2
   flutter_timezone: ^5.1.1
   pdf: ^3.12.0
+  geolocator: ^14.0.2
+  local_auth: ^3.0.2
 
 dev_dependencies:
   flutter_test:
@@ -71,27 +72,45 @@ flutter:
   assets:
     - assets/logo.svg
     - assets/icon/app_icon.png
-    - assets/images/
+    # Listed individually (not the whole folder) so unreferenced artwork kept
+    # in assets/images/ (logo source files, the brand mark) is not bundled.
+    - assets/images/growmont_logo.png
+    - assets/images/growmont-logo_coloured-large-size.webp
     - assets/legal/
+    # Licence texts, shown on the licences page.
+    - assets/fonts/OFL-Manrope.txt
+    - assets/fonts/OFL-SchibstedGrotesk.txt
+    - assets/fonts/OFL-Inter.txt
+    - assets/fonts/OFL-PlusJakartaSans.txt
+    # Only the PDF reports still use these two (Inter text, Jakarta numbers).
+    - assets/fonts/Inter-400.ttf
+    - assets/fonts/Inter-600.ttf
+    - assets/fonts/Inter-700.ttf
+    - assets/fonts/PlusJakartaSans-600.ttf
+    - assets/fonts/PlusJakartaSans-700.ttf
 
   fonts:
-    # Body / UI / tabular data - Inter (SIL OFL 1.1)
-    - family: Inter
+    # Display / headlines / big numbers - Manrope, static instances
+    # (SIL OFL 1.1). Flutter ignores weight on variable fonts, so each weight
+    # is its own file.
+    - family: Manrope
       fonts:
-        - asset: assets/fonts/Inter-400.ttf
+        - asset: assets/fonts/Manrope-400.ttf
           weight: 400
-        - asset: assets/fonts/Inter-500.ttf
+        - asset: assets/fonts/Manrope-500.ttf
           weight: 500
-        - asset: assets/fonts/Inter-600.ttf
+        - asset: assets/fonts/Manrope-600.ttf
           weight: 600
-        - asset: assets/fonts/Inter-700.ttf
+        - asset: assets/fonts/Manrope-700.ttf
           weight: 700
-    # Display / headings - Plus Jakarta Sans (SIL OFL 1.1)
-    - family: PlusJakartaSans
+    # Body / labels / buttons / tables - Schibsted Grotesk (SIL OFL 1.1)
+    - family: SchibstedGrotesk
       fonts:
-        - asset: assets/fonts/PlusJakartaSans-600.ttf
+        - asset: assets/fonts/SchibstedGrotesk-400.ttf
+          weight: 400
+        - asset: assets/fonts/SchibstedGrotesk-500.ttf
+          weight: 500
+        - asset: assets/fonts/SchibstedGrotesk-600.ttf
           weight: 600
-        - asset: assets/fonts/PlusJakartaSans-700.ttf
+        - asset: assets/fonts/SchibstedGrotesk-700.ttf
           weight: 700
-        - asset: assets/fonts/PlusJakartaSans-800.ttf
-          weight: 800

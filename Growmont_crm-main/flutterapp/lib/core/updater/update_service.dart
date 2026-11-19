@@ -426,7 +426,7 @@ class UpdateService {
   ) async {
     try {
       if (Platform.isAndroid) {
-        return _installApkAndroid(installerPath);
+        return await _installApkAndroid(installerPath);
       }
 
       if (!Platform.isWindows) {

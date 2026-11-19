@@ -1,0 +1,27 @@
+{
+  "attendanceMark": {
+    "action": "in", "lat": 18.5204, "lng": 73.8567, "accuracy_m": 8.5, "is_mocked": false,
+    "position_age_ms": 1500, "device_id": "0123456789abcdef0123456789abcdef", "biometric_passed": true
+  },
+  "attendanceSubmitNote": { "date": "2026-11-18", "kind": "late", "note": "Bus broke down" },
+  "attendanceMonth": { "month": "2026-11" },
+  "attendanceMonthOther": { "month": "2026-11", "employee_id": "emp2" },
+  "attendanceTeamDay": { "date": "2026-11-18" },
+  "attendanceTeamMonth": { "month": "2026-11" },
+  "attendanceListApprovals": {},
+  "attendanceReview": {
+    "employee_id": "emp2", "date": "2026-11-18", "kind": "late", "decision": "approved", "comment": "ok"
+  },
+  "attendanceAdminEdit": {
+    "employee_id": "emp1", "date": "2026-11-17", "check_in": "09:30", "check_out": null, "reason": "Forgot to mark"
+  },
+  "attendanceGetToday": {},
+  "attendanceGetSettings": {},
+  "attendanceSaveSettings": {
+    "office": { "lat": 18.5204, "lng": 73.8567 }, "radius_m": 50, "max_accuracy_m": 25,
+    "arrival": "10:00", "leave": "19:00", "grace_minutes": 15, "weekly_off": [6, 7]
+  },
+  "attendanceListHolidays": { "year": 2026 },
+  "attendanceSetHoliday": { "date": "2026-11-20", "name": "Diwali" },
+  "attendanceRemoveHoliday": { "date": "2026-11-20" }
+}

@@ -511,7 +511,7 @@ class _InteractionDetailModalState
                   child: Text(
                     'DISCUSSION NOTES',
                     style: TextStyle(
-                      fontFamily: AppTypography.display,
+                      fontFamily: AppTypography.text,
                       fontSize: 11,
                       fontWeight: FontWeight.w700,
                       letterSpacing: 0.8,

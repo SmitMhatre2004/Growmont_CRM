@@ -186,9 +186,25 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     }
   }
 
+  // The sorted lists are cached per source list (and per day, which the
+  // upcoming/past split depends on), so a rebuild that changes neither does
+  // not re-sort and re-parse every date.
+  List<Interaction>? _sortedInteractionsSrc;
+  DateTime? _sortedInteractionsDay;
+  List<Interaction> _sortedInteractionsCache = const [];
+  List<Reminder>? _sortedRemindersSrc;
+  DateTime? _sortedRemindersDay;
+  List<Reminder> _sortedRemindersCache = const [];
+  List<Sale>? _sortedSalesSrc;
+  List<Sale> _sortedSalesCache = const [];
+
   List<Interaction> get _sortedInteractions {
     final now = DateTime.now();
     final todayStart = DateTime(now.year, now.month, now.day);
+    if (identical(_sortedInteractionsSrc, _interactions) &&
+        _sortedInteractionsDay == todayStart) {
+      return _sortedInteractionsCache;
+    }
     final list = List<Interaction>.from(_interactions);
     list.sort((a, b) {
       final dtA = _parseDateTime(a.followUpDate, a.followUpTime);
@@ -200,12 +216,18 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       if (pwA != pwB) return pwB.compareTo(pwA);
       return a.clientName.toLowerCase().compareTo(b.clientName.toLowerCase());
     });
-    return list;
+    _sortedInteractionsSrc = _interactions;
+    _sortedInteractionsDay = todayStart;
+    return _sortedInteractionsCache = list;
   }
 
   List<Reminder> get _sortedReminders {
     final now = DateTime.now();
     final todayStart = DateTime(now.year, now.month, now.day);
+    if (identical(_sortedRemindersSrc, _reminders) &&
+        _sortedRemindersDay == todayStart) {
+      return _sortedRemindersCache;
+    }
     final list = List<Reminder>.from(_reminders);
     list.sort((a, b) {
       final dtA = _parseDateTime(a.date, a.time);
@@ -217,10 +239,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       if (pwA != pwB) return pwB.compareTo(pwA);
       return a.eventName.toLowerCase().compareTo(b.eventName.toLowerCase());
     });
-    return list;
+    _sortedRemindersSrc = _reminders;
+    _sortedRemindersDay = todayStart;
+    return _sortedRemindersCache = list;
   }
 
   List<Sale> get _sortedSales {
+    if (identical(_sortedSalesSrc, _sales)) return _sortedSalesCache;
     final list = List<Sale>.from(_sales);
     list.sort((a, b) {
       final da = _parseDateTime(a.date);
@@ -237,7 +262,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       }
       return b.id.compareTo(a.id);
     });
-    return list;
+    _sortedSalesSrc = _sales;
+    return _sortedSalesCache = list;
   }
 
   // --- Modal Helpers ---

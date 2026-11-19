@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../theme/app_theme.dart';
+import '../../features/attendance/attendance_screen.dart';
 import '../../features/auth/auth_provider.dart';
 import '../../features/auth/login_screen.dart';
 import '../../features/clients/client_detail_screen.dart';
@@ -16,6 +17,7 @@ import '../../features/profile/profile_screen.dart';
 import '../../features/reports/monthly_report_screen.dart';
 import '../../features/sales/sales_screen.dart';
 import '../../shared/widgets/app_shell.dart';
+import '../../shared/widgets/branch_container.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   final auth = ref.watch(authProvider);
@@ -48,7 +50,10 @@ final routerProvider = Provider<GoRouter>((ref) {
         pageBuilder: (context, state) =>
             const NoTransitionPage(child: LoginScreen()),
       ),
-      StatefulShellRoute.indexedStack(
+      StatefulShellRoute(
+        // The container keeps every branch alive; on a phone it also lets the
+        // first four be swiped between.
+        navigatorContainerBuilder: buildBranchContainer,
         builder: (context, state, navigationShell) =>
             AppShell(navigationShell: navigationShell),
         branches: [
@@ -150,6 +155,16 @@ final routerProvider = Provider<GoRouter>((ref) {
                 path: '/reports',
                 pageBuilder: (context, state) =>
                     const NoTransitionPage(child: MonthlyReportScreen()),
+              ),
+            ],
+          ),
+          // Appended after reports for the same reason: AppBranch.attendance.
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/attendance',
+                pageBuilder: (context, state) =>
+                    const NoTransitionPage(child: AttendanceScreen()),
               ),
             ],
           ),

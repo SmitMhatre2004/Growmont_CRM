@@ -1,9 +1,11 @@
 import 'dart:io' show Platform;
 
+import '../attendance/attendance_summary_card.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../core/config/app_config.dart';
 import '../../core/excel/excel_io.dart';
@@ -388,6 +390,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   Widget _accountSection(bool isMobile) {
     final isAdmin = ref.watch(authProvider).user?.isAdmin == true;
     final cards = <Widget>[
+      AttendanceSummaryCard(onOpenAttendance: () => context.go('/attendance')),
       const AccountSecurityCard(),
       if (_canSelfUpdate) const UpdateCard(),
       if (_isDesktop) const DataLocationCard(),

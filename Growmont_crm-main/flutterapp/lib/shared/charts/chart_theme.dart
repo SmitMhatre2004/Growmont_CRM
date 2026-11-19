@@ -53,7 +53,7 @@ class ChartTheme {
   );
 
   static const TextStyle tooltipValue = TextStyle(
-    fontFamily: AppTypography.display,
+    fontFamily: AppTypography.text,
     fontSize: 14,
     fontWeight: FontWeight.w700,
     color: AppColors.textPrimary,

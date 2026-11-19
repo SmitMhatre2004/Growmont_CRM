@@ -203,6 +203,25 @@ service cloud.firestore {
       allow update, delete: if isAdmin();
     }
 
+    // ─── Attendance ───
+    // Server only: every read and write goes through the attendance* callable
+    // functions (Admin SDK), which decide time, place and lateness themselves.
+    match /attendance/{docId} {
+      allow read, write: if false;
+    }
+    match /attendance_settings/{docId} {
+      allow read, write: if false;
+    }
+    match /attendance_holidays/{docId} {
+      allow read, write: if false;
+    }
+    match /attendance_devices/{docId} {
+      allow read, write: if false;
+    }
+    match /attendance_audit/{docId} {
+      allow read, write: if false;
+    }
+
     // The app_installs collection was removed along with the sidebar's
     // "scan to install" QR, which was the only thing that read it. Any
     // documents left in Firestore from before that are now covered by the

@@ -104,6 +104,12 @@ class AppSidebar extends ConsumerWidget {
             Icons.assessment_outlined,
             '/reports',
           ),
+          _MenuItem(
+            'attendance',
+            'Attendance',
+            Icons.fingerprint,
+            '/attendance',
+          ),
           if (user?.isAdmin == true)
             _MenuItem(
               'employees',

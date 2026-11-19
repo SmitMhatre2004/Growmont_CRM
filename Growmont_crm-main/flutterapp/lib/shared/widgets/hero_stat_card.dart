@@ -28,7 +28,7 @@ class HeroStatCard extends StatelessWidget {
     this.compactValue = false,
   });
 
-  /// Small uppercase heading, e.g. "REVENUE".
+  /// Small quiet heading, e.g. "Revenue".
   final String label;
 
   /// The big number.
@@ -53,28 +53,27 @@ class HeroStatCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final left = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      // Label and value stay together as one group, centred against the
+      // right-hand stats, rather than pinned to opposite ends of the card.
+      mainAxisAlignment: MainAxisAlignment.center,
+      mainAxisSize: MainAxisSize.min,
       children: [
         Row(
           children: [
             Expanded(
               child: Text(
-                label.toUpperCase(),
+                label,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontFamily: AppTypography.text,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 1.1,
-                  color: AppColors.textSecondary,
+                style: AppTypography.fieldLabel.copyWith(
+                  color: AppColors.textCaption,
                 ),
               ),
             ),
             ?badge,
           ],
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 6),
         FittedBox(
           fit: BoxFit.scaleDown,
           alignment: Alignment.centerLeft,
@@ -144,7 +143,7 @@ class HeroStatCard extends StatelessWidget {
                       s.value,
                       maxLines: 1,
                       style: TextStyle(
-                        fontFamily: AppTypography.display,
+                        fontFamily: AppTypography.text,
                         fontSize: 17,
                         fontWeight: FontWeight.w700,
                         color: s.valueColor ?? AppColors.textPrimary,

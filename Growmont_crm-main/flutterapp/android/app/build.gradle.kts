@@ -66,6 +66,11 @@ android {
     }
 
     buildTypes {
+        debug {
+            // Installs beside the signed release app, so testing never
+            // replaces it or touches its local growmont.db.
+            applicationIdSuffix = ".dev"
+        }
         release {
             // Falling back to the debug key here would be worse than
             // failing: the debug keystore is machine-local and publicly

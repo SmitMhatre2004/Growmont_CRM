@@ -1,0 +1,1356 @@
+{
+  "today_unconfigured": {
+    "now_iso": "2026-11-18T04:30:00.000Z",
+    "date": "2026-11-18",
+    "time": "10:00",
+    "configured": false,
+    "settings": {
+      "arrival": "10:00",
+      "leave": "19:00",
+      "grace_minutes": 15,
+      "full_day_minutes": 360,
+      "radius_m": 10,
+      "max_accuracy_m": 25,
+      "office": null
+    },
+    "day": {
+      "type": "working",
+      "holiday_name": null
+    },
+    "record": null
+  },
+  "save_settings": {
+    "settings": {
+      "office": {
+        "lat": 18.5204,
+        "lng": 73.8567
+      },
+      "radius_m": 50,
+      "max_accuracy_m": 25,
+      "arrival": "10:00",
+      "leave": "19:00",
+      "grace_minutes": 15,
+      "full_day_minutes": 360,
+      "weekly_off_history": [
+        {
+          "from": "2026-11-18",
+          "days": [
+            7
+          ]
+        }
+      ],
+      "started_on": "2026-11-18",
+      "updated_by": "admin1",
+      "updated_at": "2026-11-18T04:30:00.000Z",
+      "weekly_off": [
+        7
+      ]
+    }
+  },
+  "save_settings_full_day": {
+    "settings": {
+      "office": {
+        "lat": 18.5204,
+        "lng": 73.8567
+      },
+      "radius_m": 50,
+      "max_accuracy_m": 25,
+      "arrival": "10:00",
+      "leave": "19:00",
+      "grace_minutes": 15,
+      "full_day_minutes": 360,
+      "weekly_off_history": [
+        {
+          "from": "2026-11-18",
+          "days": [
+            7
+          ]
+        }
+      ],
+      "started_on": "2026-11-18",
+      "updated_by": "admin1",
+      "updated_at": "2026-11-18T04:30:00.000Z",
+      "weekly_off": [
+        7
+      ]
+    }
+  },
+  "get_settings": {
+    "settings": {
+      "office": {
+        "lat": 18.5204,
+        "lng": 73.8567
+      },
+      "radius_m": 50,
+      "max_accuracy_m": 25,
+      "arrival": "10:00",
+      "leave": "19:00",
+      "grace_minutes": 15,
+      "full_day_minutes": 360,
+      "weekly_off_history": [
+        {
+          "from": "2026-11-18",
+          "days": [
+            7
+          ]
+        }
+      ],
+      "started_on": "2026-11-18",
+      "updated_by": "admin1",
+      "updated_at": "2026-11-18T04:30:00.000Z",
+      "weekly_off": [
+        7
+      ]
+    }
+  },
+  "today_configured": {
+    "now_iso": "2026-11-18T04:30:00.000Z",
+    "date": "2026-11-18",
+    "time": "10:00",
+    "configured": true,
+    "settings": {
+      "arrival": "10:00",
+      "leave": "19:00",
+      "grace_minutes": 15,
+      "full_day_minutes": 360,
+      "radius_m": 50,
+      "max_accuracy_m": 25,
+      "office": {
+        "lat": 18.5204,
+        "lng": 73.8567
+      }
+    },
+    "day": {
+      "type": "working",
+      "holiday_name": null
+    },
+    "record": null
+  },
+  "mark_in": {
+    "record": {
+      "employee_id": "emp1",
+      "employee_name": "Bela Employee",
+      "date": "2026-11-18",
+      "month": "2026-11",
+      "shift": {
+        "arrival": "10:00",
+        "leave": "19:00",
+        "grace_minutes": 15,
+        "full_day_minutes": 360
+      },
+      "check_in_at": "2026-11-18T04:30:00.000Z",
+      "check_out_at": null,
+      "check_in_local": "10:00",
+      "check_out_local": null,
+      "check_in_geo": {
+        "lat": 18.5204,
+        "lng": 73.8567,
+        "accuracy_m": 8,
+        "distance_m": 0
+      },
+      "check_out_geo": null,
+      "worked_minutes": null,
+      "late_minutes": 0,
+      "early_minutes": 0,
+      "late": {
+        "status": "none",
+        "note": null,
+        "decided_by": null,
+        "decided_by_name": null,
+        "decided_at": null,
+        "comment": null
+      },
+      "early": {
+        "status": "none",
+        "note": null,
+        "decided_by": null,
+        "decided_by_name": null,
+        "decided_at": null,
+        "comment": null
+      },
+      "needs_review": false,
+      "source": "self",
+      "admin_edited": false,
+      "created_at": "2026-11-18T04:30:00.000Z",
+      "updated_at": "2026-11-18T04:30:00.000Z"
+    },
+    "already": false
+  },
+  "mark_in_late": {
+    "record": {
+      "employee_id": "emp2",
+      "employee_name": "Chitra Employee",
+      "date": "2026-11-18",
+      "month": "2026-11",
+      "shift": {
+        "arrival": "10:00",
+        "leave": "19:00",
+        "grace_minutes": 15,
+        "full_day_minutes": 360
+      },
+      "check_in_at": "2026-11-18T05:30:00.000Z",
+      "check_out_at": null,
+      "check_in_local": "11:00",
+      "check_out_local": null,
+      "check_in_geo": {
+        "lat": 18.5204,
+        "lng": 73.8567,
+        "accuracy_m": 8,
+        "distance_m": 0
+      },
+      "check_out_geo": null,
+      "worked_minutes": null,
+      "late_minutes": 60,
+      "early_minutes": 0,
+      "late": {
+        "status": "needs_note",
+        "note": null,
+        "decided_by": null,
+        "decided_by_name": null,
+        "decided_at": null,
+        "comment": null
+      },
+      "early": {
+        "status": "none",
+        "note": null,
+        "decided_by": null,
+        "decided_by_name": null,
+        "decided_at": null,
+        "comment": null
+      },
+      "needs_review": false,
+      "source": "self",
+      "admin_edited": false,
+      "created_at": "2026-11-18T05:30:00.000Z",
+      "updated_at": "2026-11-18T05:30:00.000Z"
+    },
+    "already": false
+  },
+  "submit_note": {
+    "record": {
+      "employee_id": "emp2",
+      "employee_name": "Chitra Employee",
+      "date": "2026-11-18",
+      "month": "2026-11",
+      "shift": {
+        "arrival": "10:00",
+        "leave": "19:00",
+        "grace_minutes": 15,
+        "full_day_minutes": 360
+      },
+      "check_in_at": "2026-11-18T05:30:00.000Z",
+      "check_out_at": null,
+      "check_in_local": "11:00",
+      "check_out_local": null,
+      "check_in_geo": {
+        "lat": 18.5204,
+        "lng": 73.8567,
+        "accuracy_m": 8,
+        "distance_m": 0
+      },
+      "check_out_geo": null,
+      "worked_minutes": null,
+      "late_minutes": 60,
+      "early_minutes": 0,
+      "late": {
+        "status": "pending",
+        "note": "Bus broke down",
+        "decided_by": null,
+        "decided_by_name": null,
+        "decided_at": null,
+        "comment": null
+      },
+      "early": {
+        "status": "none",
+        "note": null,
+        "decided_by": null,
+        "decided_by_name": null,
+        "decided_at": null,
+        "comment": null
+      },
+      "needs_review": true,
+      "source": "self",
+      "admin_edited": false,
+      "created_at": "2026-11-18T05:30:00.000Z",
+      "updated_at": "2026-11-18T05:30:00.000Z"
+    }
+  },
+  "approvals": {
+    "items": [
+      {
+        "employee_id": "emp2",
+        "employee_name": "Chitra Employee",
+        "date": "2026-11-18",
+        "kind": "late",
+        "minutes": 60,
+        "note": "Bus broke down",
+        "expected": "10:00",
+        "actual": "11:00"
+      }
+    ],
+    "missed_checkouts": []
+  },
+  "review": {
+    "record": {
+      "employee_id": "emp2",
+      "employee_name": "Chitra Employee",
+      "date": "2026-11-18",
+      "month": "2026-11",
+      "shift": {
+        "arrival": "10:00",
+        "leave": "19:00",
+        "grace_minutes": 15,
+        "full_day_minutes": 360
+      },
+      "check_in_at": "2026-11-18T05:30:00.000Z",
+      "check_out_at": null,
+      "check_in_local": "11:00",
+      "check_out_local": null,
+      "check_in_geo": {
+        "lat": 18.5204,
+        "lng": 73.8567,
+        "accuracy_m": 8,
+        "distance_m": 0
+      },
+      "check_out_geo": null,
+      "worked_minutes": null,
+      "late_minutes": 60,
+      "early_minutes": 0,
+      "late": {
+        "status": "approved",
+        "note": "Bus broke down",
+        "decided_by": "admin1",
+        "decided_by_name": "Asha Admin",
+        "decided_at": "2026-11-18T05:30:00.000Z",
+        "comment": "ok"
+      },
+      "early": {
+        "status": "none",
+        "note": null,
+        "decided_by": null,
+        "decided_by_name": null,
+        "decided_at": null,
+        "comment": null
+      },
+      "needs_review": false,
+      "source": "self",
+      "admin_edited": false,
+      "created_at": "2026-11-18T05:30:00.000Z",
+      "updated_at": "2026-11-18T05:30:00.000Z"
+    }
+  },
+  "mark_out_early": {
+    "record": {
+      "employee_id": "emp1",
+      "employee_name": "Bela Employee",
+      "date": "2026-11-18",
+      "month": "2026-11",
+      "shift": {
+        "arrival": "10:00",
+        "leave": "19:00",
+        "grace_minutes": 15,
+        "full_day_minutes": 360
+      },
+      "check_in_at": "2026-11-18T04:30:00.000Z",
+      "check_out_at": "2026-11-18T05:32:00.000Z",
+      "check_in_local": "10:00",
+      "check_out_local": "11:02",
+      "check_in_geo": {
+        "lat": 18.5204,
+        "lng": 73.8567,
+        "accuracy_m": 8,
+        "distance_m": 0
+      },
+      "check_out_geo": {
+        "lat": 18.5204,
+        "lng": 73.8567,
+        "accuracy_m": 8,
+        "distance_m": 0
+      },
+      "worked_minutes": 62,
+      "late_minutes": 0,
+      "early_minutes": 478,
+      "late": {
+        "status": "none",
+        "note": null,
+        "decided_by": null,
+        "decided_by_name": null,
+        "decided_at": null,
+        "comment": null
+      },
+      "early": {
+        "status": "needs_note",
+        "note": null,
+        "decided_by": null,
+        "decided_by_name": null,
+        "decided_at": null,
+        "comment": null
+      },
+      "needs_review": false,
+      "source": "self",
+      "admin_edited": false,
+      "created_at": "2026-11-18T04:30:00.000Z",
+      "updated_at": "2026-11-18T05:32:00.000Z"
+    },
+    "already": false
+  },
+  "set_holiday": {
+    "holiday": {
+      "date": "2026-11-20",
+      "name": "Diwali"
+    }
+  },
+  "list_holidays": {
+    "holidays": [
+      {
+        "date": "2026-11-20",
+        "name": "Diwali"
+      }
+    ]
+  },
+  "remove_holiday": {
+    "removed": true
+  },
+  "remove_holiday_missing": {
+    "removed": false
+  },
+  "admin_edit": {
+    "record": {
+      "employee_id": "emp1",
+      "employee_name": "Bela Employee",
+      "date": "2026-11-17",
+      "month": "2026-11",
+      "shift": {
+        "arrival": "10:00",
+        "leave": "19:00",
+        "grace_minutes": 15,
+        "full_day_minutes": 360
+      },
+      "check_in_at": "2026-11-17T04:00:00.000Z",
+      "check_out_at": "2026-11-17T12:30:00.000Z",
+      "check_in_local": "09:30",
+      "check_out_local": "18:00",
+      "check_in_geo": null,
+      "check_out_geo": null,
+      "worked_minutes": 510,
+      "late_minutes": 0,
+      "early_minutes": 60,
+      "late": {
+        "status": "none",
+        "note": null,
+        "decided_by": null,
+        "decided_by_name": null,
+        "decided_at": null,
+        "comment": null
+      },
+      "early": {
+        "status": "needs_note",
+        "note": null,
+        "decided_by": null,
+        "decided_by_name": null,
+        "decided_at": null,
+        "comment": null
+      },
+      "needs_review": false,
+      "source": "admin",
+      "admin_edited": true,
+      "created_at": "2026-11-18T13:35:00.000Z",
+      "updated_at": "2026-11-18T13:35:00.000Z"
+    }
+  },
+  "admin_delete": {
+    "record": null
+  },
+  "approvals_missed": {
+    "items": [],
+    "missed_checkouts": [
+      {
+        "employee_id": "emp1",
+        "employee_name": "Bela Employee",
+        "date": "2026-11-16",
+        "check_in": "10:40"
+      }
+    ]
+  },
+  "month_self": {
+    "summary": {
+      "month": "2026-11",
+      "working_days": 1,
+      "off_days": 0,
+      "present": 1,
+      "absent": 0,
+      "extra_days": 0,
+      "late": 0,
+      "early": 0,
+      "pending": 0,
+      "excused": 0,
+      "missed_checkout": 0,
+      "full_days": 1,
+      "half_days": 0,
+      "attended_value": 1,
+      "percent": 100,
+      "stars": 5,
+      "rank": 1,
+      "ranked_of": 3
+    },
+    "days": [
+      {
+        "date": "2026-11-01",
+        "type": "weekly_off",
+        "holiday_name": null,
+        "status": "off",
+        "kind": "not_tracked",
+        "record": null
+      },
+      {
+        "date": "2026-11-02",
+        "type": "working",
+        "holiday_name": null,
+        "status": "off",
+        "kind": "not_tracked",
+        "record": null
+      },
+      {
+        "date": "2026-11-03",
+        "type": "working",
+        "holiday_name": null,
+        "status": "off",
+        "kind": "not_tracked",
+        "record": null
+      },
+      {
+        "date": "2026-11-04",
+        "type": "working",
+        "holiday_name": null,
+        "status": "off",
+        "kind": "not_tracked",
+        "record": null
+      },
+      {
+        "date": "2026-11-05",
+        "type": "working",
+        "holiday_name": null,
+        "status": "off",
+        "kind": "not_tracked",
+        "record": null
+      },
+      {
+        "date": "2026-11-06",
+        "type": "working",
+        "holiday_name": null,
+        "status": "off",
+        "kind": "not_tracked",
+        "record": null
+      },
+      {
+        "date": "2026-11-07",
+        "type": "working",
+        "holiday_name": null,
+        "status": "off",
+        "kind": "not_tracked",
+        "record": null
+      },
+      {
+        "date": "2026-11-08",
+        "type": "weekly_off",
+        "holiday_name": null,
+        "status": "off",
+        "kind": "not_tracked",
+        "record": null
+      },
+      {
+        "date": "2026-11-09",
+        "type": "working",
+        "holiday_name": null,
+        "status": "off",
+        "kind": "not_tracked",
+        "record": null
+      },
+      {
+        "date": "2026-11-10",
+        "type": "working",
+        "holiday_name": null,
+        "status": "off",
+        "kind": "not_tracked",
+        "record": null
+      },
+      {
+        "date": "2026-11-11",
+        "type": "working",
+        "holiday_name": null,
+        "status": "off",
+        "kind": "not_tracked",
+        "record": null
+      },
+      {
+        "date": "2026-11-12",
+        "type": "working",
+        "holiday_name": null,
+        "status": "off",
+        "kind": "not_tracked",
+        "record": null
+      },
+      {
+        "date": "2026-11-13",
+        "type": "working",
+        "holiday_name": null,
+        "status": "off",
+        "kind": "not_tracked",
+        "record": null
+      },
+      {
+        "date": "2026-11-14",
+        "type": "working",
+        "holiday_name": null,
+        "status": "off",
+        "kind": "not_tracked",
+        "record": null
+      },
+      {
+        "date": "2026-11-15",
+        "type": "weekly_off",
+        "holiday_name": null,
+        "status": "off",
+        "kind": "not_tracked",
+        "record": null
+      },
+      {
+        "date": "2026-11-16",
+        "type": "working",
+        "holiday_name": null,
+        "status": "present",
+        "kind": "missed_checkout",
+        "record": {
+          "employee_id": "emp1",
+          "employee_name": "Bela Employee",
+          "date": "2026-11-16",
+          "month": "2026-11",
+          "shift": {
+            "arrival": "10:00",
+            "leave": "19:00",
+            "grace_minutes": 15,
+            "full_day_minutes": 360
+          },
+          "check_in_at": "2026-11-16T05:10:00.000Z",
+          "check_out_at": null,
+          "check_in_local": "10:40",
+          "check_out_local": null,
+          "check_in_geo": null,
+          "check_out_geo": null,
+          "worked_minutes": null,
+          "late_minutes": 40,
+          "early_minutes": 0,
+          "late": {
+            "status": "needs_note",
+            "note": null,
+            "decided_by": null,
+            "decided_by_name": null,
+            "decided_at": null,
+            "comment": null
+          },
+          "early": {
+            "status": "none",
+            "note": null,
+            "decided_by": null,
+            "decided_by_name": null,
+            "decided_at": null,
+            "comment": null
+          },
+          "needs_review": false,
+          "source": "admin",
+          "admin_edited": true,
+          "created_at": "2026-11-18T13:35:00.000Z",
+          "updated_at": "2026-11-18T13:35:00.000Z"
+        }
+      },
+      {
+        "date": "2026-11-17",
+        "type": "working",
+        "holiday_name": null,
+        "status": "off",
+        "kind": "not_tracked",
+        "record": null
+      },
+      {
+        "date": "2026-11-18",
+        "type": "working",
+        "holiday_name": null,
+        "status": "present",
+        "kind": "full",
+        "record": {
+          "employee_id": "emp1",
+          "employee_name": "Bela Employee",
+          "date": "2026-11-18",
+          "month": "2026-11",
+          "shift": {
+            "arrival": "10:00",
+            "leave": "19:00",
+            "grace_minutes": 15,
+            "full_day_minutes": 360
+          },
+          "check_in_at": "2026-11-18T04:30:00.000Z",
+          "check_out_at": "2026-11-18T13:35:00.000Z",
+          "check_in_local": "10:00",
+          "check_out_local": "19:05",
+          "check_in_geo": {
+            "lat": 18.5204,
+            "lng": 73.8567,
+            "accuracy_m": 8,
+            "distance_m": 0
+          },
+          "check_out_geo": {
+            "lat": 18.5204,
+            "lng": 73.8567,
+            "accuracy_m": 8,
+            "distance_m": 0
+          },
+          "worked_minutes": 545,
+          "late_minutes": 0,
+          "early_minutes": 0,
+          "late": {
+            "status": "none",
+            "note": null,
+            "decided_by": null,
+            "decided_by_name": null,
+            "decided_at": null,
+            "comment": null
+          },
+          "early": {
+            "status": "none",
+            "note": null,
+            "decided_by": null,
+            "decided_by_name": null,
+            "decided_at": null,
+            "comment": null
+          },
+          "needs_review": false,
+          "source": "self",
+          "admin_edited": false,
+          "created_at": "2026-11-18T04:30:00.000Z",
+          "updated_at": "2026-11-18T13:35:00.000Z"
+        }
+      },
+      {
+        "date": "2026-11-19",
+        "type": "working",
+        "holiday_name": null,
+        "status": "upcoming",
+        "kind": "upcoming",
+        "record": null
+      },
+      {
+        "date": "2026-11-20",
+        "type": "holiday",
+        "holiday_name": "Diwali",
+        "status": "off",
+        "kind": "upcoming",
+        "record": null
+      },
+      {
+        "date": "2026-11-21",
+        "type": "working",
+        "holiday_name": null,
+        "status": "upcoming",
+        "kind": "upcoming",
+        "record": null
+      },
+      {
+        "date": "2026-11-22",
+        "type": "weekly_off",
+        "holiday_name": null,
+        "status": "off",
+        "kind": "upcoming",
+        "record": null
+      },
+      {
+        "date": "2026-11-23",
+        "type": "working",
+        "holiday_name": null,
+        "status": "upcoming",
+        "kind": "upcoming",
+        "record": null
+      },
+      {
+        "date": "2026-11-24",
+        "type": "working",
+        "holiday_name": null,
+        "status": "upcoming",
+        "kind": "upcoming",
+        "record": null
+      },
+      {
+        "date": "2026-11-25",
+        "type": "working",
+        "holiday_name": null,
+        "status": "upcoming",
+        "kind": "upcoming",
+        "record": null
+      },
+      {
+        "date": "2026-11-26",
+        "type": "working",
+        "holiday_name": null,
+        "status": "upcoming",
+        "kind": "upcoming",
+        "record": null
+      },
+      {
+        "date": "2026-11-27",
+        "type": "working",
+        "holiday_name": null,
+        "status": "upcoming",
+        "kind": "upcoming",
+        "record": null
+      },
+      {
+        "date": "2026-11-28",
+        "type": "working",
+        "holiday_name": null,
+        "status": "upcoming",
+        "kind": "upcoming",
+        "record": null
+      },
+      {
+        "date": "2026-11-29",
+        "type": "weekly_off",
+        "holiday_name": null,
+        "status": "off",
+        "kind": "upcoming",
+        "record": null
+      },
+      {
+        "date": "2026-11-30",
+        "type": "working",
+        "holiday_name": null,
+        "status": "upcoming",
+        "kind": "upcoming",
+        "record": null
+      }
+    ]
+  },
+  "month_other_as_admin": {
+    "summary": {
+      "month": "2026-11",
+      "working_days": 1,
+      "off_days": 0,
+      "present": 1,
+      "absent": 0,
+      "extra_days": 0,
+      "late": 0,
+      "early": 0,
+      "pending": 0,
+      "excused": 1,
+      "missed_checkout": 0,
+      "full_days": 0,
+      "half_days": 0,
+      "attended_value": 1,
+      "percent": 100,
+      "stars": 5,
+      "rank": 1,
+      "ranked_of": 3
+    },
+    "days": [
+      {
+        "date": "2026-11-01",
+        "type": "weekly_off",
+        "holiday_name": null,
+        "status": "off",
+        "kind": "not_tracked",
+        "record": null
+      },
+      {
+        "date": "2026-11-02",
+        "type": "working",
+        "holiday_name": null,
+        "status": "off",
+        "kind": "not_tracked",
+        "record": null
+      },
+      {
+        "date": "2026-11-03",
+        "type": "working",
+        "holiday_name": null,
+        "status": "off",
+        "kind": "not_tracked",
+        "record": null
+      },
+      {
+        "date": "2026-11-04",
+        "type": "working",
+        "holiday_name": null,
+        "status": "off",
+        "kind": "not_tracked",
+        "record": null
+      },
+      {
+        "date": "2026-11-05",
+        "type": "working",
+        "holiday_name": null,
+        "status": "off",
+        "kind": "not_tracked",
+        "record": null
+      },
+      {
+        "date": "2026-11-06",
+        "type": "working",
+        "holiday_name": null,
+        "status": "off",
+        "kind": "not_tracked",
+        "record": null
+      },
+      {
+        "date": "2026-11-07",
+        "type": "working",
+        "holiday_name": null,
+        "status": "off",
+        "kind": "not_tracked",
+        "record": null
+      },
+      {
+        "date": "2026-11-08",
+        "type": "weekly_off",
+        "holiday_name": null,
+        "status": "off",
+        "kind": "not_tracked",
+        "record": null
+      },
+      {
+        "date": "2026-11-09",
+        "type": "working",
+        "holiday_name": null,
+        "status": "off",
+        "kind": "not_tracked",
+        "record": null
+      },
+      {
+        "date": "2026-11-10",
+        "type": "working",
+        "holiday_name": null,
+        "status": "off",
+        "kind": "not_tracked",
+        "record": null
+      },
+      {
+        "date": "2026-11-11",
+        "type": "working",
+        "holiday_name": null,
+        "status": "off",
+        "kind": "not_tracked",
+        "record": null
+      },
+      {
+        "date": "2026-11-12",
+        "type": "working",
+        "holiday_name": null,
+        "status": "off",
+        "kind": "not_tracked",
+        "record": null
+      },
+      {
+        "date": "2026-11-13",
+        "type": "working",
+        "holiday_name": null,
+        "status": "off",
+        "kind": "not_tracked",
+        "record": null
+      },
+      {
+        "date": "2026-11-14",
+        "type": "working",
+        "holiday_name": null,
+        "status": "off",
+        "kind": "not_tracked",
+        "record": null
+      },
+      {
+        "date": "2026-11-15",
+        "type": "weekly_off",
+        "holiday_name": null,
+        "status": "off",
+        "kind": "not_tracked",
+        "record": null
+      },
+      {
+        "date": "2026-11-16",
+        "type": "working",
+        "holiday_name": null,
+        "status": "off",
+        "kind": "not_tracked",
+        "record": null
+      },
+      {
+        "date": "2026-11-17",
+        "type": "working",
+        "holiday_name": null,
+        "status": "off",
+        "kind": "not_tracked",
+        "record": null
+      },
+      {
+        "date": "2026-11-18",
+        "type": "working",
+        "holiday_name": null,
+        "status": "present",
+        "kind": "in_progress",
+        "record": {
+          "employee_id": "emp2",
+          "employee_name": "Chitra Employee",
+          "date": "2026-11-18",
+          "month": "2026-11",
+          "shift": {
+            "arrival": "10:00",
+            "leave": "19:00",
+            "grace_minutes": 15,
+            "full_day_minutes": 360
+          },
+          "check_in_at": "2026-11-18T05:30:00.000Z",
+          "check_out_at": null,
+          "check_in_local": "11:00",
+          "check_out_local": null,
+          "check_in_geo": {
+            "lat": 18.5204,
+            "lng": 73.8567,
+            "accuracy_m": 8,
+            "distance_m": 0
+          },
+          "check_out_geo": null,
+          "worked_minutes": null,
+          "late_minutes": 60,
+          "early_minutes": 0,
+          "late": {
+            "status": "approved",
+            "note": "Bus broke down",
+            "decided_by": "admin1",
+            "decided_by_name": "Asha Admin",
+            "decided_at": "2026-11-18T05:30:00.000Z",
+            "comment": "ok"
+          },
+          "early": {
+            "status": "none",
+            "note": null,
+            "decided_by": null,
+            "decided_by_name": null,
+            "decided_at": null,
+            "comment": null
+          },
+          "needs_review": false,
+          "source": "self",
+          "admin_edited": false,
+          "created_at": "2026-11-18T05:30:00.000Z",
+          "updated_at": "2026-11-18T05:30:00.000Z"
+        }
+      },
+      {
+        "date": "2026-11-19",
+        "type": "working",
+        "holiday_name": null,
+        "status": "upcoming",
+        "kind": "upcoming",
+        "record": null
+      },
+      {
+        "date": "2026-11-20",
+        "type": "holiday",
+        "holiday_name": "Diwali",
+        "status": "off",
+        "kind": "upcoming",
+        "record": null
+      },
+      {
+        "date": "2026-11-21",
+        "type": "working",
+        "holiday_name": null,
+        "status": "upcoming",
+        "kind": "upcoming",
+        "record": null
+      },
+      {
+        "date": "2026-11-22",
+        "type": "weekly_off",
+        "holiday_name": null,
+        "status": "off",
+        "kind": "upcoming",
+        "record": null
+      },
+      {
+        "date": "2026-11-23",
+        "type": "working",
+        "holiday_name": null,
+        "status": "upcoming",
+        "kind": "upcoming",
+        "record": null
+      },
+      {
+        "date": "2026-11-24",
+        "type": "working",
+        "holiday_name": null,
+        "status": "upcoming",
+        "kind": "upcoming",
+        "record": null
+      },
+      {
+        "date": "2026-11-25",
+        "type": "working",
+        "holiday_name": null,
+        "status": "upcoming",
+        "kind": "upcoming",
+        "record": null
+      },
+      {
+        "date": "2026-11-26",
+        "type": "working",
+        "holiday_name": null,
+        "status": "upcoming",
+        "kind": "upcoming",
+        "record": null
+      },
+      {
+        "date": "2026-11-27",
+        "type": "working",
+        "holiday_name": null,
+        "status": "upcoming",
+        "kind": "upcoming",
+        "record": null
+      },
+      {
+        "date": "2026-11-28",
+        "type": "working",
+        "holiday_name": null,
+        "status": "upcoming",
+        "kind": "upcoming",
+        "record": null
+      },
+      {
+        "date": "2026-11-29",
+        "type": "weekly_off",
+        "holiday_name": null,
+        "status": "off",
+        "kind": "upcoming",
+        "record": null
+      },
+      {
+        "date": "2026-11-30",
+        "type": "working",
+        "holiday_name": null,
+        "status": "upcoming",
+        "kind": "upcoming",
+        "record": null
+      }
+    ]
+  },
+  "team_day": {
+    "date": "2026-11-18",
+    "day": {
+      "type": "working",
+      "holiday_name": null
+    },
+    "rows": [
+      {
+        "employee_id": "admin1",
+        "name": "Asha Admin",
+        "avatar_url": "",
+        "status": "absent",
+        "kind": "absent",
+        "record": null
+      },
+      {
+        "employee_id": "emp1",
+        "name": "Bela Employee",
+        "avatar_url": "",
+        "status": "present",
+        "kind": "full",
+        "record": {
+          "employee_id": "emp1",
+          "employee_name": "Bela Employee",
+          "date": "2026-11-18",
+          "month": "2026-11",
+          "shift": {
+            "arrival": "10:00",
+            "leave": "19:00",
+            "grace_minutes": 15,
+            "full_day_minutes": 360
+          },
+          "check_in_at": "2026-11-18T04:30:00.000Z",
+          "check_out_at": "2026-11-18T13:35:00.000Z",
+          "check_in_local": "10:00",
+          "check_out_local": "19:05",
+          "check_in_geo": {
+            "lat": 18.5204,
+            "lng": 73.8567,
+            "accuracy_m": 8,
+            "distance_m": 0
+          },
+          "check_out_geo": {
+            "lat": 18.5204,
+            "lng": 73.8567,
+            "accuracy_m": 8,
+            "distance_m": 0
+          },
+          "worked_minutes": 545,
+          "late_minutes": 0,
+          "early_minutes": 0,
+          "late": {
+            "status": "none",
+            "note": null,
+            "decided_by": null,
+            "decided_by_name": null,
+            "decided_at": null,
+            "comment": null
+          },
+          "early": {
+            "status": "none",
+            "note": null,
+            "decided_by": null,
+            "decided_by_name": null,
+            "decided_at": null,
+            "comment": null
+          },
+          "needs_review": false,
+          "source": "self",
+          "admin_edited": false,
+          "created_at": "2026-11-18T04:30:00.000Z",
+          "updated_at": "2026-11-18T13:35:00.000Z"
+        }
+      },
+      {
+        "employee_id": "emp2",
+        "name": "Chitra Employee",
+        "avatar_url": "",
+        "status": "present",
+        "kind": "in_progress",
+        "record": {
+          "employee_id": "emp2",
+          "employee_name": "Chitra Employee",
+          "date": "2026-11-18",
+          "month": "2026-11",
+          "shift": {
+            "arrival": "10:00",
+            "leave": "19:00",
+            "grace_minutes": 15,
+            "full_day_minutes": 360
+          },
+          "check_in_at": "2026-11-18T05:30:00.000Z",
+          "check_out_at": null,
+          "check_in_local": "11:00",
+          "check_out_local": null,
+          "check_in_geo": {
+            "lat": 18.5204,
+            "lng": 73.8567,
+            "accuracy_m": 8,
+            "distance_m": 0
+          },
+          "check_out_geo": null,
+          "worked_minutes": null,
+          "late_minutes": 60,
+          "early_minutes": 0,
+          "late": {
+            "status": "approved",
+            "note": "Bus broke down",
+            "decided_by": "admin1",
+            "decided_by_name": "Asha Admin",
+            "decided_at": "2026-11-18T05:30:00.000Z",
+            "comment": "ok"
+          },
+          "early": {
+            "status": "none",
+            "note": null,
+            "decided_by": null,
+            "decided_by_name": null,
+            "decided_at": null,
+            "comment": null
+          },
+          "needs_review": false,
+          "source": "self",
+          "admin_edited": false,
+          "created_at": "2026-11-18T05:30:00.000Z",
+          "updated_at": "2026-11-18T05:30:00.000Z"
+        }
+      }
+    ]
+  },
+  "team_month": {
+    "rows": [
+      {
+        "employee_id": "emp1",
+        "name": "Bela Employee",
+        "summary": {
+          "month": "2026-11",
+          "working_days": 1,
+          "off_days": 0,
+          "present": 1,
+          "absent": 0,
+          "extra_days": 0,
+          "late": 0,
+          "early": 0,
+          "pending": 0,
+          "excused": 0,
+          "missed_checkout": 0,
+          "full_days": 1,
+          "half_days": 0,
+          "attended_value": 1,
+          "percent": 100,
+          "stars": 5,
+          "rank": 1,
+          "ranked_of": 3
+        }
+      },
+      {
+        "employee_id": "emp2",
+        "name": "Chitra Employee",
+        "summary": {
+          "month": "2026-11",
+          "working_days": 1,
+          "off_days": 0,
+          "present": 1,
+          "absent": 0,
+          "extra_days": 0,
+          "late": 0,
+          "early": 0,
+          "pending": 0,
+          "excused": 1,
+          "missed_checkout": 0,
+          "full_days": 0,
+          "half_days": 0,
+          "attended_value": 1,
+          "percent": 100,
+          "stars": 5,
+          "rank": 1,
+          "ranked_of": 3
+        }
+      },
+      {
+        "employee_id": "admin1",
+        "name": "Asha Admin",
+        "summary": {
+          "month": "2026-11",
+          "working_days": 1,
+          "off_days": 0,
+          "present": 0,
+          "absent": 1,
+          "extra_days": 0,
+          "late": 0,
+          "early": 0,
+          "pending": 0,
+          "excused": 0,
+          "missed_checkout": 0,
+          "full_days": 0,
+          "half_days": 0,
+          "attended_value": 0,
+          "percent": 0,
+          "stars": 0,
+          "rank": 3,
+          "ranked_of": 3
+        }
+      }
+    ]
+  },
+  "error_outside_radius": {
+    "details": {
+      "distance_m": 53329.1,
+      "radius_m": 50,
+      "code": "outside_radius"
+    },
+    "message": "You are 53329 m from the office. You must be within 50 m.",
+    "status": "FAILED_PRECONDITION"
+  }
+}

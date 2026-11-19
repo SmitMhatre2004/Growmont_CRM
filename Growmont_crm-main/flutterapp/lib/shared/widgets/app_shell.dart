@@ -5,9 +5,11 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/config/app_config.dart';
 import '../../core/theme/app_theme.dart';
+import '../../features/attendance/dashboard_ring.dart';
 import '../../features/auth/auth_provider.dart';
 import 'app_bottom_nav.dart';
 import 'app_sidebar.dart';
+import 'branch_container.dart' show MoreSheetScope;
 import 'dev_test_banner.dart';
 
 /// Shell branch indices, matching the order declared in `app_router.dart`.
@@ -22,6 +24,7 @@ class AppBranch {
   static const int infoPortal = 5;
   static const int profile = 6;
   static const int reports = 7;
+  static const int attendance = 8;
 }
 
 class AppShell extends ConsumerStatefulWidget {
@@ -112,6 +115,9 @@ class _AppShellState extends ConsumerState<AppShell> {
   }
 }
 
+/// Height of the Growmont logo in the phone top bar (it was 28).
+const double kPhoneLogoHeight = 36;
+
 /// Phone layout: brand app bar with a profile avatar on the right, and a
 /// bottom navigation bar in place of the drawer.
 class _MobileShell extends ConsumerWidget {
@@ -168,25 +174,50 @@ class _MobileShell extends ConsumerWidget {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
+        // No white band: the page background shows through from the very top
+        // of the screen, status bar included. Nothing tints or shadows it on
+        // scroll, and there is no divider line.
+        backgroundColor: Colors.transparent,
+        surfaceTintColor: Colors.transparent,
+        shadowColor: Colors.transparent,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        shape: const Border(),
+        systemOverlayStyle: const SystemUiOverlayStyle(
+          statusBarColor: Colors.transparent,
+          statusBarIconBrightness: Brightness.dark,
+          statusBarBrightness: Brightness.light,
+        ),
         titleSpacing: AppSpacing.lg,
         title: Image.asset(
           'assets/images/growmont-logo_coloured-large-size.webp',
-          height: 28,
+          height: kPhoneLogoHeight,
           fit: BoxFit.contain,
           alignment: Alignment.centerLeft,
         ),
         actions: [
+          // The attendance ring: Dashboard only (and, inside it, phones with
+          // attendance set up only).
+          if (navigationShell.currentIndex == AppBranch.dashboard)
+            DashboardRingButton(
+              onOpenAttendance: () => onSelectBranch(AppBranch.attendance),
+            ),
           _ProfileAvatarButton(
             onOpenProfile: () => onSelectBranch(AppBranch.profile),
           ),
           const SizedBox(width: AppSpacing.sm),
         ],
       ),
-      body: Column(
-        children: [
-          const DevTestBanner(),
-          Expanded(child: navigationShell),
-        ],
+      // The scope lets a swipe past Clients open the same More sheet the
+      // nav bar's More button opens.
+      body: MoreSheetScope(
+        open: () => _showMoreSheet(context, onSelectBranch, isAdmin),
+        child: Column(
+          children: [
+            const DevTestBanner(),
+            Expanded(child: navigationShell),
+          ],
+        ),
       ),
       bottomNavigationBar: AppBottomNav(
         items: items,
@@ -219,6 +250,17 @@ class _MobileShell extends ConsumerWidget {
               onTap: () {
                 Navigator.pop(sheetContext);
                 onSelect(AppBranch.reports);
+              },
+            ),
+            ListTile(
+              leading: const Icon(
+                Icons.fingerprint,
+                color: AppColors.primaryBlue,
+              ),
+              title: const Text('Attendance'),
+              onTap: () {
+                Navigator.pop(sheetContext);
+                onSelect(AppBranch.attendance);
               },
             ),
             if (isAdmin) ...[
@@ -319,18 +361,34 @@ class _ProfileAvatarButton extends ConsumerWidget {
       ],
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
-        child: CircleAvatar(
-          radius: 17,
-          backgroundColor: AppColors.primaryGreenSoft,
-          foregroundImage: avatarUrl.isNotEmpty
-              ? NetworkImage(avatarUrl)
-              : null,
-          child: Text(
-            user?.initials ?? 'U',
-            style: const TextStyle(
-              color: AppColors.primaryGreenDark,
-              fontWeight: FontWeight.w700,
-              fontSize: 13,
+        // Same height as the attendance pill beside it, ring included. A
+        // solid brand gradient with white initials, so it never fades into
+        // the page background.
+        child: Container(
+          width: kAttendancePillHeight,
+          height: kAttendancePillHeight,
+          decoration: const BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [AppPalette.green600, AppPalette.navy700],
+            ),
+          ),
+          child: CircleAvatar(
+            radius: kAttendancePillHeight / 2,
+            backgroundColor: Colors.transparent,
+            foregroundImage: avatarUrl.isNotEmpty
+                ? NetworkImage(avatarUrl)
+                : null,
+            child: Text(
+              user?.initials ?? 'U',
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w700,
+                fontSize: 16,
+                height: 1,
+              ),
             ),
           ),
         ),

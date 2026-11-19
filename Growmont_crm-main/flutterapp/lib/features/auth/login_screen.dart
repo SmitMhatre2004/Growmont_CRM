@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/config/dev_config.dart';
 import '../../core/theme/app_theme.dart';
 import '../../shared/widgets/app_form.dart';
 import '../../shared/widgets/app_modal_shell.dart';
@@ -21,6 +22,26 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   bool _obscurePassword = true;
   bool _loading = false;
   String? _error;
+
+  /// Once per app run, so logging out stays on this screen to switch account.
+  static bool _autoLoginTried = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (DevConfig.quickLoginEnabled && !_autoLoginTried) {
+      _autoLoginTried = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _quickLogin(DevConfig.quickLoginAccounts.values.first);
+      });
+    }
+  }
+
+  void _quickLogin(String email) {
+    _usernameController.text = email;
+    _passwordController.text = DevConfig.devLoginPassword;
+    _submit();
+  }
 
   @override
   void dispose() {
@@ -198,6 +219,24 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           child: Text(_loading ? 'Logging in...' : 'Login'),
                         ),
                       ),
+                      if (DevConfig.quickLoginEnabled) ...[
+                        const SizedBox(height: AppSpacing.lg),
+                        Wrap(
+                          alignment: WrapAlignment.center,
+                          spacing: AppSpacing.sm,
+                          runSpacing: AppSpacing.sm,
+                          children: [
+                            for (final account
+                                in DevConfig.quickLoginAccounts.entries)
+                              OutlinedButton(
+                                onPressed: _loading
+                                    ? null
+                                    : () => _quickLogin(account.value),
+                                child: Text(account.key),
+                              ),
+                          ],
+                        ),
+                      ],
                       const SizedBox(height: AppSpacing.xxxl),
                       const _LegalFooter(),
                     ],

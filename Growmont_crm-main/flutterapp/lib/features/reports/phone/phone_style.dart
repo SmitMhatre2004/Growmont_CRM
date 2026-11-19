@@ -54,7 +54,7 @@ class PhoneText {
   static const TextStyle sectionTitle = TextStyle(
     fontFamily: AppTypography.display,
     fontSize: 16,
-    fontWeight: FontWeight.w700,
+    fontWeight: FontWeight.w600,
     color: AppColors.textPrimary,
     height: 1.25,
   );

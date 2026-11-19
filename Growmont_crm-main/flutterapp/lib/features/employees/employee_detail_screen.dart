@@ -14,6 +14,8 @@ import '../../models/sale.dart';
 import '../../shared/widgets/error_state.dart';
 import '../../shared/widgets/monthly_revenue_chart.dart';
 import '../auth/auth_provider.dart';
+import '../attendance/attendance_summary_card.dart';
+import '../attendance/employee_month_view.dart';
 import 'widgets/add_employee_modal.dart';
 import 'widgets/employee_admin_actions.dart';
 
@@ -58,10 +60,16 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
         final emp = results[0] as Employee;
         final allInteractions = results[3] as List<Interaction>;
         final empInteractions = allInteractions.where((i) {
-          final idMatches = (i.employeeId != null && i.employeeId!.isNotEmpty && i.employeeId == emp.id) ||
+          final idMatches =
+              (i.employeeId != null &&
+                  i.employeeId!.isNotEmpty &&
+                  i.employeeId == emp.id) ||
               (i.employee.isNotEmpty && i.employee == emp.id);
-          final nameMatches = (i.employeeName != null && i.employeeName!.trim().isNotEmpty &&
-              i.employeeName!.trim().toLowerCase() == emp.name.trim().toLowerCase()) ||
+          final nameMatches =
+              (i.employeeName != null &&
+                  i.employeeName!.trim().isNotEmpty &&
+                  i.employeeName!.trim().toLowerCase() ==
+                      emp.name.trim().toLowerCase()) ||
               i.employee.trim().toLowerCase() == emp.name.trim().toLowerCase();
           return idMatches || nameMatches;
         }).toList();
@@ -157,6 +165,18 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
 
             // Profile Hero Card
             _buildProfileCard(emp, avatarUrl, isMobile),
+
+            const SizedBox(height: AppSpacing.md),
+
+            // This month's attendance, as the person sees it themselves.
+            AttendanceSummaryCard(employeeId: emp.id),
+
+            // Admin only (renders nothing otherwise): the month calendar,
+            // with past-day timing edits.
+            if (ref.watch(authProvider).user?.isAdmin == true) ...[
+              const SizedBox(height: AppSpacing.md),
+              EmployeeMonthView(employeeId: emp.id, employeeName: emp.name),
+            ],
 
             const SizedBox(height: AppSpacing.md),
 
@@ -298,7 +318,9 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
                           Text(
                             emp.name,
                             style: isMobile
-                                ? AppTypography.headingLarge.copyWith(fontSize: 18)
+                                ? AppTypography.headingLarge.copyWith(
+                                    fontSize: 18,
+                                  )
                                 : AppTypography.headingLarge,
                           ),
                           _roleBadge(emp.role),
@@ -356,7 +378,9 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
                 );
                 final interactionsCard = _kpiStatCard(
                   title: 'INTERACTIONS',
-                  value: math.max(_interactions.length, emp.interactionsCount).toString(),
+                  value: math
+                      .max(_interactions.length, emp.interactionsCount)
+                      .toString(),
                   icon: Icons.forum_outlined,
                   accentColor: AppColors.chat,
                   bgColor: AppColors.chatSoft,
@@ -441,10 +465,7 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
           children: [
             Row(
               children: [
-                const Text(
-                  'Assigned Clients',
-                  style: AppTypography.cardTitle,
-                ),
+                const Text('Assigned Clients', style: AppTypography.cardTitle),
                 const SizedBox(width: AppSpacing.sm),
                 Container(
                   padding: const EdgeInsets.symmetric(
@@ -689,7 +710,9 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
                         Expanded(
                           child: Text(
                             s.clientName,
-                            style: AppTypography.itemTitle.copyWith(fontSize: 13),
+                            style: AppTypography.itemTitle.copyWith(
+                              fontSize: 13,
+                            ),
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),

@@ -13,6 +13,7 @@ import '../../models/sale.dart';
 import '../../models/user.dart';
 import '../../shared/widgets/export_format_picker.dart';
 import '../../shared/widgets/hero_stat_card.dart';
+import '../../shared/widgets/reorderable_columns.dart';
 import '../../shared/widgets/toolbar_action_button.dart';
 import '../auth/auth_provider.dart';
 import 'sales_excel.dart';
@@ -37,6 +38,19 @@ class _Palette {
   static const Color textMuted = AppColors.textMuted;
 }
 
+/// The reorderable data columns of the table, in their default order. The
+/// selection checkbox and the actions column are fixed and not listed.
+const List<ReorderColumn> _salesColumns = [
+  ReorderColumn('client', 4),
+  ReorderColumn('product', 3),
+  ReorderColumn('amount', 2),
+  ReorderColumn('frequency', 2),
+  ReorderColumn('rep', 3),
+  ReorderColumn('date', 2),
+];
+
+int _salesFlex(String id) => _salesColumns.firstWhere((c) => c.id == id).flex;
+
 class SalesScreen extends ConsumerStatefulWidget {
   const SalesScreen({super.key});
 
@@ -60,10 +74,30 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
   String _sortColumn = 'date';
   bool _sortAscending = false; // default newest date first
 
+  // Phone only: long-press a column header and drag it onto another to swap.
+  // Display order only, remembered on the device.
+  final ColumnOrderController _columnOrder = ColumnOrderController(
+    tableId: 'sales',
+    columns: _salesColumns,
+  );
+
   @override
   void initState() {
     super.initState();
+    _columnOrder.addListener(_onColumnOrderChanged);
+    _columnOrder.load();
     _loadSales();
+  }
+
+  @override
+  void dispose() {
+    _columnOrder.removeListener(_onColumnOrderChanged);
+    _columnOrder.dispose();
+    super.dispose();
+  }
+
+  void _onColumnOrderChanged() {
+    if (mounted) setState(() {});
   }
 
   Future<void> _loadSales() async {
@@ -1013,6 +1047,9 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                             sale: sale,
                           ),
                           onDelete: () => _deleteSale(sale.id),
+                          order: _columnOrder.orderFor(
+                            reorderable: AppLayout.isMobile(context),
+                          ),
                         );
                       },
                     ),
@@ -1058,40 +1095,12 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
               ),
             ),
           ),
-          _salesSortHeader(
-            columnKey: 'client',
-            title: 'CLIENT & DETAILS',
-            flex: 4,
-          ),
-          _salesSortHeader(
-            columnKey: 'product',
-            title: 'PRODUCT',
-            flex: 3,
-            alignment: Alignment.centerLeft,
-          ),
-          _salesSortHeader(
-            columnKey: 'amount',
-            title: 'AMOUNT',
-            flex: 2,
-            alignment: Alignment.center,
-          ),
-          _salesSortHeader(
-            columnKey: 'frequency',
-            title: 'FREQUENCY',
-            flex: 2,
-            alignment: Alignment.center,
-          ),
-          _salesSortHeader(
-            columnKey: 'rep',
-            title: 'SALES REP',
-            flex: 3,
-            alignment: Alignment.centerLeft,
-          ),
-          _salesSortHeader(
-            columnKey: 'date',
-            title: 'DATE',
-            flex: 2,
-            alignment: Alignment.center,
+          Expanded(
+            child: ReorderableColumnHeaders(
+              controller: _columnOrder,
+              enabled: AppLayout.isMobile(context),
+              cellBuilder: (context, id) => _headerCell(id),
+            ),
           ),
           const SizedBox(
             width: 76,
@@ -1111,10 +1120,38 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
     );
   }
 
+  Widget _headerCell(String id) {
+    switch (id) {
+      case 'client':
+        return _salesSortHeader(columnKey: 'client', title: 'CLIENT & DETAILS');
+      case 'product':
+        return _salesSortHeader(columnKey: 'product', title: 'PRODUCT');
+      case 'amount':
+        return _salesSortHeader(
+          columnKey: 'amount',
+          title: 'AMOUNT',
+          alignment: Alignment.center,
+        );
+      case 'frequency':
+        return _salesSortHeader(
+          columnKey: 'frequency',
+          title: 'FREQUENCY',
+          alignment: Alignment.center,
+        );
+      case 'rep':
+        return _salesSortHeader(columnKey: 'rep', title: 'SALES REP');
+      default:
+        return _salesSortHeader(
+          columnKey: 'date',
+          title: 'DATE',
+          alignment: Alignment.center,
+        );
+    }
+  }
+
   Widget _salesSortHeader({
     required String columnKey,
     required String title,
-    required int flex,
     Alignment alignment = Alignment.centerLeft,
   }) {
     final isSelected = _sortColumn == columnKey;
@@ -1124,43 +1161,38 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
               ? MainAxisAlignment.end
               : MainAxisAlignment.start);
 
-    return Expanded(
-      flex: flex,
-      child: InkWell(
-        onTap: () => _onSort(columnKey),
-        borderRadius: AppRadius.brSm,
-        hoverColor: AppColors.surfaceHover,
-        child: Container(
-          height: 48,
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
-          alignment: alignment,
-          child: Row(
-            mainAxisAlignment: mainAxis,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Flexible(
-                child: Text(
-                  title,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTypography.tableHeader.copyWith(
-                    color: isSelected
-                        ? AppColors.textPrimary
-                        : AppColors.textSecondary,
-                  ),
+    return InkWell(
+      onTap: () => _onSort(columnKey),
+      borderRadius: AppRadius.brSm,
+      hoverColor: AppColors.surfaceHover,
+      child: Container(
+        height: 48,
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
+        alignment: alignment,
+        child: Row(
+          mainAxisAlignment: mainAxis,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Flexible(
+              child: Text(
+                title,
+                overflow: TextOverflow.ellipsis,
+                style: AppTypography.tableHeader.copyWith(
+                  color: isSelected
+                      ? AppColors.textPrimary
+                      : AppColors.textSecondary,
                 ),
               ),
-              const SizedBox(width: AppSpacing.xs),
-              Icon(
-                isSelected
-                    ? (_sortAscending
-                          ? Icons.arrow_upward
-                          : Icons.arrow_downward)
-                    : Icons.unfold_more,
-                size: AppSizing.iconXs,
-                color: isSelected ? AppColors.textPrimary : AppColors.textMuted,
-              ),
-            ],
-          ),
+            ),
+            const SizedBox(width: AppSpacing.xs),
+            Icon(
+              isSelected
+                  ? (_sortAscending ? Icons.arrow_upward : Icons.arrow_downward)
+                  : Icons.unfold_more,
+              size: AppSizing.iconXs,
+              color: isSelected ? AppColors.textPrimary : AppColors.textMuted,
+            ),
+          ],
         ),
       ),
     );
@@ -1303,8 +1335,11 @@ class _SalesTableRow extends StatefulWidget {
     required this.onSelectChanged,
     required this.onEdit,
     required this.onDelete,
+    required this.order,
   });
 
+  /// Display order of the data columns (header and cells use the same one).
+  final List<String> order;
   final Sale sale;
   final bool selected;
   final ValueChanged<bool?> onSelectChanged;
@@ -1380,206 +1415,208 @@ class _SalesTableRowState extends State<_SalesTableRow> {
               ),
             ),
 
-            // Client & Details
-            Expanded(
-              flex: 4,
-              child: MouseRegion(
-                cursor: clientId == null
-                    ? MouseCursor.defer
-                    : SystemMouseCursors.click,
-                onEnter: (_) => setState(() => _clientHovered = true),
-                onExit: (_) => setState(() => _clientHovered = false),
-                child: GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onTap: clientId == null
-                      ? null
-                      : () => context.push('/clients/$clientId'),
-                  child: Row(
-                    children: [
-                      CircleAvatar(
-                        radius: 16,
-                        backgroundColor: AppColors.primaryBlue.withValues(
-                          alpha: 0.1,
-                        ),
-                        child: Text(
-                          widget.sale.clientName.isEmpty
-                              ? '?'
-                              : widget.sale.clientName[0].toUpperCase(),
-                          style: const TextStyle(
-                            color: AppColors.primaryBlue,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 13,
+            ...orderedRowCells(widget.order, {
+              // Client & Details
+              'client': Expanded(
+                flex: _salesFlex('client'),
+                child: MouseRegion(
+                  cursor: clientId == null
+                      ? MouseCursor.defer
+                      : SystemMouseCursors.click,
+                  onEnter: (_) => setState(() => _clientHovered = true),
+                  onExit: (_) => setState(() => _clientHovered = false),
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: clientId == null
+                        ? null
+                        : () => context.push('/clients/$clientId'),
+                    child: Row(
+                      children: [
+                        CircleAvatar(
+                          radius: 16,
+                          backgroundColor: AppColors.primaryBlue.withValues(
+                            alpha: 0.1,
+                          ),
+                          child: Text(
+                            widget.sale.clientName.isEmpty
+                                ? '?'
+                                : widget.sale.clientName[0].toUpperCase(),
+                            style: const TextStyle(
+                              color: AppColors.primaryBlue,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 13,
+                            ),
                           ),
                         ),
-                      ),
-                      const SizedBox(width: AppSpacing.sm),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              widget.sale.clientName.isEmpty
-                                  ? '—'
-                                  : widget.sale.clientName,
-                              style: AppTypography.tableCellStrong.copyWith(
-                                color: clientId != null && _clientHovered
-                                    ? AppColors.primaryBlue
-                                    : null,
-                                decoration: clientId != null && _clientHovered
-                                    ? TextDecoration.underline
-                                    : null,
-                                decorationColor: AppColors.primaryBlue,
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            if (hasCompany || hasScheme) ...[
-                              const SizedBox(height: AppSpacing.xxs),
+                        const SizedBox(width: AppSpacing.sm),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
                               Text(
-                                [
-                                  if (hasCompany) widget.sale.company.trim(),
-                                  if (hasScheme) widget.sale.scheme.trim(),
-                                ].join(' • '),
-                                style: AppTypography.caption,
+                                widget.sale.clientName.isEmpty
+                                    ? '—'
+                                    : widget.sale.clientName,
+                                style: AppTypography.tableCellStrong.copyWith(
+                                  color: clientId != null && _clientHovered
+                                      ? AppColors.primaryBlue
+                                      : null,
+                                  decoration: clientId != null && _clientHovered
+                                      ? TextDecoration.underline
+                                      : null,
+                                  decorationColor: AppColors.primaryBlue,
+                                ),
                                 overflow: TextOverflow.ellipsis,
                               ),
+                              if (hasCompany || hasScheme) ...[
+                                const SizedBox(height: AppSpacing.xxs),
+                                Text(
+                                  [
+                                    if (hasCompany) widget.sale.company.trim(),
+                                    if (hasScheme) widget.sale.scheme.trim(),
+                                  ].join(' • '),
+                                  style: AppTypography.caption,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
                             ],
-                          ],
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ),
 
-            // Product Category (Dot + Text treatment, aligned left)
-            Expanded(
-              flex: 3,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 10,
-                    height: 10,
-                    decoration: BoxDecoration(
-                      color: productColor(widget.sale.product),
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Flexible(
-                    child: Text(
-                      widget.sale.productDisplay ??
-                          _getProductName(widget.sale.product),
-                      style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: _Palette.textPrimary,
+              // Product Category (Dot + Text treatment, aligned left)
+              'product': Expanded(
+                flex: _salesFlex('product'),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 10,
+                      height: 10,
+                      decoration: BoxDecoration(
+                        color: productColor(widget.sale.product),
+                        shape: BoxShape.circle,
                       ),
-                      overflow: TextOverflow.ellipsis,
                     ),
-                  ),
-                ],
-              ),
-            ),
-
-            // Amount (Center-aligned)
-            Expanded(
-              flex: 2,
-              child: Text(
-                AppFormatters.formatAmount(widget.sale.amount),
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  color: _Palette.textPrimary,
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: Text(
+                        widget.sale.productDisplay ??
+                            _getProductName(widget.sale.product),
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: _Palette.textPrimary,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
                 ),
-                overflow: TextOverflow.ellipsis,
               ),
-            ),
 
-            // Frequency
-            Expanded(
-              flex: 2,
-              child: Align(
-                alignment: Alignment.center,
-                child: Container(
-                  width: 84,
+              // Amount (Center-aligned)
+              'amount': Expanded(
+                flex: _salesFlex('amount'),
+                child: Text(
+                  AppFormatters.formatAmount(widget.sale.amount),
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: _Palette.textPrimary,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+
+              // Frequency
+              'frequency': Expanded(
+                flex: _salesFlex('frequency'),
+                child: Align(
                   alignment: Alignment.center,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.xs,
-                    vertical: AppSpacing.xs,
-                  ),
-                  decoration: BoxDecoration(
-                    color: _Palette.headerBg,
-                    borderRadius: BorderRadius.circular(AppRadius.lg),
-                    border: Border.all(color: _Palette.border),
-                  ),
-                  child: Text(
-                    freqText,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w500,
-                      color: _Palette.textSecondary,
+                  child: Container(
+                    width: 84,
+                    alignment: Alignment.center,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.xs,
+                      vertical: AppSpacing.xs,
                     ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ),
-            ),
-
-            // Sales Rep
-            Expanded(
-              flex: 3,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.start,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(AppSpacing.xs),
                     decoration: BoxDecoration(
                       color: _Palette.headerBg,
-                      borderRadius: BorderRadius.circular(AppRadius.xs),
+                      borderRadius: BorderRadius.circular(AppRadius.lg),
+                      border: Border.all(color: _Palette.border),
                     ),
-                    child: const Icon(
-                      Icons.person_outline,
-                      size: AppSizing.iconXs,
-                      color: _Palette.textSecondary,
-                    ),
-                  ),
-                  const SizedBox(width: AppSpacing.sm),
-                  Flexible(
                     child: Text(
-                      repName.isNotEmpty ? repName : '—',
-                      style: TextStyle(
-                        fontSize: 12,
+                      freqText,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontSize: 11,
                         fontWeight: FontWeight.w500,
-                        color: repName.isNotEmpty
-                            ? _Palette.textPrimary
-                            : _Palette.textMuted,
+                        color: _Palette.textSecondary,
                       ),
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                ],
-              ),
-            ),
-
-            // Date
-            Expanded(
-              flex: 2,
-              child: Text(
-                AppFormatters.formatDate(widget.sale.date),
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: _Palette.textSecondary,
-                  fontWeight: FontWeight.w500,
                 ),
               ),
-            ),
+
+              // Sales Rep
+              'rep': Expanded(
+                flex: _salesFlex('rep'),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(AppSpacing.xs),
+                      decoration: BoxDecoration(
+                        color: _Palette.headerBg,
+                        borderRadius: BorderRadius.circular(AppRadius.xs),
+                      ),
+                      child: const Icon(
+                        Icons.person_outline,
+                        size: AppSizing.iconXs,
+                        color: _Palette.textSecondary,
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                    Flexible(
+                      child: Text(
+                        repName.isNotEmpty ? repName : '—',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          color: repName.isNotEmpty
+                              ? _Palette.textPrimary
+                              : _Palette.textMuted,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Date
+              'date': Expanded(
+                flex: _salesFlex('date'),
+                child: Text(
+                  AppFormatters.formatDate(widget.sale.date),
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: _Palette.textSecondary,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            }),
 
             // Actions
             SizedBox(

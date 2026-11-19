@@ -12,6 +12,7 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 import 'firebase_options.dart';
 import 'core/config/dev_config.dart';
+import 'core/licenses/font_licenses.dart';
 import 'core/providers.dart';
 import 'core/router/app_router.dart';
 import 'core/storage/app_paths.dart';
@@ -24,6 +25,7 @@ import 'features/splash/splash_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  registerFontLicenses();
 
   // Decode the splash mark alongside Firebase init rather than after it, so
   // the first Flutter frame paints it immediately. The native launch screen
@@ -119,10 +121,17 @@ Future<void> _connectToEmulators() async {
     host: '$host:${DevConfig.firestorePort}',
     sslEnabled: false,
   );
-  await FirebaseAuth.instance.useAuthEmulator(host, DevConfig.authPort);
+  // [DevConfig.emulatorHost] is already right for each device. Automatic
+  // mapping would turn a USB phone's 127.0.0.1 into 10.0.2.2.
+  await FirebaseAuth.instance.useAuthEmulator(
+    host,
+    DevConfig.authPort,
+    automaticHostMapping: false,
+  );
   await FirebaseStorage.instance.useStorageEmulator(
     host,
     DevConfig.storagePort,
+    automaticHostMapping: false,
   );
 
   debugPrint(

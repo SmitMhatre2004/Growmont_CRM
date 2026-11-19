@@ -6,6 +6,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:http/http.dart' as http;
 
 import '../config/app_config.dart';
+import '../config/dev_config.dart';
 
 /// Calls the HTTPS callable Cloud Functions in `functions/index.js`.
 ///
@@ -39,6 +40,12 @@ class CloudCallables {
 
   Uri endpoint(String name) {
     final projectId = _projectId ?? Firebase.app().options.projectId;
+    if (DevConfig.useFirebaseEmulator) {
+      return Uri.http(
+        '${DevConfig.emulatorHost}:${DevConfig.functionsPort}',
+        '/$projectId/$kFunctionsRegion/$name',
+      );
+    }
     return Uri.https('$kFunctionsRegion-$projectId.cloudfunctions.net', name);
   }
 
@@ -85,8 +92,14 @@ class CloudCallables {
 
     if (body is Map && body['error'] is Map) {
       final error = body['error'] as Map;
+      final details = error['details'];
+      final detailMap = details is Map
+          ? Map<String, dynamic>.from(details)
+          : const <String, dynamic>{};
       throw BackendException(
         _messageFor(error['status'] as String?, error['message'] as String?),
+        code: detailMap['code'] is String ? detailMap['code'] as String : null,
+        details: detailMap,
       );
     }
     if (response.statusCode == 404) {
@@ -127,9 +140,18 @@ class CloudCallables {
 
 /// A backend failure with a message already fit to show a user.
 class BackendException implements Exception {
-  const BackendException(this.message);
+  const BackendException(
+    this.message, {
+    this.code,
+    this.details = const <String, dynamic>{},
+  });
 
   final String message;
+
+  /// Machine-readable reason from the function's `details.code`, when it
+  /// sent one (attendance does); null for every other failure.
+  final String? code;
+  final Map<String, dynamic> details;
 
   @override
   String toString() => message;

@@ -24,6 +24,10 @@
 	<string>????</string>
 	<key>CFBundleVersion</key>
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Growmont uses your location to confirm you are at the office when you mark attendance.</string>
+	<key>NSFaceIDUsageDescription</key>
+	<string>Growmont uses Face ID to confirm it is you when you mark attendance.</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>UIApplicationSceneManifest</key>

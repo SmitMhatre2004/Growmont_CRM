@@ -11,6 +11,7 @@ import '../../core/theme/app_theme.dart';
 import '../../models/interaction.dart';
 import '../../models/user.dart';
 import '../../shared/widgets/export_format_picker.dart';
+import '../../shared/widgets/reorderable_columns.dart';
 import '../../shared/widgets/toolbar_action_button.dart';
 import '../auth/auth_provider.dart';
 import 'interactions_excel.dart';
@@ -38,6 +39,20 @@ class _Palette {
   static const Color low = AppColors.yellow;
   static const Color lowBg = AppColors.yellowSoft;
 }
+
+/// The reorderable data columns of the table, in their default order. The
+/// selection checkbox and the actions column are fixed and not listed.
+const List<ReorderColumn> _interactionColumns = [
+  ReorderColumn('client', 4),
+  ReorderColumn('rep', 3),
+  ReorderColumn('date', 2),
+  ReorderColumn('follow_up', 3),
+  ReorderColumn('priority', 2),
+  ReorderColumn('notes', 4),
+];
+
+int _interactionFlex(String id) =>
+    _interactionColumns.firstWhere((c) => c.id == id).flex;
 
 class InteractionsScreen extends ConsumerStatefulWidget {
   const InteractionsScreen({super.key});
@@ -70,17 +85,32 @@ class _InteractionsScreenState extends ConsumerState<InteractionsScreen> {
 
   final FocusNode _searchFocusNode = FocusNode();
 
+  // Phone only: long-press a column header and drag it onto another to swap.
+  // Display order only, remembered on the device.
+  final ColumnOrderController _columnOrder = ColumnOrderController(
+    tableId: 'interactions',
+    columns: _interactionColumns,
+  );
+
   @override
   void initState() {
     super.initState();
+    _columnOrder.addListener(_onColumnOrderChanged);
+    _columnOrder.load();
     _searchFocusNode.addListener(() => setState(() {}));
     _load();
   }
 
   @override
   void dispose() {
+    _columnOrder.removeListener(_onColumnOrderChanged);
+    _columnOrder.dispose();
     _searchFocusNode.dispose();
     super.dispose();
+  }
+
+  void _onColumnOrderChanged() {
+    if (mounted) setState(() {});
   }
 
   Future<void> _load() async {
@@ -88,9 +118,9 @@ class _InteractionsScreenState extends ConsumerState<InteractionsScreen> {
     try {
       final user = ref.read(authProvider).user;
       final selfId = user?.isAdmin == true ? null : user?.id;
-      final data = await ref.read(apiServiceProvider).getInteractions(
-        employeeId: selfId,
-      );
+      final data = await ref
+          .read(apiServiceProvider)
+          .getInteractions(employeeId: selfId);
       if (mounted) {
         setState(() {
           _interactions = data;
@@ -314,10 +344,8 @@ class _InteractionsScreenState extends ConsumerState<InteractionsScreen> {
       final result = await runRecordImport(
         payloads: rows
             .map(
-              (r) => interactionImportPayload(
-                r,
-                currentUserName: currentUserName,
-              ),
+              (r) =>
+                  interactionImportPayload(r, currentUserName: currentUserName),
             )
             .nonNulls,
         existingIdBySignature: {
@@ -329,9 +357,9 @@ class _InteractionsScreenState extends ConsumerState<InteractionsScreen> {
       );
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(result.describe('interaction'))),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(result.describe('interaction'))));
       }
       _load();
     } catch (e) {
@@ -399,10 +427,7 @@ class _InteractionsScreenState extends ConsumerState<InteractionsScreen> {
         if (constraints.maxHeight.isFinite &&
             constraints.maxHeight < minComfortHeight) {
           return SingleChildScrollView(
-            child: SizedBox(
-              height: minComfortHeight,
-              child: content,
-            ),
+            child: SizedBox(height: minComfortHeight, child: content),
           );
         }
 
@@ -430,8 +455,8 @@ class _InteractionsScreenState extends ConsumerState<InteractionsScreen> {
           style: isShort
               ? AppTypography.pageTitleMobile.copyWith(fontSize: 18)
               : (isMobile
-                  ? AppTypography.pageTitleMobile
-                  : AppTypography.pageTitle),
+                    ? AppTypography.pageTitleMobile
+                    : AppTypography.pageTitle),
         ),
       ),
     );
@@ -838,7 +863,11 @@ class _InteractionsScreenState extends ConsumerState<InteractionsScreen> {
           height: 32,
           child: Row(
             children: [
-              Icon(Icons.clear_all, size: AppSizing.iconSm, color: AppColors.danger),
+              Icon(
+                Icons.clear_all,
+                size: AppSizing.iconSm,
+                color: AppColors.danger,
+              ),
               SizedBox(width: AppSpacing.sm),
               Text(
                 'Reset All Filters',
@@ -904,7 +933,11 @@ class _InteractionsScreenState extends ConsumerState<InteractionsScreen> {
           right: AppSpacing.sm,
         ),
       ),
-      const Icon(Icons.search, color: _Palette.textMuted, size: AppSizing.iconMd),
+      const Icon(
+        Icons.search,
+        color: _Palette.textMuted,
+        size: AppSizing.iconMd,
+      ),
       const SizedBox(width: AppSpacing.xs),
     ];
 
@@ -1084,6 +1117,9 @@ class _InteractionsScreenState extends ConsumerState<InteractionsScreen> {
                                 existing: items[i],
                               ),
                               onDelete: () => _delete(items[i].id),
+                              order: _columnOrder.orderFor(
+                                reorderable: isMobile,
+                              ),
                             ),
                           ),
                   ),
@@ -1136,36 +1172,13 @@ class _InteractionsScreenState extends ConsumerState<InteractionsScreen> {
               ),
             ),
           ),
-          _sortableHeader(
-            columnKey: 'client',
-            title: 'CLIENT & CONTACT',
-            flex: 4,
+          Expanded(
+            child: ReorderableColumnHeaders(
+              controller: _columnOrder,
+              enabled: AppLayout.isMobile(context),
+              cellBuilder: (context, id) => _headerCell(id),
+            ),
           ),
-          _sortableHeader(
-            columnKey: 'rep',
-            title: 'REPRESENTATIVE',
-            flex: 3,
-            alignment: Alignment.centerLeft,
-          ),
-          _sortableHeader(
-            columnKey: 'date',
-            title: 'DATE',
-            flex: 2,
-            alignment: Alignment.center,
-          ),
-          _sortableHeader(
-            columnKey: 'follow_up',
-            title: 'FOLLOW-UP',
-            flex: 3,
-            alignment: Alignment.center,
-          ),
-          _sortableHeader(
-            columnKey: 'priority',
-            title: 'PRIORITY',
-            flex: 2,
-            alignment: Alignment.center,
-          ),
-          _sortableHeader(columnKey: 'notes', title: 'NOTES', flex: 4),
           const SizedBox(
             width: 76,
             child: Text(
@@ -1184,10 +1197,38 @@ class _InteractionsScreenState extends ConsumerState<InteractionsScreen> {
     );
   }
 
+  Widget _headerCell(String id) {
+    switch (id) {
+      case 'client':
+        return _sortableHeader(columnKey: 'client', title: 'CLIENT & CONTACT');
+      case 'rep':
+        return _sortableHeader(columnKey: 'rep', title: 'REPRESENTATIVE');
+      case 'date':
+        return _sortableHeader(
+          columnKey: 'date',
+          title: 'DATE',
+          alignment: Alignment.center,
+        );
+      case 'follow_up':
+        return _sortableHeader(
+          columnKey: 'follow_up',
+          title: 'FOLLOW-UP',
+          alignment: Alignment.center,
+        );
+      case 'priority':
+        return _sortableHeader(
+          columnKey: 'priority',
+          title: 'PRIORITY',
+          alignment: Alignment.center,
+        );
+      default:
+        return _sortableHeader(columnKey: 'notes', title: 'NOTES');
+    }
+  }
+
   Widget _sortableHeader({
     required String columnKey,
     required String title,
-    required int flex,
     Alignment alignment = Alignment.centerLeft,
   }) {
     final isSelected = _sortColumn == columnKey;
@@ -1197,44 +1238,39 @@ class _InteractionsScreenState extends ConsumerState<InteractionsScreen> {
               ? MainAxisAlignment.end
               : MainAxisAlignment.start);
 
-    return Expanded(
-      flex: flex,
-      child: InkWell(
-        onTap: () => _onSort(columnKey),
-        borderRadius: BorderRadius.circular(AppRadius.sm),
-        hoverColor: AppColors.surfaceHover,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(
-            vertical: AppSpacing.md,
-            horizontal: AppSpacing.xs,
-          ),
-          child: Row(
-            mainAxisAlignment: mainAxis,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Flexible(
-                child: Text(
-                  title,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTypography.tableHeader.copyWith(
-                    color: isSelected
-                        ? AppColors.textPrimary
-                        : AppColors.textSecondary,
-                  ),
+    return InkWell(
+      onTap: () => _onSort(columnKey),
+      borderRadius: BorderRadius.circular(AppRadius.sm),
+      hoverColor: AppColors.surfaceHover,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          vertical: AppSpacing.md,
+          horizontal: AppSpacing.xs,
+        ),
+        child: Row(
+          mainAxisAlignment: mainAxis,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Flexible(
+              child: Text(
+                title,
+                overflow: TextOverflow.ellipsis,
+                style: AppTypography.tableHeader.copyWith(
+                  color: isSelected
+                      ? AppColors.textPrimary
+                      : AppColors.textSecondary,
                 ),
               ),
-              const SizedBox(width: AppSpacing.xs),
-              Icon(
-                isSelected
-                    ? (_sortAscending
-                          ? Icons.arrow_upward
-                          : Icons.arrow_downward)
-                    : Icons.unfold_more,
-                size: AppSizing.iconXs,
-                color: isSelected ? AppColors.textPrimary : AppColors.textMuted,
-              ),
-            ],
-          ),
+            ),
+            const SizedBox(width: AppSpacing.xs),
+            Icon(
+              isSelected
+                  ? (_sortAscending ? Icons.arrow_upward : Icons.arrow_downward)
+                  : Icons.unfold_more,
+              size: AppSizing.iconXs,
+              color: isSelected ? AppColors.textPrimary : AppColors.textMuted,
+            ),
+          ],
         ),
       ),
     );
@@ -1248,7 +1284,9 @@ class _InteractionsScreenState extends ConsumerState<InteractionsScreen> {
         return SingleChildScrollView(
           child: ConstrainedBox(
             constraints: BoxConstraints(
-              minHeight: constraints.maxHeight.isFinite ? constraints.maxHeight : 0,
+              minHeight: constraints.maxHeight.isFinite
+                  ? constraints.maxHeight
+                  : 0,
             ),
             child: Center(
               child: Padding(
@@ -1273,7 +1311,9 @@ class _InteractionsScreenState extends ConsumerState<InteractionsScreen> {
                     ),
                     const SizedBox(height: AppSpacing.lg),
                     Text(
-                      isFiltered ? 'No interactions found' : 'No interactions recorded yet',
+                      isFiltered
+                          ? 'No interactions found'
+                          : 'No interactions recorded yet',
                       style: AppTypography.itemTitle,
                       textAlign: TextAlign.center,
                     ),
@@ -1317,8 +1357,11 @@ class _InteractionTableRow extends StatefulWidget {
     required this.onTap,
     required this.onEdit,
     required this.onDelete,
+    required this.order,
   });
 
+  /// Display order of the data columns (header and cells use the same one).
+  final List<String> order;
   final Interaction item;
   final bool selected;
   final ValueChanged<bool?> onSelectChanged;
@@ -1419,10 +1462,10 @@ class _InteractionTableRowState extends State<_InteractionTableRow> {
               child: InkWell(
                 onTap: widget.onTap,
                 child: Row(
-                  children: [
+                  children: orderedRowCells(widget.order, {
                     // Client & Contact
-                    Expanded(
-                      flex: 4,
+                    'client': Expanded(
+                      flex: _interactionFlex('client'),
                       child: Row(
                         children: [
                           CircleAvatar(
@@ -1470,8 +1513,8 @@ class _InteractionTableRowState extends State<_InteractionTableRow> {
                     ),
 
                     // Representative
-                    Expanded(
-                      flex: 3,
+                    'rep': Expanded(
+                      flex: _interactionFlex('rep'),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.start,
                         children: [
@@ -1506,8 +1549,8 @@ class _InteractionTableRowState extends State<_InteractionTableRow> {
                     ),
 
                     // Date
-                    Expanded(
-                      flex: 2,
+                    'date': Expanded(
+                      flex: _interactionFlex('date'),
                       child: Text(
                         AppFormatters.formatDate(widget.item.date),
                         textAlign: TextAlign.center,
@@ -1521,8 +1564,8 @@ class _InteractionTableRowState extends State<_InteractionTableRow> {
                     ),
 
                     // Follow-up
-                    Expanded(
-                      flex: 3,
+                    'follow_up': Expanded(
+                      flex: _interactionFlex('follow_up'),
                       child: hasFollowUp
                           ? Column(
                               crossAxisAlignment: CrossAxisAlignment.center,
@@ -1587,8 +1630,8 @@ class _InteractionTableRowState extends State<_InteractionTableRow> {
                     ),
 
                     // Priority
-                    Expanded(
-                      flex: 2,
+                    'priority': Expanded(
+                      flex: _interactionFlex('priority'),
                       child: Align(
                         alignment: Alignment.center,
                         child: _buildPriorityPill(widget.item.priority),
@@ -1596,11 +1639,12 @@ class _InteractionTableRowState extends State<_InteractionTableRow> {
                     ),
 
                     // Notes
-                    Expanded(
-                      flex: 4,
+                    'notes': Expanded(
+                      flex: _interactionFlex('notes'),
                       child: widget.item.discussionNotes.isNotEmpty
                           ? Tooltip(
-                              message: 'Tap to read full notes\n\n${widget.item.discussionNotes}',
+                              message:
+                                  'Tap to read full notes\n\n${widget.item.discussionNotes}',
                               child: Text(
                                 widget.item.discussionNotes,
                                 textAlign: TextAlign.left,
@@ -1619,7 +1663,7 @@ class _InteractionTableRowState extends State<_InteractionTableRow> {
                               style: AppTypography.caption,
                             ),
                     ),
-                  ],
+                  }),
                 ),
               ),
             ),

@@ -63,7 +63,11 @@ class DevConfig {
   /// listen on IPv4 only, and a resolver that tries ::1 first fails with
   /// ECONNREFUSED before falling back. An Android emulator reaches the
   /// host machine on 10.0.2.2 instead.
+  ///
+  /// A physical phone on USB passes EMULATOR_HOST=127.0.0.1 and uses
+  /// `adb reverse` to reach the PC.
   static String get emulatorHost {
+    if (_emulatorHostOverride.isNotEmpty) return _emulatorHostOverride;
     if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
       return '10.0.2.2';
     }
@@ -75,6 +79,29 @@ class DevConfig {
   static const int authPort = 9099;
   static const int firestorePort = 8080;
   static const int storagePort = 9199;
+  static const int functionsPort = 5001;
+
+  static const String _emulatorHostOverride = String.fromEnvironment(
+    'EMULATOR_HOST',
+  );
+
+  /// Password of the seeded emulator accounts, supplied at build time.
+  static const String devLoginPassword = String.fromEnvironment(
+    'DEV_LOGIN_PASSWORD',
+  );
+
+  /// Skips typing credentials. Needs emulator mode, so a release build can
+  /// never use it.
+  static bool get quickLoginEnabled =>
+      useFirebaseEmulator && devLoginPassword.isNotEmpty;
+
+  /// Seeded accounts from scripts/seed-emulator.js; the first signs in
+  /// automatically when the app opens.
+  static const Map<String, String> quickLoginAccounts = {
+    'Dev Admin': 'dev@growmont.com',
+    'Asha (employee)': 'asha@growmont.com',
+    'Bilal (employee)': 'bilal@growmont.com',
+  };
 
   /// Name of the local SQLite file. Rule 3 above: emulator runs get their
   /// own database so test data and real data never share a file.

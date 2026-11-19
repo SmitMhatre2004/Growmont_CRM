@@ -332,13 +332,19 @@ class AppChart {
 /// TYPOGRAPHY
 /// -----------------------------------------------------------------------------
 /// Pairing:
-///   * Plus Jakarta Sans - display face. Geometric, a little characterful.
-///     Used ONLY for page titles, section headings, card titles and KPI numbers.
-///   * Inter - text face. Purpose-built for UI at small sizes with a tall
-///     x-height. Used for everything else: body, labels, tables, buttons.
+///   * Manrope (static instances) - display face. A clean, modern geometric
+///     sans that reads as professional for a finance product. Used ONLY for
+///     page titles, section headings, card titles and big numbers.
+///   * Schibsted Grotesk - text face. A clear grotesque for UI. Used for
+///     everything else: body, labels, tables, buttons.
+///
+/// Hierarchy at a glance:
+///   page title 32-34 Manrope 700 tight - section title 20-22 Manrope 600
+///   hero number 40-48 Manrope 700 - body 14-15 Schibsted 400
+///   label 13 Schibsted 600 - caption 12 Schibsted 400, muted
 ///
 /// Scale (no half-points, ever):
-///   11 - 12 - 13 - 14 - 15 - 16 - 18 - 22 - 24 - 28 - 32
+///   11 - 12 - 13 - 14 - 15 - 16 - 18 - 20 - 22 - 24 - 28 - 32 - 34 - 44
 ///
 /// Weight carries hierarchy, not size alone:
 ///   400 body - 500 emphasis - 600 titles/labels - 700 headings
@@ -348,61 +354,61 @@ class AppChart {
 class AppTypography {
   AppTypography._();
 
-  static const String display = 'PlusJakartaSans';
-  static const String text = 'Inter';
+  static const String display = 'Manrope';
+  static const String text = 'SchibstedGrotesk';
 
   /// Fixed-width digits. Attach to anything numeric that stacks in a column.
   static const List<FontFeature> tabular = [FontFeature.tabularFigures()];
 
   // ---------------------------------------------------------------- DISPLAY --
-  /// 32/38 700 - page title, desktop
+  /// 34/40 700 tight - page title, desktop
   static const TextStyle pageTitle = TextStyle(
+    fontFamily: display,
+    fontSize: 34,
+    fontWeight: FontWeight.w700,
+    color: AppColors.textPrimary,
+    letterSpacing: -1.0,
+    height: 40 / 34,
+  );
+
+  /// 32/38 700 tight - page title, phone.
+  static const TextStyle pageTitleMobile = TextStyle(
     fontFamily: display,
     fontSize: 32,
     fontWeight: FontWeight.w700,
     color: AppColors.textPrimary,
-    letterSpacing: -0.6,
+    letterSpacing: -0.9,
     height: 38 / 32,
   );
 
-  /// 24/30 700 - page title, phone. The scale steps down exactly once.
-  static const TextStyle pageTitleMobile = TextStyle(
-    fontFamily: display,
-    fontSize: 24,
-    fontWeight: FontWeight.w700,
-    color: AppColors.textPrimary,
-    letterSpacing: -0.6,
-    height: 30 / 24,
-  );
-
-  /// 22/29 700 - major heading inside a page
+  /// 22/28 600 - major heading inside a page
   static const TextStyle headingLarge = TextStyle(
     fontFamily: display,
     fontSize: 22,
-    fontWeight: FontWeight.w700,
+    fontWeight: FontWeight.w600,
     color: AppColors.textPrimary,
     letterSpacing: -0.4,
-    height: 29 / 22,
+    height: 28 / 22,
   );
 
-  /// 20/26 700 - major heading, phone
+  /// 20/26 600 - major heading, phone
   static const TextStyle headingLargeMobile = TextStyle(
     fontFamily: display,
     fontSize: 20,
-    fontWeight: FontWeight.w700,
+    fontWeight: FontWeight.w600,
     color: AppColors.textPrimary,
-    letterSpacing: -0.4,
+    letterSpacing: -0.3,
     height: 26 / 20,
   );
 
-  /// 18/23 700 - section heading (Clients, Sales, Reminders). Same on phone.
+  /// 20/26 600 - section heading (Clients, Sales, Reminders). Same on phone.
   static const TextStyle sectionTitle = TextStyle(
     fontFamily: display,
-    fontSize: 18,
-    fontWeight: FontWeight.w700,
+    fontSize: 20,
+    fontWeight: FontWeight.w600,
     color: AppColors.textPrimary,
     letterSpacing: -0.3,
-    height: 23 / 18,
+    height: 26 / 20,
   );
 
   /// 16/22 600 - card & modal title
@@ -452,22 +458,23 @@ class AppTypography {
     height: 19 / 13,
   );
 
-  /// 14/20 500 - primary body copy
+  /// 14/20 400 - primary body copy. 14, not 15: this is also the text typed
+  /// into every input (the theme's bodyLarge), which is 20px tall.
   static const TextStyle bodyPrimary = TextStyle(
     fontFamily: text,
     fontSize: 14,
-    fontWeight: FontWeight.w500,
+    fontWeight: FontWeight.w400,
     color: AppColors.textPrimary,
     height: 20 / 14,
   );
 
-  /// 13/19 400 - secondary body copy, descriptions
+  /// 14/20 400 - secondary body copy, descriptions
   static const TextStyle bodySecondary = TextStyle(
     fontFamily: text,
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: FontWeight.w400,
     color: AppColors.textSecondary,
-    height: 19 / 13,
+    height: 20 / 14,
   );
 
   /// 14/500 - the value half of a label/value pair
@@ -479,14 +486,14 @@ class AppTypography {
     height: 1.4,
   );
 
-  /// 12/16 600 - the label half of a label/value pair, and form field labels.
+  /// 13/17 600 - the label half of a label/value pair, and form field labels.
   /// A label sits above its input, never floating inside it.
   static const TextStyle fieldLabel = TextStyle(
     fontFamily: text,
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: FontWeight.w600,
     color: AppColors.textSecondary,
-    height: 16 / 12,
+    height: 17 / 13,
   );
 
   /// 14/600 - button text. One size for every standard button in the app.
@@ -513,7 +520,9 @@ class AppTypography {
     fontSize: 14,
     fontWeight: FontWeight.w400,
     color: AppColors.textPrimary,
-    height: 1.4,
+    // A whole-pixel line (20) so every kind of field lands on the same height
+    // whatever the font's own metrics round to.
+    height: 20 / 14,
   );
 
   // ------------------------------------------------------------- SMALL TEXT --
@@ -565,6 +574,7 @@ class AppTypography {
     fontWeight: FontWeight.w400,
     color: AppColors.textSecondary,
     height: 1.35,
+    fontFeatures: tabular,
   );
 
   /// 13/600 - the identifying cell of a data table row (client name, subject)
@@ -574,6 +584,7 @@ class AppTypography {
     fontWeight: FontWeight.w600,
     color: AppColors.textPrimary,
     height: 1.35,
+    fontFeatures: tabular,
   );
 
   /// 13/400 tabular - numeric cell in a data table
@@ -596,6 +607,18 @@ class AppTypography {
   );
 
   // ---------------------------------------------------------------- NUMBERS --
+  /// 44/48 700 tabular - the one big number of a card (the time on the
+  /// Attendance "Today" card).
+  static const TextStyle heroNumber = TextStyle(
+    fontFamily: display,
+    fontSize: 44,
+    fontWeight: FontWeight.w700,
+    color: AppColors.textPrimary,
+    letterSpacing: -1.2,
+    height: 48 / 44,
+    fontFeatures: tabular,
+  );
+
   /// 28/32 700 tabular - hero KPI, desktop
   static const TextStyle metricHero = TextStyle(
     fontFamily: display,
