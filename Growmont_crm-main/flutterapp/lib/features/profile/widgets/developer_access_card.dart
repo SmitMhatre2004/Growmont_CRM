@@ -116,9 +116,12 @@ class _DeveloperAccessCardState extends ConsumerState<DeveloperAccessCard> {
                   ),
                 ),
                 const SizedBox(width: AppSpacing.sm),
-                Text(
-                  'DEVELOPER / SYSTEM ACCESS',
-                  style: AppTypography.sectionTitle,
+                Expanded(
+                  child: Text(
+                    'DEVELOPER / SYSTEM ACCESS',
+                    style: AppTypography.sectionTitle,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
               ],
             ),

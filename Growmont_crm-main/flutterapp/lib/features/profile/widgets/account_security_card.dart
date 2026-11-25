@@ -51,7 +51,13 @@ class AccountSecurityCard extends ConsumerWidget {
                   ),
                 ),
                 const SizedBox(width: AppSpacing.sm),
-                Text('ACCOUNT & SECURITY', style: AppTypography.sectionTitle),
+                Expanded(
+                  child: Text(
+                    'ACCOUNT & SECURITY',
+                    style: AppTypography.sectionTitle,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
               ],
             ),
           ),
